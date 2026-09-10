@@ -42,7 +42,7 @@ const assetSchema = new mongoose.Schema(
     deviceType: {
       type: String,
       default: 'Laptop',
-      enum: ['Laptop', 'Desktop', 'All in One Desktop', 'Server', 'Workstation', 'Tablet', 'Network Switch', 'Printer', 'Monitor', 'Other'],
+      trim: true,
     },
     vncPassword: {
       type: String,

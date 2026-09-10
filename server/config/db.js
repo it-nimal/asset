@@ -4,30 +4,28 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 let mongoMemoryServer = null;
 
 export const connectDB = async () => {
-  const atlasUri = process.env.USE_ATLAS === 'true' ? process.env.MONGO_URI : null;
+  const uri = process.env.MONGO_URI;
 
-  // 1. Try Connecting to MongoDB Atlas if explicitly enabled
-  if (atlasUri) {
+  // 1. Try Connecting to MongoDB (Atlas or local instance) if configured
+  if (uri) {
     try {
-      const conn = await mongoose.connect(atlasUri, {
+      const conn = await mongoose.connect(uri, {
         family: 4,
         tlsAllowInvalidCertificates: true,
-        serverSelectionTimeoutMS: 8000,
+        serverSelectionTimeoutMS: 5000,
       });
-      console.log(`[MongoDB Atlas] Connected successfully to Cloud: ${conn.connection.host}`);
+      console.log(`[MongoDB] Connected successfully to database: ${conn.connection.host}`);
       return true;
-    } catch (atlasError) {
-      console.warn(`[MongoDB Atlas] Cloud connection skipped (${atlasError.message}).`);
-      console.log(`[MongoDB] Initializing local resilient database fallback...`);
+    } catch (error) {
+      console.warn(`[MongoDB] Connection to MONGO_URI failed (${error.message}).`);
+      console.log(`[MongoDB] Initializing resilient local embedded database fallback...`);
     }
   }
 
   // 2. Resilient Auto-Local Fallback (Never leaves user offline)
   try {
-    const binaryPath = 'D:\\User Data\\Desktop\\asset-mgmt\\.mongodb-binaries\\mongod-x64-win32-8.2.6.exe';
     mongoMemoryServer = await MongoMemoryServer.create({
       instance: { dbName: 'asset_mgmt' },
-      binary: { systemBinary: binaryPath },
       autoStart: true,
       timeout: 30000,
     });

@@ -32,7 +32,7 @@ Start both Express backend and React frontend concurrently:
 npm run dev
 ```
 
-- **Frontend Application**: [http://localhost:5000](http://localhost:5000)
+- **Frontend Application**: [http://localhost:5002](http://localhost:5002)
 - **Backend API Server**: [http://localhost:5001](http://localhost:5001)
 - **Health Check Endpoint**: [http://localhost:5001/api/health](http://localhost:5001/api/health)
 

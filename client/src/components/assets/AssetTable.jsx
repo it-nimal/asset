@@ -1,33 +1,36 @@
 import React, { useState, useMemo } from 'react';
 import {
   Eye,
-  Edit,
   UserCheck,
   ArrowRightLeft,
   Undo2,
   Wrench,
-  Archive,
   Trash2,
   Download,
-  Filter,
   ArrowUpDown,
-  FileText,
+  ArrowUp,
+  ArrowDown,
   CheckSquare,
   Square,
   ChevronLeft,
   ChevronRight,
+  Filter,
+  Package,
+  Layers,
+  Edit3,
+  CheckCircle2,
 } from 'lucide-react';
 
 export const STATUS_COLORS = {
-  Available: { text: '#34d399', bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.3)' },
-  Assigned: { text: '#22d3ee', bg: 'rgba(6, 182, 212, 0.15)', border: 'rgba(6, 182, 212, 0.3)' },
-  'In Stock': { text: '#10b981', bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.3)' },
-  'Under Maintenance': { text: '#fbbf24', bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.3)' },
-  Reserved: { text: '#c084fc', bg: 'rgba(192, 132, 252, 0.15)', border: 'rgba(192, 132, 252, 0.3)' },
-  Lost: { text: '#f87171', bg: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.3)' },
-  Stolen: { text: '#ef4444', bg: 'rgba(239, 68, 68, 0.25)', border: 'rgba(239, 68, 68, 0.5)' },
-  Retired: { text: '#94a3b8', bg: 'rgba(148, 163, 184, 0.15)', border: 'rgba(148, 163, 184, 0.3)' },
-  Disposed: { text: '#64748b', bg: 'rgba(100, 116, 139, 0.15)', border: 'rgba(100, 116, 139, 0.3)' },
+  Available: { text: '#34d399', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.28)' },
+  Assigned: { text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)', border: 'rgba(56, 189, 248, 0.28)' },
+  'In Stock': { text: '#34d399', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.28)' },
+  'Under Maintenance': { text: '#fbbf24', bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.28)' },
+  Reserved: { text: '#c084fc', bg: 'rgba(192, 132, 252, 0.12)', border: 'rgba(192, 132, 252, 0.28)' },
+  Lost: { text: '#f87171', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.28)' },
+  Stolen: { text: '#ef4444', bg: 'rgba(239, 68, 68, 0.2)', border: 'rgba(239, 68, 68, 0.4)' },
+  Retired: { text: '#94a3b8', bg: 'rgba(148, 163, 184, 0.12)', border: 'rgba(148, 163, 184, 0.28)' },
+  Disposed: { text: '#64748b', bg: 'rgba(100, 116, 139, 0.12)', border: 'rgba(100, 116, 139, 0.28)' },
 };
 
 export default function AssetTable({
@@ -38,40 +41,47 @@ export default function AssetTable({
   onAssign,
   onTransfer,
   onReturn,
+  onEdit,
   onMaintenance,
   onDelete,
 }) {
   const [statusFilter, setStatusFilter] = useState('All');
   const [deptFilter, setDeptFilter] = useState('All');
   const [locationFilter, setLocationFilter] = useState('All');
-  const [sortBy, setSortBy] = useState('createdAt');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortBy, setSortBy] = useState('assetNo');
+  const [sortOrder, setSortOrder] = useState('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [selectedIds, setSelectedIds] = useState([]);
 
-  // Unique departments and locations for filters
-  const departments = useMemo(() => ['All', ...new Set(assets.map(a => a.department).filter(Boolean))], [assets]);
-  const locations = useMemo(() => ['All', ...new Set(assets.map(a => a.plant).filter(Boolean))], [assets]);
+  // Filter options derived from data
+  const departments = useMemo(
+    () => ['All', ...new Set(assets.map((a) => a.department).filter(Boolean))].sort(),
+    [assets]
+  );
+  const locations = useMemo(
+    () => ['All', ...new Set(assets.map((a) => a.plant).filter(Boolean))].sort(),
+    [assets]
+  );
 
-  // Multi-attribute search & filter logic (Section 19)
+  // Multi-attribute search & filter logic
   const filteredAssets = useMemo(() => {
     return assets.filter((item) => {
-      // Category filter (from sidebar)
+      // Category filter (from sidebar or tabs)
       if (categoryFilter !== 'All') {
         const catMap = {
-          'assets-laptops': 'Laptop',
-          'assets-desktops': 'Desktop',
-          'assets-servers': 'Server',
-          'assets-monitors': 'Monitor',
-          'assets-network': 'Network Switch',
-          'assets-printers': 'Printer',
-          'assets-tablets': 'Tablet',
+          'assets-laptops': ['Laptop'],
+          'assets-desktops': ['Desktop', 'All in One Desktop', 'Workstation'],
+          'assets-servers': ['Server', 'Storage Server / NAS', 'Blade Server'],
+          'assets-monitors': ['Monitor', 'Interactive Display / Signage'],
+          'assets-network': ['Network Switch', 'Router / Gateway', 'Firewall', 'Wireless Access Point'],
+          'assets-printers': ['Printer', 'Scanner', 'Multi-Function Copier', 'Barcode / Label Printer'],
+          'assets-tablets': ['Tablet', 'Smartphone', 'Barcode Terminal / PDA'],
         };
-        const targetType = catMap[categoryFilter] || categoryFilter;
-        if (targetType === 'Desktop') {
-          if (item.deviceType !== 'Desktop' && item.deviceType !== 'All in One Desktop') return false;
-        } else if (item.deviceType !== targetType) {
+        const allowed = catMap[categoryFilter];
+        if (allowed) {
+          if (!allowed.includes(item.deviceType)) return false;
+        } else if (item.deviceType !== categoryFilter) {
           return false;
         }
       }
@@ -85,7 +95,7 @@ export default function AssetTable({
       // Location filter
       if (locationFilter !== 'All' && item.plant !== locationFilter) return false;
 
-      // Global search string
+      // Search query
       if (globalSearch) {
         const q = globalSearch.toLowerCase();
         const match =
@@ -97,7 +107,6 @@ export default function AssetTable({
           (item.empCode || '').toLowerCase().includes(q) ||
           (item.department || '').toLowerCase().includes(q) ||
           (item.ipAddress || '').toLowerCase().includes(q) ||
-          (item.macAddress || '').toLowerCase().includes(q) ||
           (item.hostName || '').toLowerCase().includes(q);
         if (!match) return false;
       }
@@ -109,8 +118,8 @@ export default function AssetTable({
   // Sort logic
   const sortedAssets = useMemo(() => {
     return [...filteredAssets].sort((a, b) => {
-      let aVal = a[sortBy] || '';
-      let bVal = b[sortBy] || '';
+      let aVal = a[sortBy] ?? '';
+      let bVal = b[sortBy] ?? '';
       if (typeof aVal === 'string') aVal = aVal.toLowerCase();
       if (typeof bVal === 'string') bVal = bVal.toLowerCase();
       if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
@@ -120,7 +129,7 @@ export default function AssetTable({
   }, [filteredAssets, sortBy, sortOrder]);
 
   // Pagination
-  const totalPages = Math.ceil(sortedAssets.length / pageSize) || 1;
+  const totalPages = Math.max(1, Math.ceil(sortedAssets.length / pageSize));
   const paginatedAssets = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return sortedAssets.slice(start, start + pageSize);
@@ -149,11 +158,40 @@ export default function AssetTable({
     }
   };
 
-  // Export CSV of currently filtered assets
+  const getSortIcon = (field) => {
+    if (sortBy !== field) return <ArrowUpDown size={12} color="var(--text-faint)" />;
+    return sortOrder === 'asc' ? (
+      <ArrowUp size={12} color="#818cf8" />
+    ) : (
+      <ArrowDown size={12} color="#818cf8" />
+    );
+  };
+
+  // Export CSV
   const exportFilteredCSV = () => {
-    if (sortedAssets.length === 0) return alert('No data to export');
-    const headers = ['Asset Tag', 'Serial No', 'Type', 'Make', 'Model', 'Status', 'User Name', 'Emp Code', 'Department', 'Location', 'Purchase Date', 'Price'];
-    const rows = sortedAssets.map(a => [
+    const targetList = selectedIds.length > 0
+      ? sortedAssets.filter((a) => selectedIds.includes(a._id))
+      : sortedAssets;
+
+    if (targetList.length === 0) return alert('No asset records to export.');
+
+    const headers = [
+      'Asset Tag',
+      'Serial No',
+      'Device Type',
+      'Make',
+      'Model',
+      'Status',
+      'Custodian',
+      'Emp Code',
+      'Department',
+      'Plant Facility',
+      'IP Address',
+      'Host Name',
+      'Warranty',
+    ];
+
+    const rows = targetList.map((a) => [
       a.assetNo || '',
       a.sr || '',
       a.deviceType || '',
@@ -164,57 +202,69 @@ export default function AssetTable({
       a.empCode || '',
       a.department || '',
       a.plant || '',
-      a.purchaseDate ? new Date(a.purchaseDate).toLocaleDateString() : '',
-      a.purchasePrice || 0,
+      a.ipAddress || '',
+      a.hostName || '',
+      a.warrantyDetails || '',
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.map(val => `"${val}"`).join(','))].join('\n');
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [headers.join(','), ...rows.map((e) => e.map((val) => `"${val}"`).join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `ITAM_Assets_${Date.now()}.csv`);
+    link.setAttribute('download', `Vitromed_Asset_Export_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   return (
-    <div style={{ padding: '0', maxWidth: '1400px', margin: '0 auto' }}>
-      {/* Controls & Minimal Filter Bar */}
+    <div style={{ width: '100%' }}>
+      {/* Controls & Filter Toolbar */}
       <div
+        className="card"
         style={{
-          backgroundColor: '#0f172a',
-          border: '1px solid rgba(255, 255, 255, 0.06)',
-          borderRadius: '8px',
-          padding: '0.75rem 1rem',
+          padding: '0.85rem 1.15rem',
           marginBottom: '1rem',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '0.75rem',
+          gap: '0.85rem',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
           {/* Quick Status Pills */}
-          <div style={{ display: 'flex', backgroundColor: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px', padding: '2px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+          <div
+            style={{
+              display: 'flex',
+              backgroundColor: 'rgba(0, 0, 0, 0.25)',
+              borderRadius: 'var(--radius-md)',
+              padding: '2px',
+              border: '1px solid var(--border-subtle)',
+            }}
+          >
             {['All', 'Assigned', 'Available', 'Under Maintenance'].map((st) => {
               const isAct = statusFilter === st;
               return (
                 <button
                   key={st}
                   type="button"
-                  onClick={() => { setStatusFilter(st); setCurrentPage(1); }}
+                  onClick={() => {
+                    setStatusFilter(st);
+                    setCurrentPage(1);
+                  }}
                   style={{
-                    padding: '0.25rem 0.6rem',
+                    padding: '0.28rem 0.65rem',
                     fontSize: '0.75rem',
-                    fontWeight: isAct ? 600 : 400,
-                    borderRadius: '4px',
+                    fontWeight: isAct ? 700 : 500,
+                    borderRadius: 'var(--radius-sm)',
                     border: 'none',
-                    backgroundColor: isAct ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
-                    color: isAct ? '#818cf8' : '#94a3b8',
+                    backgroundColor: isAct ? 'var(--primary-light)' : 'transparent',
+                    color: isAct ? '#a5b4fc' : 'var(--text-muted)',
                     cursor: 'pointer',
-                    transition: 'all 0.15s',
+                    transition: 'all 0.15s ease',
                   }}
                 >
                   {st}
@@ -225,54 +275,56 @@ export default function AssetTable({
 
           {/* Department Filter */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Dept:</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Dept:</span>
             <select
               value={deptFilter}
-              onChange={(e) => { setDeptFilter(e.target.value); setCurrentPage(1); }}
-              style={selectStyle}
+              onChange={(e) => {
+                setDeptFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="form-select"
+              style={{ padding: '0.28rem 1.8rem 0.28rem 0.65rem', fontSize: '0.78rem', width: 'auto' }}
             >
               {departments.map((d) => (
-                <option key={d} value={d}>{d}</option>
+                <option key={d} value={d}>
+                  {d}
+                </option>
               ))}
             </select>
           </div>
 
           {/* Location Filter */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Plant:</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Plant:</span>
             <select
               value={locationFilter}
-              onChange={(e) => { setLocationFilter(e.target.value); setCurrentPage(1); }}
-              style={selectStyle}
+              onChange={(e) => {
+                setLocationFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="form-select"
+              style={{ padding: '0.28rem 1.8rem 0.28rem 0.65rem', fontSize: '0.78rem', width: 'auto' }}
             >
               {locations.map((l) => (
-                <option key={l} value={l}>{l}</option>
+                <option key={l} value={l}>
+                  {l}
+                </option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Action CTAs: CSV Export & Count */}
+        {/* Export & Count */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ fontSize: '0.75rem', color: '#64748b', fontVariantNumeric: 'tabular-nums' }}>
-            <strong style={{ color: '#cbd5e1' }}>{sortedAssets.length}</strong> items
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Showing <strong>{sortedAssets.length}</strong> {sortedAssets.length === 1 ? 'system' : 'systems'}
           </span>
+
           <button
             type="button"
             onClick={exportFilteredCSV}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              color: '#cbd5e1',
-              padding: '0.35rem 0.65rem',
-              borderRadius: '6px',
-              fontSize: '0.75rem',
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
+            className="btn btn-outline btn-xs"
+            title="Export CSV"
           >
             <Download size={13} />
             <span>Export CSV</span>
@@ -280,256 +332,338 @@ export default function AssetTable({
         </div>
       </div>
 
-      {/* Main Asset Table */}
-      <div
-        style={{
-          backgroundColor: '#0f172a',
-          border: '1px solid rgba(255, 255, 255, 0.06)',
-          borderRadius: '8px',
-          overflow: 'hidden',
-        }}
-      >
+      {/* Floating Multi-Select Action Bar */}
+      {selectedIds.length > 0 && (
+        <div
+          style={{
+            backgroundColor: 'var(--bg-surface-raised)',
+            border: '1px solid var(--border-focus)',
+            borderRadius: 'var(--radius-md)',
+            padding: '0.6rem 1rem',
+            marginBottom: '1rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            boxShadow: 'var(--shadow-md)',
+            animation: 'slideUp 0.15s ease-out',
+          }}
+        >
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#a5b4fc' }}>
+            {selectedIds.length} {selectedIds.length === 1 ? 'asset' : 'assets'} selected
+          </span>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={exportFilteredCSV}
+              className="btn btn-primary btn-xs"
+            >
+              <Download size={13} />
+              <span>Export Selected</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className="btn btn-ghost btn-xs"
+            >
+              Deselect All
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modern Data Table */}
+      <div className="table-container">
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
+          <table className="table-modern">
             <thead>
-              <tr style={{ backgroundColor: '#090d16', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                <th style={{ padding: '0.65rem 0.85rem', width: '36px' }}>
-                  <input
-                    type="checkbox"
-                    checked={paginatedAssets.length > 0 && selectedIds.length === paginatedAssets.length}
-                    onChange={handleSelectAll}
-                    style={{ cursor: 'pointer' }}
-                  />
+              <tr>
+                <th style={{ width: '40px', textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={handleSelectAll}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}
+                  >
+                    {selectedIds.length === paginatedAssets.length && paginatedAssets.length > 0 ? (
+                      <CheckSquare size={16} color="#818cf8" />
+                    ) : (
+                      <Square size={16} />
+                    )}
+                  </button>
                 </th>
-                <th onClick={() => handleSort('assetNo')} style={thStyle}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer' }}>
+
+                <th onClick={() => handleSort('assetNo')} style={{ cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <span>Asset Tag</span>
-                    <ArrowUpDown size={11} />
+                    {getSortIcon('assetNo')}
                   </div>
                 </th>
-                <th onClick={() => handleSort('make')} style={thStyle}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer' }}>
-                    <span>Model</span>
-                    <ArrowUpDown size={11} />
+
+                <th onClick={() => handleSort('model')} style={{ cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span>Hardware / Model</span>
+                    {getSortIcon('model')}
                   </div>
                 </th>
-                <th style={thStyle}>Type</th>
-                <th style={thStyle}>Hostname</th>
-                <th style={thStyle}>IP Address</th>
-                <th onClick={() => handleSort('sr')} style={thStyle}>Serial No</th>
-                <th onClick={() => handleSort('userName')} style={thStyle}>Custodian</th>
-                <th style={thStyle}>Dept</th>
-                <th style={thStyle}>Plant</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Remark / VNC</th>
-                <th style={thStyle}>Doc</th>
-                <th style={{ ...thStyle, textAlign: 'right' }}>Actions</th>
+
+                <th onClick={() => handleSort('userName')} style={{ cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span>Custodian</span>
+                    {getSortIcon('userName')}
+                  </div>
+                </th>
+
+                <th onClick={() => handleSort('department')} style={{ cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span>Department</span>
+                    {getSortIcon('department')}
+                  </div>
+                </th>
+
+                <th onClick={() => handleSort('plant')} style={{ cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span>Facility</span>
+                    {getSortIcon('plant')}
+                  </div>
+                </th>
+
+                <th onClick={() => handleSort('status')} style={{ cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span>Status</span>
+                    {getSortIcon('status')}
+                  </div>
+                </th>
+
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
+
             <tbody>
               {paginatedAssets.length === 0 ? (
                 <tr>
-                  <td colSpan="14" style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                    No matching assets found for your search and filters.
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '3.5rem 1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.65rem' }}>
+                      <Package size={32} color="var(--text-faint)" />
+                      <div style={{ fontWeight: 600, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+                        No Asset Records Found
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', maxWidth: '340px' }}>
+                        No hardware records match the current filter or search criteria. Try adjusting your query or filters.
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                paginatedAssets.map((item) => {
-                  const isSelected = selectedIds.includes(item._id);
-                  const isAssigned = item.status === 'Assigned' && item.userName && item.userName !== 'Unassigned';
-                  const stColor = STATUS_COLORS[item.status] || STATUS_COLORS.Available;
+                paginatedAssets.map((asset) => {
+                  const isSelected = selectedIds.includes(asset._id);
+                  const st = STATUS_COLORS[asset.status] || STATUS_COLORS.Available;
 
                   return (
                     <tr
-                      key={item._id}
+                      key={asset._id}
                       style={{
-                        borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
-                        backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
-                        transition: 'background-color 0.12s',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isSelected) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                        backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.08)' : undefined,
                       }}
                     >
                       {/* Checkbox */}
-                      <td style={{ padding: '0.65rem 0.85rem' }}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelectOne(item._id)}
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </td>
-
-                      {/* Asset Tag */}
-                      <td style={{ padding: '0.65rem 0.85rem', fontWeight: 600, color: '#818cf8', fontFamily: 'monospace' }}>
-                        <div style={{ cursor: 'pointer' }} onClick={() => onViewDetails(item)}>
-                          {item.assetNo || `AST-${item.sr?.substring(0, 8)}`}
-                        </div>
-                      </td>
-
-                      {/* Make & Model */}
-                      <td style={{ padding: '0.65rem 0.85rem' }}>
-                        <div style={{ fontWeight: 500, color: '#f8fafc' }}>
-                          {item.make} {item.model}
-                        </div>
-                      </td>
-
-                      {/* Category */}
-                      <td style={{ padding: '0.65rem 0.85rem', color: '#94a3b8' }}>
-                        {item.deviceType || 'Laptop'}
-                      </td>
-
-                      {/* Host-Name */}
-                      <td style={{ padding: '0.65rem 0.85rem', fontWeight: 500, color: '#f8fafc' }}>
-                        {item.hostName || '—'}
-                      </td>
-
-                      {/* IP Address */}
-                      <td style={{ padding: '0.65rem 0.85rem', fontFamily: 'monospace', color: '#38bdf8', fontSize: '0.78rem' }}>
-                        {item.ipAddress || '—'}
-                      </td>
-
-                      {/* Serial Number */}
-                      <td style={{ padding: '0.65rem 0.85rem', fontFamily: 'monospace', color: '#64748b', fontSize: '0.75rem' }}>
-                        {item.sr}
-                      </td>
-
-                      {/* Employee */}
-                      <td style={{ padding: '0.65rem 0.85rem' }}>
-                        {isAssigned ? (
-                          <div>
-                            <div style={{ color: '#f8fafc', fontWeight: 500 }}>{item.userName}</div>
-                            {item.empCode && (
-                              <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{item.empCode}</div>
-                            )}
-                          </div>
-                        ) : (
-                          <span style={{ color: '#475569', fontSize: '0.75rem' }}>
-                            Unassigned
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Department */}
-                      <td style={{ padding: '0.65rem 0.85rem', color: '#cbd5e1' }}>
-                        {item.department || '—'}
-                      </td>
-
-                      {/* Location */}
-                      <td style={{ padding: '0.65rem 0.85rem', color: '#64748b' }}>
-                        {item.plant || '—'}
-                      </td>
-
-                      {/* Minimal Status Dot */}
-                      <td style={{ padding: '0.65rem 0.85rem' }}>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.4rem',
-                            fontSize: '0.75rem',
-                            fontWeight: 500,
-                            color: stColor.text,
-                          }}
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => toggleSelectOne(asset._id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}
                         >
+                          {isSelected ? <CheckSquare size={16} color="#818cf8" /> : <Square size={16} />}
+                        </button>
+                      </td>
+
+                      {/* Asset Tag & Serial */}
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span
+                            onClick={() => onViewDetails && onViewDetails(asset, 'overview')}
                             style={{
-                              width: '6px',
-                              height: '6px',
-                              borderRadius: '50%',
-                              backgroundColor: stColor.text,
-                            }}
-                          />
-                          <span>{item.status}</span>
-                        </span>
-                      </td>
-
-                      {/* Remark / VNC */}
-                      <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.75rem', color: item.vncPassword ? '#fde047' : '#64748b' }}>
-                        {item.remarks || (item.vncPassword ? `VNC: ${item.vncPassword}` : '—')}
-                      </td>
-
-                      {/* Invoice / PDF Document Preview */}
-                      <td style={{ padding: '0.65rem 0.85rem' }}>
-                        {item.invoiceImage ? (
-                          <button
-                            type="button"
-                            onClick={() => onViewDetails(item, 'documents')}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.25rem',
-                              padding: '0.2rem 0.45rem',
-                              borderRadius: '4px',
-                              backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                              border: '1px solid rgba(99, 102, 241, 0.25)',
+                              fontFamily: 'var(--font-mono)',
+                              fontWeight: 700,
                               color: '#818cf8',
-                              fontSize: '0.7rem',
-                              fontWeight: 500,
                               cursor: 'pointer',
                             }}
                           >
-                            <span>{item.invoiceImage?.startsWith('data:application/pdf') ? 'PDF' : 'Bill'}</span>
-                          </button>
-                        ) : (
-                          <span style={{ color: '#334155', fontSize: '0.72rem' }}>—</span>
-                        )}
+                            {asset.assetNo || 'AST-VIT-NEW'}
+                          </span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', marginTop: '1px' }}>
+                            S/N: {asset.sr || 'N/A'}
+                          </span>
+                        </div>
                       </td>
 
-                      {/* Actions */}
-                      <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center' }}>
+                      {/* Make & Specs */}
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {asset.make} {asset.model}
+                          </span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            {asset.deviceType || 'Hardware'} • {asset.processor || asset.ramSize || 'Standard'}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Custodian User */}
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                          <div
+                            style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: 'var(--radius-full)',
+                              backgroundColor: asset.userName && asset.userName !== 'Unassigned' ? 'var(--primary-light)' : 'rgba(255,255,255,0.05)',
+                              color: asset.userName && asset.userName !== 'Unassigned' ? '#a5b4fc' : 'var(--text-faint)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {(asset.userName || 'U').charAt(0).toUpperCase()}
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 500, color: asset.userName !== 'Unassigned' ? 'var(--text-primary)' : 'var(--text-faint)' }}>
+                              {asset.userName || 'Unassigned'}
+                            </span>
+                            {asset.empCode && (
+                              <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)' }}>
+                                {asset.empCode}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Department */}
+                      <td>
+                        <span style={{ color: 'var(--text-secondary)' }}>
+                          {asset.department || 'General IT'}
+                        </span>
+                      </td>
+
+                      {/* Plant / Facility */}
+                      <td>
+                        <span style={{ color: 'var(--text-secondary)' }}>
+                          {asset.plant || 'Main Facility'}
+                        </span>
+                      </td>
+
+                      {/* Status Badge */}
+                      <td>
+                        <span
+                          className="badge"
+                          style={{
+                            color: st.text,
+                            backgroundColor: st.bg,
+                            borderColor: st.border,
+                            border: `1px solid ${st.border}`,
+                          }}
+                        >
+                          {asset.status}
+                        </span>
+                      </td>
+
+                      {/* Contextual Action Buttons */}
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                           <button
                             type="button"
-                            onClick={() => onViewDetails(item)}
-                            title="View Details"
-                            style={actionBtnStyle}
+                            onClick={() => onViewDetails && onViewDetails(asset, 'overview')}
+                            className="btn btn-ghost btn-icon btn-xs"
+                            title="View Asset Details"
                           >
-                            <Eye size={13} />
+                            <Eye size={14} />
                           </button>
 
-                          {isAssigned ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => onTransfer(item)}
-                                title="Transfer"
-                                style={{ ...actionBtnStyle, color: '#38bdf8' }}
-                              >
-                                <ArrowRightLeft size={13} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => onReturn(item)}
-                                title="Return"
-                                style={{ ...actionBtnStyle, color: '#fbbf24' }}
-                              >
-                                <Undo2 size={13} />
-                              </button>
-                            </>
-                          ) : (
+                          {asset.status === 'Available' && onAssign && (
                             <button
                               type="button"
-                              onClick={() => onAssign(item)}
-                              title="Assign"
-                              style={{ ...actionBtnStyle, color: '#34d399' }}
+                              onClick={() => onAssign(asset)}
+                              className="btn btn-ghost btn-icon btn-xs"
+                              title="Assign to Employee"
+                              style={{ color: '#34d399' }}
                             >
-                              <UserCheck size={13} />
+                              <UserCheck size={14} />
                             </button>
                           )}
 
-                          <button
-                            type="button"
-                            onClick={() => onMaintenance(item)}
-                            title="Maintenance"
-                            style={{ ...actionBtnStyle, color: '#f59e0b' }}
-                          >
-                            <Wrench size={13} />
-                          </button>
+                          {asset.status === 'Assigned' && onTransfer && (
+                            <button
+                              type="button"
+                              onClick={() => onTransfer(asset)}
+                              className="btn btn-ghost btn-icon btn-xs"
+                              title="Transfer Custody"
+                              style={{ color: '#818cf8' }}
+                            >
+                              <ArrowRightLeft size={14} />
+                            </button>
+                          )}
+
+                          {asset.status === 'Assigned' && onReturn && (
+                            <button
+                              type="button"
+                              onClick={() => onReturn(asset)}
+                              className="btn btn-ghost btn-icon btn-xs"
+                              title="Return to Stock"
+                              style={{ color: '#38bdf8' }}
+                            >
+                              <Undo2 size={14} />
+                            </button>
+                          )}
+
+                          {asset.status === 'Under Maintenance' && onReturn && (
+                            <button
+                              type="button"
+                              onClick={() => onReturn(asset)}
+                              className="btn btn-ghost btn-icon btn-xs"
+                              title="Mark Repaired / Return to Stock"
+                              style={{ color: '#34d399' }}
+                            >
+                              <CheckCircle2 size={14} />
+                            </button>
+                          )}
+
+                          {onMaintenance && (
+                            <button
+                              type="button"
+                              onClick={() => onMaintenance(asset)}
+                              className="btn btn-ghost btn-icon btn-xs"
+                              title="Log Maintenance Ticket"
+                              style={{ color: '#fbbf24' }}
+                            >
+                              <Wrench size={14} />
+                            </button>
+                          )}
+
+                          {onEdit && (
+                            <button
+                              type="button"
+                              onClick={() => onEdit(asset)}
+                              className="btn btn-ghost btn-icon btn-xs"
+                              title="Edit Asset Details"
+                              style={{ color: '#818cf8' }}
+                            >
+                              <Edit3 size={14} />
+                            </button>
+                          )}
+
+                          {onDelete && (
+                            <button
+                              type="button"
+                              onClick={() => onDelete(asset)}
+                              className="btn btn-ghost btn-icon btn-xs"
+                              title="Delete Asset"
+                              style={{ color: '#f87171' }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -540,46 +674,55 @@ export default function AssetTable({
           </table>
         </div>
 
-        {/* Minimal Table Footer with Pagination */}
+        {/* Pagination Footer */}
         <div
           style={{
+            padding: '0.75rem 1.25rem',
+            borderTop: '1px solid var(--border-default)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: '0.65rem 1rem',
-            borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-            backgroundColor: '#090d16',
             flexWrap: 'wrap',
             gap: '0.75rem',
+            backgroundColor: 'rgba(9, 15, 26, 0.45)',
           }}
         >
-          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-            Page {currentPage} of {totalPages} • Total {sortedAssets.length} assets
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            <span>Rows per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="form-select"
+              style={{ padding: '0.15rem 1.4rem 0.15rem 0.45rem', fontSize: '0.75rem', width: 'auto' }}
+            >
+              <option value={10}>10</option>
+              <option value={15}>15</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+            <span>
+              Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+            </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <button
               type="button"
-              disabled={currentPage <= 1}
-              onClick={() => setCurrentPage((p) => p - 1)}
-              style={{
-                ...paginationBtnStyle,
-                opacity: currentPage <= 1 ? 0.35 : 1,
-                cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
-              }}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="btn btn-outline btn-xs"
             >
               <ChevronLeft size={14} />
-              <span>Previous</span>
+              <span>Prev</span>
             </button>
             <button
               type="button"
-              disabled={currentPage >= totalPages}
-              onClick={() => setCurrentPage((p) => p + 1)}
-              style={{
-                ...paginationBtnStyle,
-                opacity: currentPage >= totalPages ? 0.35 : 1,
-                cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
-              }}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="btn btn-outline btn-xs"
             >
               <span>Next</span>
               <ChevronRight size={14} />
@@ -590,49 +733,3 @@ export default function AssetTable({
     </div>
   );
 }
-
-const selectStyle = {
-  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-  border: '1px solid rgba(255, 255, 255, 0.08)',
-  borderRadius: '5px',
-  color: '#cbd5e1',
-  padding: '0.3rem 0.55rem',
-  fontSize: '0.75rem',
-  outline: 'none',
-  cursor: 'pointer',
-};
-
-const thStyle = {
-  padding: '0.65rem 0.85rem',
-  color: '#64748b',
-  fontWeight: 600,
-  fontSize: '0.7rem',
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-};
-
-const actionBtnStyle = {
-  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-  border: '1px solid rgba(255, 255, 255, 0.08)',
-  color: '#94a3b8',
-  borderRadius: '5px',
-  padding: '0.3rem 0.45rem',
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  transition: 'background-color 0.15s',
-};
-
-const paginationBtnStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.25rem',
-  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-  border: '1px solid rgba(255, 255, 255, 0.08)',
-  color: '#cbd5e1',
-  padding: '0.3rem 0.6rem',
-  borderRadius: '5px',
-  fontSize: '0.75rem',
-  fontWeight: 500,
-};

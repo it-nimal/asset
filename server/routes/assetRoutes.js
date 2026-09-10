@@ -116,7 +116,38 @@ router.get('/auth/users', async (req, res) => {
 // ----------------- EMPLOYEES & ORG -----------------
 router.get('/employees', async (req, res) => {
   try {
-    const employees = await Employee.find().sort({ name: 1 });
+    let employees = await Employee.find().sort({ name: 1 });
+    if (employees.length === 0) {
+      // Auto-populate employees from existing asset custodians if collection is empty
+      const assetsWithUsers = await Asset.find({ userName: { $nin: ['Unassigned', '', null] } });
+      const seen = new Set();
+      const newEmps = [];
+      let idx = 1001;
+      for (const a of assetsWithUsers) {
+        const u = a.userName?.trim();
+        if (u && !seen.has(u.toLowerCase())) {
+          seen.add(u.toLowerCase());
+          newEmps.push({
+            employeeId: a.empCode || `VIT-${idx++}`,
+            name: u.charAt(0).toUpperCase() + u.slice(1),
+            email: a.mailId || `${u.toLowerCase().replace(/[^a-z0-9]/g, '')}@vitromed.com`,
+            department: a.department || 'General',
+            location: a.plant || '22Godam',
+            designation: `${a.department || 'Operations'} Staff`,
+            phone: `+91-98765${String(idx).padStart(5, '0').slice(-5)}`,
+            status: 'Active',
+          });
+        }
+      }
+      if (newEmps.length > 0) {
+        try {
+          await Employee.insertMany(newEmps, { ordered: false });
+        } catch {
+          // ignore duplicate key errors if any
+        }
+        employees = await Employee.find().sort({ name: 1 });
+      }
+    }
     res.status(200).json({ success: true, data: employees });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -125,8 +156,179 @@ router.get('/employees', async (req, res) => {
 
 router.post('/employees', async (req, res) => {
   try {
-    const employee = await Employee.create(req.body);
-    res.status(201).json({ success: true, data: employee });
+    let { employeeId, name, email, department, location, designation, phone, status, actorName } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({ success: false, message: 'Employee name is required' });
+    }
+
+    // Auto-generate employeeId if not provided
+    if (!employeeId?.trim()) {
+      const highestEmp = await Employee.findOne({ employeeId: /^VIT-\d+$/ }).sort({ employeeId: -1 });
+      let nextNum = 1001;
+      if (highestEmp && highestEmp.employeeId) {
+        const num = parseInt(highestEmp.employeeId.replace('VIT-', ''), 10);
+        if (!isNaN(num)) nextNum = num + 1;
+      }
+      employeeId = `VIT-${nextNum}`;
+    }
+
+    // Check uniqueness of employeeId
+    const existingId = await Employee.findOne({ employeeId: employeeId.trim() });
+    if (existingId) {
+      return res.status(400).json({ success: false, message: `Employee ID "${employeeId}" is already assigned to ${existingId.name}` });
+    }
+
+    // Check email uniqueness or generate default
+    if (!email?.trim()) {
+      email = `${name.trim().toLowerCase().replace(/[^a-z0-9]/g, '')}@vitromed.com`;
+    }
+    const existingEmail = await Employee.findOne({ email: email.trim().toLowerCase() });
+    if (existingEmail) {
+      return res.status(400).json({ success: false, message: `Email "${email}" is already registered` });
+    }
+
+    const employee = await Employee.create({
+      employeeId: employeeId.trim(),
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      department: department?.trim() || 'General',
+      location: location?.trim() || '22Godam',
+      designation: designation?.trim() || 'Associate',
+      phone: phone?.trim() || '',
+      status: status || 'Active',
+    });
+
+    await AuditLog.create({
+      user: actorName || 'IT Admin',
+      role: 'IT Admin',
+      action: 'Employee Created',
+      details: `Registered new employee "${employee.name}" with ID "${employee.employeeId}"`,
+      ipAddress: req.ip || '127.0.0.1',
+    });
+
+    res.status(201).json({ success: true, data: employee, message: `Employee "${employee.name}" created with ID ${employee.employeeId}` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/employees/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const oldEmp = await Employee.findById(id);
+    if (!oldEmp) {
+      return res.status(404).json({ success: false, message: 'Employee record not found' });
+    }
+
+    const { employeeId, name, email, department, location, designation, phone, status, actorName } = req.body;
+
+    const previousId = oldEmp.employeeId;
+    const previousName = oldEmp.name;
+
+    // Check if new employeeId is already taken by someone else
+    if (employeeId && employeeId.trim() !== oldEmp.employeeId) {
+      const existing = await Employee.findOne({ employeeId: employeeId.trim(), _id: { $ne: id } });
+      if (existing) {
+        return res.status(400).json({ success: false, message: `Employee ID "${employeeId}" is already assigned to ${existing.name}` });
+      }
+    }
+
+    // Check if new email is already taken
+    if (email && email.trim().toLowerCase() !== oldEmp.email.toLowerCase()) {
+      const existingEmail = await Employee.findOne({ email: email.trim().toLowerCase(), _id: { $ne: id } });
+      if (existingEmail) {
+        return res.status(400).json({ success: false, message: `Email "${email}" is already registered to another staff member` });
+      }
+    }
+
+    const updated = await Employee.findByIdAndUpdate(
+      id,
+      {
+        employeeId: employeeId?.trim() || oldEmp.employeeId,
+        name: name?.trim() || oldEmp.name,
+        email: email ? email.trim().toLowerCase() : oldEmp.email,
+        department: department?.trim() || oldEmp.department,
+        location: location?.trim() || oldEmp.location,
+        designation: designation?.trim() || oldEmp.designation,
+        phone: phone?.trim() || oldEmp.phone,
+        status: status || oldEmp.status,
+      },
+      { new: true, runValidators: true }
+    );
+
+    // Sync assets assigned to this employee if employeeId or name changed
+    if ((employeeId && employeeId.trim() !== previousId) || (name && name.trim() !== previousName)) {
+      const escapedPrevName = previousName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapedPrevId = previousId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await Asset.updateMany(
+        {
+          $or: [
+            { userName: { $regex: new RegExp(`^${escapedPrevName}$`, 'i') } },
+            { empCode: { $regex: new RegExp(`^${escapedPrevId}$`, 'i') } }
+          ]
+        },
+        {
+          $set: {
+            userName: updated.name,
+            empCode: updated.employeeId,
+            mailId: updated.email,
+            department: updated.department,
+            plant: updated.location,
+          }
+        }
+      );
+    }
+
+    // Record audit log
+    await AuditLog.create({
+      user: actorName || 'IT Admin',
+      role: 'IT Admin',
+      action: 'Employee Updated',
+      details: `Updated Employee "${updated.name}" (Assigned ID: "${updated.employeeId}", Dept: "${updated.department}")`,
+      ipAddress: req.ip || '127.0.0.1',
+    });
+
+    res.status(200).json({ success: true, data: updated, message: `Employee ID & profile for ${updated.name} updated successfully` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/employees/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const emp = await Employee.findById(id);
+    if (!emp) {
+      return res.status(404).json({ success: false, message: 'Employee record not found' });
+    }
+
+    // Check if employee has assigned assets
+    const assignedCount = await Asset.countDocuments({
+      $or: [
+        { userName: emp.name },
+        { empCode: emp.employeeId }
+      ]
+    });
+
+    if (assignedCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete employee "${emp.name}" because they have ${assignedCount} active hardware asset(s) assigned. Please return or transfer the assets first.`
+      });
+    }
+
+    await Employee.findByIdAndDelete(id);
+
+    await AuditLog.create({
+      user: req.body?.actorName || 'IT Admin',
+      role: 'IT Admin',
+      action: 'Employee Deleted',
+      details: `Deleted employee record "${emp.name}" (ID: ${emp.employeeId})`,
+      ipAddress: req.ip || '127.0.0.1',
+    });
+
+    res.status(200).json({ success: true, message: `Employee "${emp.name}" deleted successfully` });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Laptop,
@@ -14,15 +14,43 @@ import {
   HardDrive,
   CheckCircle2,
   AlertTriangle,
+  Layers,
+  MapPin,
+  Building2,
+  ExternalLink,
+  UserCheck,
+  ArrowRightLeft,
+  Undo2,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
 import { STATUS_COLORS } from './AssetTable';
 
-export default function AssetDetailsModal({ asset, onClose, initialTab = 'overview' }) {
+export default function AssetDetailsModal({
+  asset,
+  onClose,
+  initialTab = 'overview',
+  onAssign,
+  onTransfer,
+  onReturn,
+  onEdit,
+  onMaintenance,
+  onDelete,
+}) {
   const [tab, setTab] = useState(initialTab);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   if (!asset) return null;
 
-  const stColor = STATUS_COLORS[asset.status] || STATUS_COLORS.Available;
+  const st = STATUS_COLORS[asset.status] || STATUS_COLORS.Available;
 
   // Calculate days remaining on warranty
   let warrantyDaysRemaining = null;
@@ -31,108 +59,69 @@ export default function AssetDetailsModal({ asset, onClose, initialTab = 'overvi
     warrantyDaysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   }
 
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: Laptop },
+    { id: 'specs', label: 'Specifications', icon: Cpu },
+    { id: 'assignment', label: 'Custodian History', icon: User },
+    { id: 'warranty', label: 'Warranty & AMC', icon: ShieldCheck },
+    { id: 'history', label: 'Audit Trail', icon: History },
+    { id: 'documents', label: 'Invoice & Docs', icon: FileText },
+  ];
+
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        backdropFilter: 'blur(6px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '1.5rem',
-        zIndex: 999,
-      }}
-    >
+    <div className="modal-overlay" onClick={onClose}>
       <div
+        className="modal-content"
         onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: '#131d36',
-          border: '1px solid #334155',
-          borderRadius: '16px',
-          width: '100%',
-          maxWidth: '920px',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '0 25px 60px rgba(0,0,0,0.7)',
-          overflow: 'hidden',
-        }}
+        style={{ maxWidth: '880px' }}
       >
-        {/* Modal Header Banner */}
-        <div
-          style={{
-            padding: '1.25rem 1.75rem',
-            borderBottom: '1px solid #1e293b',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            backgroundColor: '#0b1329',
-          }}
-        >
+        {/* Header */}
+        <div className="modal-header">
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.01em' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {asset.make} {asset.model}
               </h2>
               <span
+                className="badge"
                 style={{
-                  padding: '0.2rem 0.65rem',
-                  borderRadius: '9999px',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  backgroundColor: stColor.bg,
-                  color: stColor.text,
-                  border: `1px solid ${stColor.border}`,
+                  color: st.text,
+                  backgroundColor: st.bg,
+                  borderColor: st.border,
+                  border: `1px solid ${st.border}`,
                 }}
               >
                 ● {asset.status}
               </span>
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#818cf8', fontWeight: 600, marginTop: '2px' }}>
-              Tag: {asset.assetNo || 'AST-N/A'} • Serial No: {asset.sr} • Plant: {asset.plant}
+            <div style={{ fontSize: '0.78rem', color: '#818cf8', fontWeight: 600, marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+              Tag: {asset.assetNo || 'AST-VIT-NEW'} • S/N: {asset.sr || 'N/A'} • Plant: {asset.plant}
             </div>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#94a3b8',
-              cursor: 'pointer',
-              padding: '0.4rem',
-              borderRadius: '6px',
-            }}
+            className="btn btn-ghost btn-icon btn-sm"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* 6 Tabs Bar (Section 6: Overview, Assignment, History, Maintenance, Warranty, Documents) */}
+        {/* Tab Navigation Bar */}
         <div
           style={{
             display: 'flex',
-            gap: '0.4rem',
-            padding: '0.75rem 1.75rem',
-            borderBottom: '1px solid #1e293b',
-            backgroundColor: '#0f172a',
+            gap: '0.35rem',
+            padding: '0.65rem 1.25rem',
+            borderBottom: '1px solid var(--border-default)',
+            backgroundColor: 'rgba(9, 15, 26, 0.4)',
             overflowX: 'auto',
           }}
         >
-          {[
-            { id: 'overview', label: '1. Overview', icon: Laptop },
-            { id: 'assignment', label: '2. Assignment', icon: User },
-            { id: 'history', label: '3. Lifecycle History', icon: History },
-            { id: 'maintenance', label: '4. Maintenance', icon: Wrench },
-            { id: 'warranty', label: '5. Warranty', icon: ShieldCheck },
-            { id: 'documents', label: '6. Documents & Invoices', icon: FileText },
-          ].map((t) => {
+          {tabs.map((t) => {
             const Icon = t.icon;
-            const isActive = tab === t.id;
+            const isAct = tab === t.id;
             return (
               <button
                 key={t.id}
@@ -142,258 +131,351 @@ export default function AssetDetailsModal({ asset, onClose, initialTab = 'overvi
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.45rem',
-                  padding: '0.5rem 0.9rem',
-                  borderRadius: '8px',
-                  border: 'none',
-                  backgroundColor: isActive ? '#4f46e5' : 'transparent',
-                  color: isActive ? '#ffffff' : '#94a3b8',
-                  fontSize: '0.82rem',
-                  fontWeight: isActive ? 700 : 500,
+                  padding: '0.42rem 0.75rem',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid',
+                  borderColor: isAct ? 'rgba(99, 102, 241, 0.3)' : 'transparent',
+                  backgroundColor: isAct ? 'var(--primary-light)' : 'transparent',
+                  color: isAct ? '#ffffff' : 'var(--text-muted)',
+                  fontSize: '0.78rem',
+                  fontWeight: isAct ? 700 : 500,
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease',
                   whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease',
                 }}
               >
-                <Icon size={15} />
+                <Icon size={14} color={isAct ? '#818cf8' : 'var(--text-faint)'} />
                 <span>{t.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Tab Body Content */}
-        <div style={{ padding: '1.75rem', overflowY: 'auto', flex: 1, backgroundColor: '#131d36' }}>
+        {/* Tab Body Contents */}
+        <div className="modal-body">
           {/* TAB 1: OVERVIEW */}
           {tab === 'overview' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
-              <div style={sectionBoxStyle}>
-                <h4 style={sectionTitleStyle}>💻 Hardware Specifications</h4>
-                <div style={infoRowStyle}><span style={labelStyle}>Device Type:</span> <span>{asset.deviceType || 'Laptop'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Processor:</span> <span>{asset.processor || 'N/A'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>RAM Memory:</span> <span>{asset.ramSize || 'N/A'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Primary Storage:</span> <span>{asset.storage || 'N/A'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Condition:</span> <span>{asset.workingCondition || 'Good'}</span></div>
-              </div>
-
-              <div style={sectionBoxStyle}>
-                <h4 style={sectionTitleStyle}>🌐 Network & Identity</h4>
-                <div style={infoRowStyle}><span style={labelStyle}>Hostname:</span> <code style={{ color: '#38bdf8' }}>{asset.hostName || 'VIT-WKS'}</code></div>
-                <div style={infoRowStyle}><span style={labelStyle}>IP Address:</span> <span>{asset.ipAddress || 'DHCP Dynamic'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>MAC Address:</span> <span style={{ fontFamily: 'monospace' }}>{asset.macAddress || 'N/A'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Location:</span> <span>{asset.plant || 'Vitromed HQ'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Floor / Cabin:</span> <span>{asset.floorCabin || 'IT Stock Room'}</span></div>
-              </div>
-
-              <div style={sectionBoxStyle}>
-                <h4 style={sectionTitleStyle}>💰 Procurement & Commercials</h4>
-                <div style={infoRowStyle}><span style={labelStyle}>Purchase Price:</span> <span style={{ fontWeight: 700, color: '#34d399' }}>₹{asset.purchasePrice?.toLocaleString() || '0'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Current Value:</span> <span>₹{asset.currentValue?.toLocaleString() || '0'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Vendor Name:</span> <span>{asset.vendorName || 'Direct Vendor'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>PO Number:</span> <span>{asset.po || 'N/A'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Bill Number:</span> <span>{asset.billNo || 'N/A'}</span></div>
-              </div>
-
-              <div style={sectionBoxStyle}>
-                <h4 style={sectionTitleStyle}>🔑 Software & OS Licenses</h4>
-                <div style={infoRowStyle}><span style={labelStyle}>Operating System:</span> <span>{asset.osVersion || 'Windows 11 Pro'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Windows Key:</span> <code style={{ color: '#34d399', fontSize: '0.75rem' }}>{asset.windowsKey || 'OEM Digital'}</code></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Office Suite:</span> <span>{asset.officeSoftware || 'Office 365'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Endpoint Antivirus:</span> <span>{asset.antivirus || 'QuickHeal'}</span></div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: ASSIGNMENT */}
-          {tab === 'assignment' && (
-            <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={sectionBoxStyle}>
-                <h4 style={sectionTitleStyle}>👤 Current Allocation State</h4>
-                <div style={infoRowStyle}><span style={labelStyle}>Assigned Employee:</span> <span style={{ fontWeight: 700, color: '#ffffff' }}>{asset.userName || 'Unassigned (In Stock)'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Employee ID:</span> <span>{asset.empCode || '—'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Official Email:</span> <span>{asset.mailId || '—'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Department:</span> <span>{asset.department || '—'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Assignment Date:</span> <span>{asset.assignedDate ? new Date(asset.assignedDate).toLocaleDateString() : '—'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Expected Return:</span> <span>{asset.expectedReturnDate ? new Date(asset.expectedReturnDate).toLocaleDateString() : 'Permanent Assignment'}</span></div>
-              </div>
-              <div style={sectionBoxStyle}>
-                <h4 style={sectionTitleStyle}>📝 Handover Remarks & Notes</h4>
-                <p style={{ color: '#94a3b8', fontSize: '0.85rem', lineHeight: 1.5 }}>
-                  {asset.remarks || 'No handover remarks recorded for this device.'}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: LIFECYCLE TIMELINE HISTORY */}
-          {tab === 'history' && (
-            <div>
-              <h4 style={{ ...sectionTitleStyle, marginBottom: '1.25rem' }}>⏳ Complete Lifecycle Audit Timeline</h4>
-              {(!asset.history || asset.history.length === 0) ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No timeline events logged yet.</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderLeft: '2px solid #334155', paddingLeft: '1.25rem', marginLeft: '0.75rem' }}>
-                  {asset.history.map((h, i) => (
-                    <div key={i} style={{ position: 'relative' }}>
-                      <div
-                        style={{
-                          position: 'absolute',
-                          left: '-1.65rem',
-                          top: '2px',
-                          width: '12px',
-                          height: '12px',
-                          borderRadius: '50%',
-                          backgroundColor: h.action === 'Assigned' ? '#06b6d4' : (h.action === 'Maintenance' ? '#f59e0b' : '#6366f1'),
-                        }}
-                      />
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 700, color: '#f8fafc', fontSize: '0.88rem' }}>{h.action}</span>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{new Date(h.date || Date.now()).toLocaleDateString()}</span>
-                      </div>
-                      <div style={{ color: '#818cf8', fontSize: '0.75rem', fontWeight: 600, marginTop: '2px' }}>by {h.user || 'Admin'}</div>
-                      <div style={{ color: '#94a3b8', fontSize: '0.82rem', marginTop: '0.35rem' }}>{h.details}</div>
-                    </div>
-                  ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                <div className="card" style={{ padding: '1rem', backgroundColor: 'rgba(255, 255, 255, 0.02)' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Current Custodian</span>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+                    {asset.userName || 'Unassigned (In Stock)'}
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#818cf8', marginTop: '2px' }}>
+                    {asset.empCode ? `ID: ${asset.empCode}` : 'Available for allocation'}
+                  </div>
                 </div>
+
+                <div className="card" style={{ padding: '1rem', backgroundColor: 'rgba(255, 255, 255, 0.02)' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Department & Plant</span>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+                    {asset.department || 'General IT'}
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    {asset.plant}
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: '1rem', backgroundColor: 'rgba(255, 255, 255, 0.02)' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Invoice & Inward Ref</span>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+                    {asset.billNo || 'N/A'}
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    {asset.vendorName || 'OEM Authorized'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Hardware Quick Summary */}
+              <div className="card" style={{ padding: '1.25rem' }}>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.75rem' }}>System Summary</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.8rem' }}>
+                  <div><span style={{ color: 'var(--text-faint)' }}>Device Category:</span> <strong>{asset.deviceType}</strong></div>
+                  <div><span style={{ color: 'var(--text-faint)' }}>Serial Number:</span> <strong style={{ fontFamily: 'var(--font-mono)' }}>{asset.sr}</strong></div>
+                  <div><span style={{ color: 'var(--text-faint)' }}>IP Address:</span> <strong style={{ fontFamily: 'var(--font-mono)', color: '#34d399' }}>{asset.ipAddress || 'DHCP'}</strong></div>
+                  <div><span style={{ color: 'var(--text-faint)' }}>Hostname:</span> <strong style={{ fontFamily: 'var(--font-mono)' }}>{asset.hostName || 'N/A'}</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: SPECIFICATIONS */}
+          {tab === 'specs' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+              <div className="card" style={{ padding: '1rem' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Processor (CPU)</span>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
+                  {asset.processor || 'Intel Core i5 / AMD Ryzen'}
+                </div>
+              </div>
+              <div className="card" style={{ padding: '1rem' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>System Memory (RAM)</span>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
+                  {asset.ramSize || '8 GB DDR4/DDR5'}
+                </div>
+              </div>
+              <div className="card" style={{ padding: '1rem' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Internal Storage</span>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
+                  {asset.storage || '512 GB NVMe SSD'}
+                </div>
+              </div>
+              <div className="card" style={{ padding: '1rem' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Operating System</span>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
+                  {asset.osVersion || 'Windows 11 Pro 64-bit'}
+                </div>
+              </div>
+              <div className="card" style={{ padding: '1rem' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Antivirus Protection</span>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
+                  {asset.antivirus || 'QuickHeal Endpoint Security'}
+                </div>
+              </div>
+              <div className="card" style={{ padding: '1rem' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Office Productivity</span>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
+                  {asset.officeSoftware || 'MS Office 2021'}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: ASSIGNMENT */}
+          {tab === 'assignment' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="card" style={{ padding: '1.25rem' }}>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.5rem' }}>Active Custody Details</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.8rem' }}>
+                  <div><span style={{ color: 'var(--text-faint)' }}>Assigned Employee:</span> <strong>{asset.userName || 'None (In Stock)'}</strong></div>
+                  <div><span style={{ color: 'var(--text-faint)' }}>Employee Code:</span> <strong>{asset.empCode || 'N/A'}</strong></div>
+                  <div><span style={{ color: 'var(--text-faint)' }}>Department:</span> <strong>{asset.department || 'N/A'}</strong></div>
+                  <div><span style={{ color: 'var(--text-faint)' }}>Assigned Location:</span> <strong>{asset.plant || 'N/A'}</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: WARRANTY */}
+          {tab === 'warranty' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="card" style={{ padding: '1.25rem' }}>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.75rem' }}>OEM Warranty Contract</h4>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                  {asset.warrantyDetails || '3 Years Comprehensive On-Site OEM Coverage'}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.8rem' }}>
+                  <div><span style={{ color: 'var(--text-faint)' }}>Purchase Date:</span> <strong>{asset.purchaseDate ? new Date(asset.purchaseDate).toLocaleDateString() : 'N/A'}</strong></div>
+                  <div><span style={{ color: 'var(--text-faint)' }}>Delivery Date:</span> <strong>{asset.deliveryDate ? new Date(asset.deliveryDate).toLocaleDateString() : 'N/A'}</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: HISTORY */}
+          {tab === 'history' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              {(!asset.history || asset.history.length === 0) ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-faint)' }}>
+                  No historical lifecycle logs recorded for this machine.
+                </div>
+              ) : (
+                asset.history.map((h, i) => (
+                  <div
+                    key={h._id || i}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                      border: '1px solid var(--border-subtle)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: '1rem',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                        {h.action}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {h.details}
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-faint)', marginTop: '4px' }}>
+                        Actor: {h.user || 'System Ingestion'}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                      {h.date ? new Date(h.date).toLocaleDateString() : 'N/A'}
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           )}
 
-          {/* TAB 4: MAINTENANCE */}
-          {tab === 'maintenance' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={sectionBoxStyle}>
-                <h4 style={sectionTitleStyle}>🛠️ Service & Repair Profile</h4>
-                <div style={infoRowStyle}><span style={labelStyle}>Current Health State:</span> <span>{asset.status === 'Under Maintenance' ? '⚠️ Under Maintenance / In Service' : '✅ Active & Operational'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Working Condition:</span> <span>{asset.workingCondition || 'Good'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Maintenance Support:</span> <span>Authorized OEM Partner Service</span></div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 5: WARRANTY */}
-          {tab === 'warranty' && (
-            <div style={{ maxWidth: '650px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={sectionBoxStyle}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h4 style={sectionTitleStyle}>🛡️ Warranty Information</h4>
-                  {warrantyDaysRemaining !== null && (
-                    <span
-                      style={{
-                        padding: '0.3rem 0.75rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        backgroundColor: warrantyDaysRemaining <= 30 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)',
-                        color: warrantyDaysRemaining <= 30 ? '#f87171' : '#34d399',
-                        border: `1px solid ${warrantyDaysRemaining <= 30 ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.4)'}`,
-                      }}
-                    >
-                      {warrantyDaysRemaining > 0 ? `${warrantyDaysRemaining} Days Remaining` : 'Warranty Expired'}
-                    </span>
-                  )}
-                </div>
-
-                <div style={infoRowStyle}><span style={labelStyle}>Warranty Provider:</span> <span>{asset.make} OEM Direct Support</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Coverage Scope:</span> <span>{asset.warrantyDetails || '3 Years Comprehensive On-Site'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Warranty Start Date:</span> <span>{asset.warrantyStartDate ? new Date(asset.warrantyStartDate).toLocaleDateString() : 'N/A'}</span></div>
-                <div style={infoRowStyle}><span style={labelStyle}>Warranty End Date:</span> <span style={{ fontWeight: 700, color: '#f8fafc' }}>{asset.warrantyEndDate ? new Date(asset.warrantyEndDate).toLocaleDateString() : 'N/A'}</span></div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 6: DOCUMENTS & INVOICES (PDF/IMAGE VIEWER) */}
+          {/* TAB 6: DOCUMENTS */}
           {tab === 'documents' && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div>
               {asset.invoiceImage ? (
-                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '1rem' }}>
-                    <span style={{ color: '#f8fafc', fontWeight: 600, fontSize: '0.9rem' }}>
-                      🧾 Attached Tax Invoice / Bill Copy (Bill No: {asset.billNo || 'N/A'})
-                    </span>
+                <div style={{ textAlign: 'center' }}>
+                  <img
+                    src={asset.invoiceImage}
+                    alt="Invoice proof"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '420px',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-default)',
+                    }}
+                  />
+                  <div style={{ marginTop: '0.75rem' }}>
                     <a
                       href={asset.invoiceImage}
-                      download={`Invoice_${asset.sr || 'asset'}.${asset.invoiceImage?.startsWith('data:application/pdf') ? 'pdf' : 'jpg'}`}
-                      style={{
-                        padding: '0.35rem 0.85rem',
-                        backgroundColor: '#4f46e5',
-                        color: '#fff',
-                        borderRadius: '6px',
-                        textDecoration: 'none',
-                        fontSize: '0.78rem',
-                        fontWeight: 600,
-                      }}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-outline btn-sm"
                     >
-                      ⬇️ Download Original
+                      <ExternalLink size={14} />
+                      <span>Open Document in New Tab</span>
                     </a>
                   </div>
-
-                  {asset.invoiceImage?.startsWith('data:application/pdf') ? (
-                    <iframe
-                      src={asset.invoiceImage}
-                      title="Invoice PDF Preview"
-                      style={{
-                        width: '100%',
-                        height: '60vh',
-                        border: '1px solid #334155',
-                        borderRadius: '10px',
-                        backgroundColor: '#0f172a',
-                      }}
-                    />
-                  ) : (
-                    <img
-                      src={asset.invoiceImage}
-                      alt="Invoice Copy"
-                      style={{
-                        maxWidth: '100%',
-                        maxHeight: '60vh',
-                        borderRadius: '10px',
-                        objectFit: 'contain',
-                        border: '1px solid #334155',
-                      }}
-                    />
-                  )}
                 </div>
               ) : (
-                <div style={{ textAlign: 'center', padding: '3.5rem 1rem', color: '#64748b' }}>
-                  <FileText size={36} style={{ marginBottom: '0.5rem', opacity: 0.4 }} />
-                  <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#94a3b8' }}>No Invoice Document Attached</div>
-                  <div style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>You can attach tax invoices or gate pass receipts during asset inward entry.</div>
+                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-faint)' }}>
+                  <FileText size={32} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
+                  <div>No invoice scan or delivery receipt uploaded for this system.</div>
                 </div>
               )}
             </div>
           )}
         </div>
+
+        {/* Modal Footer with Direct Actions */}
+        <div
+          className="modal-footer"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.5rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+            {asset.status === 'Available' && onAssign && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onAssign(asset);
+                }}
+                className="btn btn-primary btn-sm"
+                style={{ backgroundColor: '#059669', borderColor: '#059669' }}
+              >
+                <UserCheck size={14} />
+                <span>Assign to Staff</span>
+              </button>
+            )}
+
+            {asset.status === 'Assigned' && onTransfer && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onTransfer(asset);
+                }}
+                className="btn btn-primary btn-sm"
+                style={{ backgroundColor: '#4f46e5', borderColor: '#4f46e5' }}
+              >
+                <ArrowRightLeft size={14} />
+                <span>Transfer Custody</span>
+              </button>
+            )}
+
+            {asset.status === 'Assigned' && onReturn && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onReturn(asset);
+                }}
+                className="btn btn-outline btn-sm"
+                style={{ color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.4)' }}
+              >
+                <Undo2 size={14} />
+                <span>Return to Stock</span>
+              </button>
+            )}
+
+            {asset.status === 'Under Maintenance' && onReturn && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onReturn(asset);
+                }}
+                className="btn btn-primary btn-sm"
+                style={{ backgroundColor: '#059669', borderColor: '#059669' }}
+              >
+                <CheckCircle2 size={14} />
+                <span>Mark Repaired / In Stock</span>
+              </button>
+            )}
+
+            {onMaintenance && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onMaintenance(asset);
+                }}
+                className="btn btn-outline btn-sm"
+                style={{ color: '#fbbf24', borderColor: 'rgba(251, 191, 36, 0.4)' }}
+              >
+                <Wrench size={14} />
+                <span>Log Service</span>
+              </button>
+            )}
+
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onEdit(asset);
+                }}
+                className="btn btn-outline btn-sm"
+              >
+                <Edit3 size={14} />
+                <span>Edit Asset</span>
+              </button>
+            )}
+
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onDelete(asset);
+                }}
+                className="btn btn-ghost btn-sm"
+                style={{ color: '#f87171' }}
+                title="Permanently remove asset record"
+              >
+                <Trash2 size={14} />
+                <span>Delete</span>
+              </button>
+            )}
+          </div>
+
+          <button type="button" onClick={onClose} className="btn btn-secondary btn-sm">
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
 }
-
-const sectionBoxStyle = {
-  backgroundColor: '#0b1329',
-  border: '1px solid #1e293b',
-  borderRadius: '10px',
-  padding: '1.25rem',
-};
-
-const sectionTitleStyle = {
-  fontSize: '0.88rem',
-  fontWeight: 700,
-  color: '#818cf8',
-  marginBottom: '0.85rem',
-  borderBottom: '1px solid #1e293b',
-  paddingBottom: '0.45rem',
-};
-
-const infoRowStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '0.35rem 0',
-  fontSize: '0.8rem',
-  color: '#cbd5e1',
-};
-
-const labelStyle = {
-  color: '#64748b',
-  fontWeight: 600,
-};

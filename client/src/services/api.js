@@ -61,6 +61,16 @@ export const api = {
     return data;
   },
 
+  // Delete asset
+  async deleteAsset(id) {
+    const res = await fetch(`${API_BASE}/assets/${id}`, {
+      method: 'DELETE',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to delete asset');
+    return data;
+  },
+
   // Assign Asset
   async assignAsset(id, data) {
     const res = await fetch(`${API_BASE}/assets/${id}/assign`, {
@@ -114,6 +124,39 @@ export const api = {
     const res = await fetch(`${API_BASE}/assets/employees`);
     const data = await res.json();
     return data.data || [];
+  },
+
+  async createEmployee(empData) {
+    const res = await fetch(`${API_BASE}/assets/employees`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(empData),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to create employee');
+    return data;
+  },
+
+  async updateEmployee(id, empData) {
+    const res = await fetch(`${API_BASE}/assets/employees/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(empData),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update employee');
+    return data;
+  },
+
+  async deleteEmployee(id, actorName = 'IT Admin') {
+    const res = await fetch(`${API_BASE}/assets/employees/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ actorName }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to delete employee');
+    return data;
   },
 
   async getDepartments() {
