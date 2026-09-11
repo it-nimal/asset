@@ -18,8 +18,20 @@ import {
   FileText,
   Activity,
 } from 'lucide-react';
+import AssetTable from '../assets/AssetTable';
 
-export default function Dashboard({ stats, assets = [], onNavigate }) {
+export default function Dashboard({
+  stats,
+  assets = [],
+  onNavigate,
+  onViewDetails,
+  onAssign,
+  onTransfer,
+  onReturn,
+  onMaintenance,
+  onEdit,
+  onDelete,
+}) {
   const cards = [
     {
       title: 'Total Hardware Fleet',
@@ -492,6 +504,49 @@ export default function Dashboard({ stats, assets = [], onNavigate }) {
             ))
           )}
         </div>
+      </div>
+
+      {/* Live Hardware Inventory Fleet */}
+      <div style={{ marginTop: '2.5rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '1rem',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+          }}
+        >
+          <div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+              Hardware Fleet Inventory ({assets.length} Systems)
+            </h2>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+              Direct MongoDB inventory: physical workstations, laptops, static IP assignments, and custodians across corporate plants.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('asset-add')}
+            className="btn btn-primary btn-sm"
+          >
+            <span>+ Inward Asset</span>
+          </button>
+        </div>
+
+        <AssetTable
+          assets={assets}
+          categoryFilter="All"
+          onViewDetails={onViewDetails}
+          onAssign={onAssign}
+          onTransfer={onTransfer}
+          onReturn={onReturn}
+          onMaintenance={onMaintenance}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
       </div>
     </div>
   );

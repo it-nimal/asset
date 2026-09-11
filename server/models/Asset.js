@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 
+mongoose.set('autoIndex', false);
+
 const assetSchema = new mongoose.Schema(
   {
     // 1. Plant & Identification
@@ -198,6 +200,7 @@ const assetSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    autoIndex: false,
   }
 );
 
@@ -216,7 +219,7 @@ const userSchema = new mongoose.Schema({
   department: { type: String, default: 'IT' },
   avatar: { type: String },
   active: { type: Boolean, default: true },
-}, { timestamps: true });
+}, { timestamps: true, autoIndex: false });
 
 export const User = mongoose.model('User', userSchema);
 
@@ -226,7 +229,7 @@ const departmentSchema = new mongoose.Schema({
   code: { type: String, required: true, unique: true },
   manager: { type: String, default: 'Head of Department' },
   location: { type: String, default: 'Vitromed HQ - Delhi NCR' },
-}, { timestamps: true });
+}, { timestamps: true, autoIndex: false });
 
 export const Department = mongoose.model('Department', departmentSchema);
 
@@ -237,7 +240,7 @@ const locationSchema = new mongoose.Schema({
   floor: { type: String, default: '1st Floor' },
   room: { type: String, default: 'Room 101' },
   address: { type: String },
-}, { timestamps: true });
+}, { timestamps: true, autoIndex: false });
 
 export const Location = mongoose.model('Location', locationSchema);
 
@@ -252,7 +255,7 @@ const employeeSchema = new mongoose.Schema({
   location: { type: String, default: 'Vitromed HQ - Delhi NCR' },
   joiningDate: { type: Date, default: Date.now },
   status: { type: String, enum: ['Active', 'On Leave', 'Resigned'], default: 'Active' },
-}, { timestamps: true });
+}, { timestamps: true, autoIndex: false });
 
 export const Employee = mongoose.model('Employee', employeeSchema);
 
@@ -264,7 +267,7 @@ const vendorSchema = new mongoose.Schema({
   phone: { type: String },
   address: { type: String },
   category: { type: String, default: 'Hardware & IT Equipment' },
-}, { timestamps: true });
+}, { timestamps: true, autoIndex: false });
 
 export const Vendor = mongoose.model('Vendor', vendorSchema);
 
@@ -281,7 +284,7 @@ const softwareSchema = new mongoose.Schema({
   expiryDate: { type: Date },
   cost: { type: Number, default: 0 },
   notes: { type: String },
-}, { timestamps: true });
+}, { timestamps: true, autoIndex: false });
 
 export const Software = mongoose.model('Software', softwareSchema);
 
@@ -300,7 +303,7 @@ const networkDeviceSchema = new mongoose.Schema({
   rack: { type: String, default: 'Rack-01' },
   uPosition: { type: String, default: 'U12' },
   status: { type: String, enum: ['Online', 'Offline', 'Maintenance', 'Decommissioned'], default: 'Online' },
-}, { timestamps: true });
+}, { timestamps: true, autoIndex: false });
 
 export const NetworkDevice = mongoose.model('NetworkDevice', networkDeviceSchema);
 
@@ -319,7 +322,7 @@ const maintenanceSchema = new mongoose.Schema({
   endDate: { type: Date },
   nextMaintenanceDate: { type: Date },
   status: { type: String, enum: ['Open', 'In Progress', 'Resolved', 'Closed'], default: 'Open' },
-}, { timestamps: true });
+}, { timestamps: true, autoIndex: false });
 
 export const Maintenance = mongoose.model('Maintenance', maintenanceSchema);
 
@@ -331,7 +334,7 @@ const auditLogSchema = new mongoose.Schema({
   assetTag: { type: String },
   details: { type: String },
   ipAddress: { type: String, default: '127.0.0.1' },
-}, { timestamps: true });
+}, { timestamps: true, autoIndex: false });
 
 export const AuditLog = mongoose.model('AuditLog', auditLogSchema);
 
@@ -342,7 +345,7 @@ const notificationSchema = new mongoose.Schema({
   type: { type: String, enum: ['warranty', 'license', 'maintenance', 'assignment', 'alert'], default: 'alert' },
   read: { type: Boolean, default: false },
   link: { type: String },
-}, { timestamps: true });
+}, { timestamps: true, autoIndex: false });
 
 export const Notification = mongoose.model('Notification', notificationSchema);
 

@@ -215,6 +215,16 @@ function ITAMApp() {
           stats={stats}
           assets={assets}
           onNavigate={(page) => setActivePage(page)}
+          onViewDetails={(asset, tab = 'overview') => {
+            setSelectedAssetForDetails(asset);
+            setDetailsInitialTab(tab);
+          }}
+          onAssign={(asset) => setSelectedAssetForAssign(asset)}
+          onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
+          onReturn={(asset) => setSelectedAssetForReturn(asset)}
+          onMaintenance={(asset) => setSelectedAssetForMaintenance(asset)}
+          onEdit={(asset) => setSelectedAssetForEdit(asset)}
+          onDelete={(asset) => handleDeleteAsset(asset)}
         />
       )}
 

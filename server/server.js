@@ -7,32 +7,15 @@ import { fileURLToPath } from 'url';
 import { connectDB, isDBConnected } from './config/db.js';
 import assetRoutes from './routes/assetRoutes.js';
 
-// Load environment variables
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
-const PORT = process.env.PORT || 5006;
+// Load environment variables reliably with absolute path
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config();
 
-// Connect to Database
-connectDB().then(async (connected) => {
-  if (connected) {
-    console.log('[Express] Database ready for asset management.');
-    try {
-      const { Asset } = await import('./models/Asset.js');
-      const count = await Asset.countDocuments();
-      if (count === 0) {
-        const { feedRealUserData } = await import('./seed/feedUserData.js');
-        await feedRealUserData();
-        console.log('[Express] Auto-populated 124 company systems into database.');
-      }
-    } catch (e) {
-      console.warn('[Express] Auto-populate warning:', e.message);
-    }
-  }
-});
+const app = express();
+const PORT = process.env.PORT || 5001;
 
 // Middleware (Support large invoice photos and PDF uploads)
 app.use(cors());
@@ -81,6 +64,47 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`[Express] Server running on http://localhost:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
-});
+// Connect to Database and start server
+const startServer = async () => {
+  try {
+    const connected = await connectDB();
+
+    if (!connected) {
+      console.error('[Express] Database connection failed.');
+      process.exit(1);
+    }
+
+    console.log('[Express] Database ready for asset management.');
+
+    try {
+      const { Asset } = await import('./models/Asset.js');
+      const count = await Asset.countDocuments();
+
+      if (count === 0) {
+        const { feedRealUserData } = await import('./seed/feedUserData.js');
+        console.log('[Real Data Ingestion] Starting import of 124 hardware systems...');
+        await feedRealUserData();
+        console.log('[Express] Auto-populated 124 company systems into database.');
+      } else {
+        console.log(`[Express] Connected to existing database with ${count} assets.`);
+      }
+    } catch (e) {
+      console.warn('[Express] Auto-populate warning:', e.message);
+    }
+
+    app.listen(PORT, () => {
+      console.log(
+        `[Express] Server running on http://localhost:${PORT} in ${
+          process.env.NODE_ENV || 'development'
+        } mode`
+      );
+    });
+
+  } catch (error) {
+    console.error('[Express] Startup failed:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
+
