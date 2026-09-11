@@ -1,23 +1,36 @@
 import React, { useState } from 'react';
+import {
+  Wrench,
+  CheckCircle2,
+  Building2,
+  Clock,
+  Plus,
+  DollarSign,
+  Search,
+  AlertCircle,
+  X,
+} from 'lucide-react';
 import { api } from '../services/api';
+import { useToast } from './common/Toast';
 
-export default function MaintenanceTracker({ assets, onRefresh, loading }) {
+export default function MaintenanceTracker({ assets = [], onRefresh, loading }) {
+  const toast = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [serviceData, setServiceData] = useState({
     maintenanceNotes: '',
-    serviceVendor: '',
+    serviceVendor: 'Dell Authorized Service Center',
     repairCost: 0,
     maintenanceStartDate: new Date().toISOString().split('T')[0],
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // Filter maintenance assets
+  // Filter lists
   const maintenanceAssets = assets.filter((item) => item.status === 'Under Maintenance');
   const availableOrInUseAssets = assets.filter((item) => item.status !== 'Under Maintenance');
 
-  // Open modal to log maintenance
+  // Open modal
   const handleOpenMaintenanceModal = (asset) => {
     setSelectedAsset(asset);
     setServiceData({
@@ -44,243 +57,267 @@ export default function MaintenanceTracker({ assets, onRefresh, loading }) {
         maintenanceStartDate: serviceData.maintenanceStartDate,
       });
 
+      toast.success(
+        `Service ticket logged for "${selectedAsset.make} ${selectedAsset.model}".`,
+        'Under Maintenance'
+      );
       setIsModalOpen(false);
       setSelectedAsset(null);
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert(`Maintenance log failed: ${err.message}`);
+      toast.error(err.message, 'Maintenance Log Failed');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Mark Repaired & Return to Stock
+  // Mark Repaired
   const handleMarkRepaired = async (asset) => {
     if (!window.confirm(`Mark "${asset.make} ${asset.model}" as Repaired and return to available stock?`)) return;
 
     try {
       await api.updateAsset(asset._id, {
         status: 'Available',
-        assignedTo: 'Unassigned',
-        employeeId: '',
+        userName: 'Unassigned',
+        empCode: '',
         maintenanceNotes: `Repaired on ${new Date().toLocaleDateString()}: ${asset.maintenanceNotes || ''}`,
       });
 
+      toast.success(`"${asset.make} ${asset.model}" marked repaired and returned to stock!`);
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert(`Status update failed: ${err.message}`);
+      toast.error(err.message, 'Update Failed');
     }
   };
 
-  // Filtered maintenance list
   const filteredList = maintenanceAssets.filter((item) => {
+    const q = searchTerm.toLowerCase();
     return (
-      (item.make || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.model || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.sr || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.serviceVendor || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.maintenanceNotes || '').toLowerCase().includes(searchTerm.toLowerCase())
+      (item.make || '').toLowerCase().includes(q) ||
+      (item.model || '').toLowerCase().includes(q) ||
+      (item.sr || '').toLowerCase().includes(q) ||
+      (item.serviceVendor || '').toLowerCase().includes(q) ||
+      (item.maintenanceNotes || '').toLowerCase().includes(q)
     );
   });
 
   return (
-    <div style={{ maxWidth: '1250px', margin: '2rem auto 5rem', padding: '0 1.5rem' }}>
-      {/* Overview Cards */}
+    <div style={{ padding: '1.5rem 2rem 4rem', maxWidth: '1440px', margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '1.75rem' }}>
+        <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          Maintenance & Service Tracker
+        </h1>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+          Track hardware repairs, warranty partner service center tickets, and turnaround resolution times.
+        </p>
+      </div>
+
+      {/* KPI Metric Boxes */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: '1.5rem',
-          marginBottom: '2.5rem',
+          gap: '1.25rem',
+          marginBottom: '1.75rem',
         }}
       >
-        <div style={statBoxStyle}>
-          <div style={{ fontSize: '0.8rem', color: '#fbbf24', fontWeight: 600, textTransform: 'uppercase' }}>
-            🛠️ Active Repairs
+        <div className="card" style={{ padding: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+              Active Repairs
+            </span>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Wrench size={16} color="#fbbf24" />
+            </div>
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#ffffff', marginTop: '0.3rem' }}>
+          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#fbbf24', marginTop: '0.75rem', lineHeight: 1 }}>
             {maintenanceAssets.length}
           </div>
-          <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.2rem' }}>
-            Devices currently under service
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', marginTop: '0.35rem' }}>
+            Devices under repair
           </div>
         </div>
 
-        <div style={statBoxStyle}>
-          <div style={{ fontSize: '0.8rem', color: '#34d399', fontWeight: 600, textTransform: 'uppercase' }}>
-            📦 Healthy Devices
+        <div className="card" style={{ padding: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+              Operational Fleet
+            </span>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <CheckCircle2 size={16} color="#34d399" />
+            </div>
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#ffffff', marginTop: '0.3rem' }}>
+          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#34d399', marginTop: '0.75rem', lineHeight: 1 }}>
             {availableOrInUseAssets.length}
           </div>
-          <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.2rem' }}>
-            Active in stock or assigned
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', marginTop: '0.35rem' }}>
+            Healthy systems in service
           </div>
         </div>
 
-        <div style={statBoxStyle}>
-          <div style={{ fontSize: '0.8rem', color: '#818cf8', fontWeight: 600, textTransform: 'uppercase' }}>
-            🏢 Service Vendors
+        <div className="card" style={{ padding: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+              Service Centers
+            </span>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'rgba(99, 102, 241, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Building2 size={16} color="#818cf8" />
+            </div>
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#ffffff', marginTop: '0.3rem' }}>
+          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#818cf8', marginTop: '0.75rem', lineHeight: 1 }}>
             3 Partners
           </div>
-          <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.2rem' }}>
-            Authorized warranty providers
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', marginTop: '0.35rem' }}>
+            Authorized OEM vendors
           </div>
         </div>
       </div>
 
-      {/* Main Table Container */}
-      <div
-        style={{
-          backgroundColor: '#1e293b',
-          border: '1px solid #334155',
-          borderRadius: '16px',
-          overflow: 'hidden',
-          boxShadow: '0 20px 35px rgba(0, 0, 0, 0.3)',
-        }}
-      >
-        {/* Header & Controls */}
+      {/* Main Repair Tickets Table */}
+      <div className="table-container">
+        {/* Table Search & Filter Header */}
         <div
           style={{
-            padding: '1.75rem 2rem',
-            borderBottom: '1px solid #334155',
+            padding: '0.85rem 1.25rem',
+            borderBottom: '1px solid var(--border-default)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
-            gap: '1.25rem',
+            gap: '0.75rem',
+            backgroundColor: 'rgba(9, 15, 26, 0.4)',
           }}
         >
-          <div>
-            <span
-              style={{
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                color: '#fbbf24',
-                letterSpacing: '0.05em',
-              }}
-            >
-              Hardware Repair & IT Maintenance Log
-            </span>
-            <h2 style={{ fontSize: '1.5rem', color: '#ffffff', fontWeight: 700, marginTop: '0.2rem' }}>
-              🛠️ Devices Under Service ({filteredList.length})
-            </h2>
-          </div>
-
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ position: 'relative', width: '280px' }}>
+            <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
             <input
               type="text"
-              placeholder="🔍 Search repairs, vendor, SR..."
+              placeholder="Search repair tickets..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={inputStyle}
+              className="form-control"
+              style={{ paddingLeft: '2rem', height: '32px', fontSize: '0.78rem' }}
             />
-
-            {/* Quick Send to Maintenance Button */}
-            {availableOrInUseAssets.length > 0 && (
-              <button
-                onClick={() => handleOpenMaintenanceModal(availableOrInUseAssets[0])}
-                style={{
-                  padding: '0.6rem 1.25rem',
-                  backgroundColor: '#f59e0b',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 10px rgba(245, 158, 11, 0.3)',
-                }}
-              >
-                ➕ Log New Repair
-              </button>
-            )}
           </div>
+
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Showing <strong>{filteredList.length}</strong> active repair tickets
+          </span>
         </div>
 
-        {/* Maintenance Table */}
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+          <table className="table-modern">
             <thead>
-              <tr style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', color: '#94a3b8', borderBottom: '1px solid #334155' }}>
-                <th style={{ padding: '1rem 1.25rem' }}>Device Details</th>
-                <th style={{ padding: '1rem 1.25rem' }}>Serial No (SR)</th>
-                <th style={{ padding: '1rem 1.25rem' }}>Issue Description</th>
-                <th style={{ padding: '1rem 1.25rem' }}>Service Vendor</th>
-                <th style={{ padding: '1rem 1.25rem' }}>Sent Date</th>
-                <th style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>Actions</th>
+              <tr>
+                <th>Asset / Serial No</th>
+                <th>Hardware Model</th>
+                <th>Service Center Vendor</th>
+                <th>Diagnosis & Issue Notes</th>
+                <th>Repair Cost</th>
+                <th>Date Initiated</th>
+                <th style={{ textAlign: 'right' }}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {filteredList.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '3.5rem', color: '#94a3b8' }}>
-                    Loading maintenance logs...
-                  </td>
-                </tr>
-              ) : filteredList.length === 0 ? (
-                <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '4rem 1rem', color: '#94a3b8' }}>
-                    <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>✅</div>
-                    <div style={{ fontSize: '1.15rem', fontWeight: 600, color: '#f8fafc' }}>
-                      All IT Devices are Operating Normally!
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                      <CheckCircle2 size={32} color="#34d399" style={{ opacity: 0.8 }} />
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                        All Equipment Healthy
+                      </div>
+                      <div style={{ color: 'var(--text-faint)', fontSize: '0.78rem' }}>
+                        No hardware assets currently marked under maintenance or service.
+                      </div>
                     </div>
-                    <p style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                      No hardware is currently marked under maintenance.
-                    </p>
                   </td>
                 </tr>
               ) : (
-                filteredList.map((item) => (
-                  <tr key={item._id} style={{ borderBottom: '1px solid #334155' }}>
-                    <td style={{ padding: '1.1rem 1.25rem' }}>
-                      <div style={{ color: '#ffffff', fontWeight: 600 }}>
-                        {item.make} {item.model}
+                filteredList.map((asset) => (
+                  <tr key={asset._id}>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#818cf8' }}>
+                          {asset.assetNo || 'AST-N/A'}
+                        </span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)' }}>
+                          S/N: {asset.sr}
+                        </span>
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: '#fbbf24', marginTop: '2px' }}>
-                        🛠️ Under Service
+                    </td>
+
+                    <td>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {asset.make} {asset.model}
+                      </span>
+                    </td>
+
+                    <td>
+                      <span style={{ color: 'var(--text-secondary)' }}>
+                        {asset.serviceVendor || 'Authorized Service Partner'}
+                      </span>
+                    </td>
+
+                    <td style={{ maxWidth: '280px' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                        {asset.maintenanceNotes || 'Routine diagnostic inspection'}
+                      </span>
+                    </td>
+
+                    <td>
+                      <span style={{ fontWeight: 700, color: '#fbbf24', fontVariantNumeric: 'tabular-nums' }}>
+                        ₹{(asset.repairCost || 0).toLocaleString()}
+                      </span>
+                    </td>
+
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                        <Clock size={12} />
+                        <span>{asset.maintenanceStartDate ? new Date(asset.maintenanceStartDate).toLocaleDateString() : 'N/A'}</span>
                       </div>
                     </td>
 
-                    <td style={{ padding: '1.1rem 1.25rem' }}>
-                      <code style={{ backgroundColor: '#0f172a', padding: '3px 8px', borderRadius: '4px', color: '#818cf8', fontWeight: 600 }}>
-                        {item.sr}
-                      </code>
-                    </td>
-
-                    <td style={{ padding: '1.1rem 1.25rem', color: '#f8fafc', maxWidth: '300px' }}>
-                      {item.maintenanceNotes || 'General hardware diagnosis & service'}
-                    </td>
-
-                    <td style={{ padding: '1.1rem 1.25rem', color: '#cbd5e1' }}>
-                      {item.serviceVendor || 'Authorized Service'}
-                      {item.repairCost > 0 && (
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Est. Cost: ${item.repairCost}</div>
-                      )}
-                    </td>
-
-                    <td style={{ padding: '1.1rem 1.25rem', color: '#cbd5e1' }}>
-                      {item.maintenanceStartDate ? new Date(item.maintenanceStartDate).toLocaleDateString() : 'Recent'}
-                    </td>
-
-                    <td style={{ padding: '1.1rem 1.25rem', textAlign: 'right' }}>
+                    <td style={{ textAlign: 'right' }}>
                       <button
-                        onClick={() => handleMarkRepaired(item)}
-                        style={{
-                          backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                          color: '#34d399',
-                          border: '1px solid rgba(16, 185, 129, 0.4)',
-                          padding: '0.45rem 0.9rem',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                        }}
+                        type="button"
+                        onClick={() => handleMarkRepaired(asset)}
+                        className="btn btn-outline btn-xs"
+                        style={{ color: '#34d399', borderColor: 'rgba(16, 185, 129, 0.3)' }}
                       >
-                        ✅ Repaired (Back to Stock)
+                        <CheckCircle2 size={13} />
+                        <span>Mark Repaired</span>
                       </button>
                     </td>
                   </tr>
@@ -291,144 +328,92 @@ export default function MaintenanceTracker({ assets, onRefresh, loading }) {
         </div>
       </div>
 
-      {/* Log Maintenance Modal */}
+      {/* Service Log Modal */}
       {isModalOpen && selectedAsset && (
-        <div
-          onClick={() => setIsModalOpen(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-            backdropFilter: 'blur(5px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1rem',
-            zIndex: 999,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: '#1e293b',
-              border: '1px solid #334155',
-              borderRadius: '16px',
-              width: '100%',
-              maxWidth: '560px',
-              padding: '2rem',
-              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.5)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #334155', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-              <div>
-                <h3 style={{ fontSize: '1.3rem', color: '#ffffff', fontWeight: 700 }}>
-                  🛠️ Log IT Device for Repair
-                </h3>
-                <p style={{ fontSize: '0.85rem', color: '#fbbf24', marginTop: '2px' }}>
-                  {selectedAsset.make} {selectedAsset.model} • SR: {selectedAsset.sr}
-                </p>
+        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Wrench size={18} color="#fbbf24" />
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Log Maintenance Ticket</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.25rem', cursor: 'pointer' }}
+                className="btn btn-ghost btn-icon btn-xs"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
 
             <form onSubmit={handleConfirmMaintenance}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {/* Select Asset */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  <label style={labelStyle}>Select Hardware Device to Send</label>
-                  <select
-                    value={selectedAsset._id}
-                    onChange={(e) => {
-                      const found = assets.find((a) => a._id === e.target.value);
-                      if (found) setSelectedAsset(found);
-                    }}
-                    style={modalInputStyle}
-                  >
-                    {availableOrInUseAssets.map((a) => (
-                      <option key={a._id} value={a._id}>
-                        {a.make} {a.model} (SR: {a.sr}) - {a.status}
-                      </option>
-                    ))}
-                  </select>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ fontWeight: 600 }}>{selectedAsset.make} {selectedAsset.model}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Tag: {selectedAsset.assetNo} • S/N: {selectedAsset.sr}</div>
                 </div>
 
-                {/* Fault Issue Description */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  <label style={labelStyle}>Issue / Fault Description <span style={{ color: '#f87171' }}>*</span></label>
-                  <textarea
-                    required
-                    rows="3"
-                    placeholder="e.g. Display screen flickering, battery health below 50%, keyboard keys not responding"
-                    value={serviceData.maintenanceNotes}
-                    onChange={(e) => setServiceData({ ...serviceData, maintenanceNotes: e.target.value })}
-                    style={modalInputStyle}
-                  ></textarea>
-                </div>
-
-                {/* Service Vendor */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  <label style={labelStyle}>Service Center / Vendor Name <span style={{ color: '#f87171' }}>*</span></label>
+                <div className="form-group">
+                  <label className="form-label">Service Vendor / Partner</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Dell Official Service Center, Local IT Hardware Partner"
                     value={serviceData.serviceVendor}
                     onChange={(e) => setServiceData({ ...serviceData, serviceVendor: e.target.value })}
-                    style={modalInputStyle}
+                    className="form-control"
                   />
                 </div>
 
-                {/* Estimated Repair Cost */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  <label style={labelStyle}>Estimated Repair Cost ($ / ₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="e.g. 150"
-                    value={serviceData.repairCost}
-                    onChange={(e) => setServiceData({ ...serviceData, repairCost: e.target.value })}
-                    style={modalInputStyle}
+                <div className="form-group">
+                  <label className="form-label">Diagnostic Notes & Issue Description</label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={serviceData.maintenanceNotes}
+                    onChange={(e) => setServiceData({ ...serviceData, maintenanceNotes: e.target.value })}
+                    className="form-control"
+                    placeholder="e.g. Battery replacement and motherboard diagnostic"
                   />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Estimated Cost (₹)</label>
+                    <input
+                      type="number"
+                      value={serviceData.repairCost}
+                      onChange={(e) => setServiceData({ ...serviceData, repairCost: e.target.value })}
+                      className="form-control"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Dispatch Date</label>
+                    <input
+                      type="date"
+                      value={serviceData.maintenanceStartDate}
+                      onChange={(e) => setServiceData({ ...serviceData, maintenanceStartDate: e.target.value })}
+                      className="form-control"
+                      style={{ colorScheme: 'dark' }}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  style={{
-                    padding: '0.65rem 1.25rem',
-                    backgroundColor: '#334155',
-                    color: '#cbd5e1',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '0.9rem',
-                    cursor: 'pointer',
-                  }}
+                  className="btn btn-outline btn-sm"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  style={{
-                    padding: '0.65rem 1.75rem',
-                    backgroundColor: '#f59e0b',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)',
-                  }}
+                  className="btn btn-primary btn-sm"
                 >
-                  {submitting ? 'Logging...' : '🛠️ Confirm Repair Log'}
+                  {submitting ? 'Saving...' : 'Confirm Ticket'}
                 </button>
               </div>
             </form>
@@ -438,38 +423,3 @@ export default function MaintenanceTracker({ assets, onRefresh, loading }) {
     </div>
   );
 }
-
-const statBoxStyle = {
-  backgroundColor: '#1e293b',
-  border: '1px solid #334155',
-  borderRadius: '14px',
-  padding: '1.5rem',
-  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
-};
-
-const labelStyle = {
-  fontSize: '0.85rem',
-  fontWeight: 600,
-  color: '#cbd5e1',
-};
-
-const inputStyle = {
-  backgroundColor: '#0f172a',
-  border: '1px solid #334155',
-  borderRadius: '8px',
-  padding: '0.55rem 1rem',
-  color: '#f8fafc',
-  fontSize: '0.85rem',
-  minWidth: '240px',
-  outline: 'none',
-};
-
-const modalInputStyle = {
-  backgroundColor: '#0f172a',
-  border: '1px solid #334155',
-  borderRadius: '8px',
-  padding: '0.7rem 1rem',
-  color: '#f8fafc',
-  fontSize: '0.9rem',
-  outline: 'none',
-};

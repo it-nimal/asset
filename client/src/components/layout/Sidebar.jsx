@@ -7,13 +7,11 @@ import {
   Printer,
   Radio,
   Tablet,
-  FileCode,
   FolderTree,
   PlusCircle,
   UserCheck,
   ArrowRightLeft,
   Undo2,
-  History,
   Wrench,
   ShieldCheck,
   Users,
@@ -24,74 +22,84 @@ import {
   KeyRound,
   FileText,
   Activity,
-  ChevronDown,
-  ChevronRight,
+  X,
   Sparkles,
 } from 'lucide-react';
 import logo from '../photos/VitromedLogo.png';
 import { useAuth } from '../../context/AuthContext';
 
-export default function Sidebar({ activePage, setActivePage, stats, countsByCategory }) {
+export default function Sidebar({
+  activePage,
+  setActivePage,
+  stats,
+  countsByCategory,
+  onCloseMobile,
+}) {
   const { user } = useAuth();
+
+  const handleSelect = (id) => {
+    setActivePage(id);
+    if (onCloseMobile) onCloseMobile();
+  };
 
   const navSections = [
     {
-      title: 'DASHBOARD',
+      title: 'Overview',
       items: [
-        { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard, badge: stats?.total },
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, count: stats?.total },
       ],
     },
     {
-      title: 'ASSETS BY CATEGORY',
+      title: 'Assets',
       items: [
         { id: 'assets-all', label: 'All Assets', icon: FolderTree, count: stats?.total },
         { id: 'assets-laptops', label: 'Laptops', icon: Laptop, count: countsByCategory?.Laptop },
-        { id: 'assets-desktops', label: 'Desktops & AIO', icon: Monitor, count: (countsByCategory?.Desktop || 0) + (countsByCategory?.['All in One Desktop'] || 0) },
-        { id: 'assets-servers', label: 'Servers & HCI', icon: Server, count: countsByCategory?.Server },
-        { id: 'assets-monitors', label: 'Monitors & Displays', icon: Monitor, count: countsByCategory?.Monitor },
-        { id: 'assets-network', label: 'Network Hardware', icon: Radio, count: countsByCategory?.['Network Switch'] },
-        { id: 'assets-printers', label: 'Printers & MFPs', icon: Printer, count: countsByCategory?.Printer },
-        { id: 'assets-tablets', label: 'Mobile & Tablets', icon: Tablet, count: countsByCategory?.Tablet },
+        { id: 'assets-desktops', label: 'Desktops', icon: Monitor, count: (countsByCategory?.Desktop || 0) + (countsByCategory?.['All in One Desktop'] || 0) },
+        { id: 'assets-servers', label: 'Servers', icon: Server, count: countsByCategory?.Server },
+        { id: 'assets-monitors', label: 'Monitors', icon: Monitor, count: countsByCategory?.Monitor },
+        { id: 'assets-network', label: 'Network', icon: Radio, count: countsByCategory?.['Network Switch'] },
+        { id: 'assets-printers', label: 'Printers', icon: Printer, count: countsByCategory?.Printer },
+        { id: 'assets-tablets', label: 'Mobiles / Tablets', icon: Tablet, count: countsByCategory?.Tablet },
       ],
     },
     {
-      title: 'ASSET LIFECYCLE',
+      title: 'Operations',
       items: [
-        { id: 'asset-add', label: 'Add New Asset (Inward)', icon: PlusCircle, isAction: true },
-        { id: 'asset-assign', label: 'Assign Asset', icon: UserCheck },
-        { id: 'asset-transfer', label: 'Transfer Asset', icon: ArrowRightLeft },
-        { id: 'asset-return', label: 'Return Asset', icon: Undo2 },
-        { id: 'asset-maintenance', label: 'Maintenance & Repairs', icon: Wrench, count: stats?.maintenance, badgeColor: '#fbbf24' },
-        { id: 'asset-warranty', label: 'Warranty Tracker', icon: ShieldCheck, count: stats?.warrantyExpiringSoon, badgeColor: '#f87171' },
+        { id: 'asset-add', label: 'Inward Asset', icon: PlusCircle, isAction: true },
+        { id: 'asset-assign', label: 'Allocation', icon: UserCheck },
+        { id: 'asset-transfer', label: 'Transfer', icon: ArrowRightLeft },
+        { id: 'asset-return', label: 'Return / Handover', icon: Undo2 },
+        { id: 'asset-maintenance', label: 'Maintenance', icon: Wrench, count: stats?.maintenance, badgeColor: '#fbbf24' },
+        { id: 'asset-warranty', label: 'Warranty Monitor', icon: ShieldCheck, count: stats?.warrantyExpiringSoon, badgeColor: '#f87171' },
       ],
     },
     {
-      title: 'ORGANIZATION & USERS',
+      title: 'Organization',
       items: [
-        { id: 'org-employees', label: 'Employees Directory', icon: Users },
+        { id: 'org-employees', label: 'Employees', icon: Users },
         { id: 'org-departments', label: 'Departments', icon: Building2 },
         { id: 'org-locations', label: 'Locations & Plants', icon: MapPin },
         { id: 'org-vendors', label: 'Vendors & Suppliers', icon: Truck },
       ],
     },
     {
-      title: 'SOFTWARE (SAM)',
+      title: 'Software & Cloud',
       items: [
-        { id: 'software-inventory', label: 'Software Inventory', icon: Layers },
-        { id: 'software-licenses', label: 'Licenses & Expiry', icon: KeyRound },
+        { id: 'software-inventory', label: 'Software Portfolio', icon: Layers },
+        { id: 'software-licenses', label: 'SAM Licenses', icon: KeyRound },
       ],
     },
     {
-      title: 'NETWORK INFRASTRUCTURE',
+      title: 'Infrastructure',
       items: [
-        { id: 'network-devices', label: 'Switches, Routers & Firewalls', icon: Radio },
+        { id: 'network-devices', label: 'Network & Racks', icon: Radio },
       ],
     },
     {
-      title: 'ANALYTICS & AUDIT',
+      title: 'Auditing',
       items: [
-        { id: 'reports', label: 'Compliance Reports (13)', icon: FileText },
-        { id: 'audit-logs', label: 'Audit Trail & Activity', icon: Activity },
+        { id: 'reports', label: 'Compliance Reports', icon: FileText },
+        { id: 'audit-logs', label: 'Audit Trail', icon: Activity },
       ],
     },
   ];
@@ -100,8 +108,8 @@ export default function Sidebar({ activePage, setActivePage, stats, countsByCate
     <aside
       style={{
         width: '260px',
-        backgroundColor: '#090d16',
-        borderRight: '1px solid rgba(255, 255, 255, 0.06)',
+        backgroundColor: 'var(--bg-surface)',
+        borderRight: '1px solid var(--border-default)',
         display: 'flex',
         flexDirection: 'column',
         height: '100vh',
@@ -114,89 +122,151 @@ export default function Sidebar({ activePage, setActivePage, stats, countsByCate
       {/* Brand Header */}
       <div
         style={{
-          padding: '1.1rem 1.25rem 0.9rem',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+          padding: '1.1rem 1.25rem',
+          borderBottom: '1px solid var(--border-default)',
           display: 'flex',
           alignItems: 'center',
-          gap: '0.75rem',
+          justifyContent: 'space-between',
+          backgroundColor: 'rgba(9, 15, 26, 0.45)',
         }}
       >
-        <img
-          src={logo}
-          alt="Vitromed Logo"
-          style={{ height: '32px', width: 'auto', objectFit: 'contain' }}
-        />
-        <div>
-          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#ffffff', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span>VITROMED</span>
-            <span style={{ fontSize: '0.62rem', backgroundColor: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 600 }}>ITAM</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <img
+            src={logo}
+            alt="Vitromed Logo"
+            style={{
+              height: '32px',
+              width: 'auto',
+              objectFit: 'contain',
+              filter: 'drop-shadow(0 2px 6px rgba(99,102,241,0.4))',
+            }}
+          />
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-brand)',
+                  fontWeight: 800,
+                  fontSize: '0.96rem',
+                  color: 'var(--text-primary)',
+                  letterSpacing: '0.01em',
+                }}
+              >
+                VITROMED
+              </span>
+              <span
+                style={{
+                  fontSize: '0.62rem',
+                  fontWeight: 700,
+                  backgroundColor: 'var(--primary-light)',
+                  color: '#a5b4fc',
+                  padding: '0.1rem 0.35rem',
+                  borderRadius: 'var(--radius-xs)',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                ITAM
+              </span>
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '1px' }}>
+              Enterprise Systems
+            </div>
           </div>
-          <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Asset Management</div>
         </div>
+
+        {/* Mobile Close Button */}
+        {onCloseMobile && (
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="btn btn-ghost btn-icon"
+            style={{ display: 'inline-flex' }}
+            title="Close Menu"
+          >
+            <X size={18} />
+          </button>
+        )}
       </div>
 
-      {/* Nav Menu Items */}
+      {/* Nav Menu Scrollable Area */}
       <div
         style={{
           flex: 1,
           overflowY: 'auto',
           padding: '0.85rem 0.65rem',
-          scrollbarWidth: 'thin',
         }}
       >
         {navSections.map((section, sIdx) => (
           <div key={sIdx} style={{ marginBottom: '1.25rem' }}>
             <div
               style={{
-                fontSize: '0.65rem',
-                fontWeight: 600,
-                color: '#475569',
-                letterSpacing: '0.06em',
-                padding: '0 0.6rem 0.35rem',
+                fontSize: '0.66rem',
+                fontWeight: 700,
+                color: 'var(--text-faint)',
+                letterSpacing: '0.08em',
+                padding: '0 0.65rem 0.4rem',
                 textTransform: 'uppercase',
               }}
             >
               {section.title}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = activePage === item.id;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActivePage(item.id)}
+                    type="button"
+                    onClick={() => handleSelect(item.id)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       width: '100%',
-                      padding: '0.45rem 0.65rem',
-                      borderRadius: '6px',
-                      border: 'none',
+                      padding: '0.52rem 0.7rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid',
+                      borderColor: isActive ? 'rgba(99, 102, 241, 0.3)' : 'transparent',
                       backgroundColor: isActive
-                        ? 'rgba(99, 102, 241, 0.14)'
+                        ? 'var(--bg-surface-active)'
                         : 'transparent',
                       color: isActive
-                        ? '#818cf8'
-                        : (item.isAction ? '#a5b4fc' : '#94a3b8'),
+                        ? '#ffffff'
+                        : item.isAction
+                        ? '#a5b4fc'
+                        : 'var(--text-secondary)',
                       cursor: 'pointer',
                       fontSize: '0.8rem',
-                      fontWeight: isActive ? 600 : 400,
+                      fontWeight: isActive ? 600 : 500,
                       textAlign: 'left',
                       transition: 'all 0.15s ease',
-                      position: 'relative',
                     }}
                     onMouseEnter={(e) => {
-                      if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)';
+                        e.currentTarget.style.color = 'var(--text-primary)';
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = item.isAction ? '#a5b4fc' : 'var(--text-secondary)';
+                      }
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                      <Icon size={15} color={isActive ? '#818cf8' : (item.isAction ? '#a5b4fc' : '#64748b')} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <Icon
+                        size={15}
+                        color={
+                          isActive
+                            ? '#818cf8'
+                            : item.isAction
+                            ? '#a5b4fc'
+                            : 'var(--text-muted)'
+                        }
+                      />
                       <span>{item.label}</span>
                     </div>
 
@@ -204,13 +274,16 @@ export default function Sidebar({ activePage, setActivePage, stats, countsByCate
                       <span
                         style={{
                           fontSize: '0.68rem',
-                          fontWeight: 600,
-                          padding: '0.05rem 0.4rem',
-                          borderRadius: '4px',
+                          fontWeight: 700,
+                          padding: '0.08rem 0.42rem',
+                          borderRadius: 'var(--radius-full)',
                           backgroundColor: item.badgeColor
-                            ? `rgba(${item.badgeColor === '#fbbf24' ? '245, 158, 11' : '239, 68, 68'}, 0.12)`
-                            : (isActive ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255, 255, 255, 0.05)'),
-                          color: item.badgeColor || (isActive ? '#818cf8' : '#64748b'),
+                            ? `rgba(${item.badgeColor === '#fbbf24' ? '245, 158, 11' : '239, 68, 68'}, 0.14)`
+                            : isActive
+                            ? 'rgba(99, 102, 241, 0.28)'
+                            : 'rgba(255, 255, 255, 0.05)',
+                          color: item.badgeColor || (isActive ? '#c7d2fe' : 'var(--text-muted)'),
+                          fontVariantNumeric: 'tabular-nums',
                         }}
                       >
                         {item.count}
@@ -224,43 +297,67 @@ export default function Sidebar({ activePage, setActivePage, stats, countsByCate
         ))}
       </div>
 
-      {/* User Role Card at bottom */}
+      {/* User Profile Card */}
       <div
         style={{
-          padding: '0.75rem 1rem',
-          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-          backgroundColor: '#090d16',
+          padding: '0.85rem 1rem',
+          borderTop: '1px solid var(--border-default)',
+          backgroundColor: 'rgba(9, 15, 26, 0.6)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: '0.65rem',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0 }}>
           <div
             style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              backgroundColor: '#4f46e5',
+              width: '30px',
+              height: '30px',
+              borderRadius: 'var(--radius-full)',
+              background: 'linear-gradient(135deg, #4f46e5, #06b6d4)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: '#ffffff',
+              fontSize: '0.78rem',
               fontWeight: 700,
-              fontSize: '0.75rem',
+              flexShrink: 0,
             }}
           >
-            {user?.name ? user.name.charAt(0) : 'U'}
+            {user?.name?.charAt(0) || 'A'}
           </div>
-          <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
-              {user?.name || 'User'}
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {user?.name || 'Administrator'}
             </div>
-            <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
-              {user?.role || 'Guest'}
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-faint)' }}>
+              {user?.role || 'IT Admin'}
             </div>
           </div>
         </div>
+
+        <span
+          style={{
+            fontSize: '0.65rem',
+            padding: '0.15rem 0.4rem',
+            borderRadius: 'var(--radius-sm)',
+            backgroundColor: 'var(--primary-light)',
+            color: '#a5b4fc',
+            fontWeight: 700,
+          }}
+        >
+          Active
+        </span>
       </div>
     </aside>
   );

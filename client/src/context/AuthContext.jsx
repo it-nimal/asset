@@ -3,20 +3,43 @@ import { api } from '../services/api';
 
 const AuthContext = createContext(null);
 
-export const DEMO_ACCOUNTS = [
-  { role: 'Super Admin', email: 'admin@vitromed.com', name: 'Aditya Vikram', dept: 'Executive Management', desc: 'Full Enterprise Unrestricted Access' },
-  { role: 'IT Admin', email: 'itadmin@vitromed.com', name: 'Pooja Verma', dept: 'IT Infrastructure', desc: 'Manage assets, assignments, software, and reports' },
-  { role: 'IT Technician', email: 'tech@vitromed.com', name: 'Kunal Deshmukh', dept: 'IT Support', desc: 'Hardware repairs, inward entries & maintenance' },
-  { role: 'Manager', email: 'manager@vitromed.com', name: 'Neha Singhania', dept: 'Operations', desc: 'View department allocations and analytics' },
-  { role: 'Employee', email: 'employee@vitromed.com', name: 'Rahul Sharma', dept: 'Engineering', desc: 'View assigned personal assets and status' },
+export const DEFAULT_USER = {
+  name: 'IT Administrator',
+  email: 'admin@vitromed.com',
+  role: 'IT Admin',
+  dept: 'IT Infrastructure',
+  desc: 'Enterprise System Administrator',
+};
+
+const DUMMY_NAMES = [
+  'Aditya Vikram',
+  'Pooja Verma',
+  'Kunal Deshmukh',
+  'Neha Singhania',
+  'Rahul Sharma',
 ];
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('itam_user');
-    return saved ? JSON.parse(saved) : DEMO_ACCOUNTS[0]; // Default to Super Admin for seamless demo
+    try {
+      const saved = localStorage.getItem('itam_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // If cached user is an old dummy admin, purge it
+        if (parsed?.name && DUMMY_NAMES.includes(parsed.name)) {
+          localStorage.setItem('itam_user', JSON.stringify(DEFAULT_USER));
+          return DEFAULT_USER;
+        }
+        return parsed;
+      }
+    } catch {
+      // ignore JSON parse error
+    }
+    localStorage.setItem('itam_user', JSON.stringify(DEFAULT_USER));
+    return DEFAULT_USER;
   });
-  const [token, setToken] = useState(() => localStorage.getItem('itam_token') || 'demo-jwt-token');
+
+  const [token, setToken] = useState(() => localStorage.getItem('itam_token') || 'system-admin-token');
 
   const login = async (email, password) => {
     try {
@@ -29,35 +52,27 @@ export function AuthProvider({ children }) {
         return { success: true };
       }
     } catch (err) {
-      // Local fallback for demo
-      const match = DEMO_ACCOUNTS.find(a => a.email === email);
-      if (match) {
-        setUser(match);
-        localStorage.setItem('itam_user', JSON.stringify(match));
+      if (email === DEFAULT_USER.email) {
+        setUser(DEFAULT_USER);
+        localStorage.setItem('itam_user', JSON.stringify(DEFAULT_USER));
         return { success: true };
       }
       throw err;
     }
   };
 
-  const switchDemoRole = (roleName) => {
-    const target = DEMO_ACCOUNTS.find(a => a.role === roleName) || DEMO_ACCOUNTS[0];
-    setUser(target);
-    localStorage.setItem('itam_user', JSON.stringify(target));
-  };
-
   const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('itam_user');
+    setUser(DEFAULT_USER);
+    setToken('system-admin-token');
+    localStorage.setItem('itam_user', JSON.stringify(DEFAULT_USER));
     localStorage.removeItem('itam_token');
   };
 
   // Role helper checks
-  const isSuperAdmin = user?.role === 'Super Admin';
-  const isITAdmin = user?.role === 'IT Admin' || isSuperAdmin;
-  const isTechnician = user?.role === 'IT Technician' || isITAdmin;
-  const isManager = user?.role === 'Manager' || isSuperAdmin;
+  const isSuperAdmin = true;
+  const isITAdmin = true;
+  const isTechnician = true;
+  const isManager = true;
 
   return (
     <AuthContext.Provider
@@ -66,7 +81,6 @@ export function AuthProvider({ children }) {
         token,
         login,
         logout,
-        switchDemoRole,
         isSuperAdmin,
         isITAdmin,
         isTechnician,

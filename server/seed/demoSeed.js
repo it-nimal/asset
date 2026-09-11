@@ -31,16 +31,12 @@ export const seedComprehensiveITAMData = async () => {
 
   // 1. Seed Users (Roles)
   const users = await User.create([
-    { name: 'Aditya Vikram', email: 'admin@vitromed.com', password: 'admin123', role: 'Super Admin', department: 'Executive Management' },
-    { name: 'Pooja Verma', email: 'itadmin@vitromed.com', password: 'admin123', role: 'IT Admin', department: 'IT Infrastructure' },
-    { name: 'Kunal Deshmukh', email: 'tech@vitromed.com', password: 'admin123', role: 'IT Technician', department: 'IT Hardware & Support' },
-    { name: 'Neha Singhania', email: 'manager@vitromed.com', password: 'admin123', role: 'Manager', department: 'Engineering Operations' },
-    { name: 'Rahul Sharma', email: 'employee@vitromed.com', password: 'admin123', role: 'Employee', department: 'Software Engineering' },
+    { name: 'IT Administrator', email: 'admin@vitromed.com', password: 'admin123', role: 'IT Admin', department: 'IT Infrastructure' },
   ]);
 
   // 2. Seed Departments
   const departments = await Department.create([
-    { name: 'IT Infrastructure & Software', code: 'DEPT-IT', manager: 'Pooja Verma', location: 'Vitromed HQ - Delhi NCR' },
+    { name: 'IT Infrastructure & Software', code: 'DEPT-IT', manager: 'IT Operations Head', location: 'Vitromed HQ - Delhi NCR' },
     { name: 'Production & Manufacturing', code: 'DEPT-PRD', manager: 'Suresh Raina', location: 'Plant 1 - Bangalore' },
     { name: 'Quality Assurance & QC', code: 'DEPT-QA', manager: 'Dr. Anita Joshi', location: 'Plant 2 - Pune' },
     { name: 'Supply Chain & Logistics', code: 'DEPT-SCM', manager: 'Rajesh Mehra', location: 'Plant 3 - Jaipur' },
@@ -243,9 +239,9 @@ export const seedComprehensiveITAMData = async () => {
       expectedReturnDate: assignedEmp ? new Date('2026-03-01') : null,
       remarks: `Enterprise IT asset provisioned by IT Support. Verified compliant with IT policy.`,
       history: [
-        { action: 'Created', date: pDate, user: 'Pooja Verma (IT Admin)', details: `Inward gate entry completed against PO-VIT-2024-${pad}` },
-        ...(assignedEmp ? [{ action: 'Assigned', date: new Date('2024-03-01'), user: 'Pooja Verma (IT Admin)', details: `Allocated to ${assignedEmp.name} (${assignedEmp.employeeId})` }] : []),
-        ...(status === 'Under Maintenance' ? [{ action: 'Maintenance', date: new Date(), user: 'Kunal Deshmukh', details: 'Reported overheating issue. Sent for fan replacement.' }] : []),
+        { action: 'Created', date: pDate, user: 'IT Administrator', details: `Inward gate entry completed against PO-VIT-2024-${pad}` },
+        ...(assignedEmp ? [{ action: 'Assigned', date: new Date('2024-03-01'), user: 'IT Administrator', details: `Allocated to ${assignedEmp.name} (${assignedEmp.employeeId})` }] : []),
+        ...(status === 'Under Maintenance' ? [{ action: 'Maintenance', date: new Date(), user: 'IT Support Specialist', details: 'Reported overheating issue. Sent for fan replacement.' }] : []),
       ],
     });
   }
@@ -258,7 +254,7 @@ export const seedComprehensiveITAMData = async () => {
       ticketId: 'MNT-2024-001',
       assetTag: 'AST-VIT-0021',
       assetName: 'Dell Latitude 5440',
-      technician: 'Kunal Deshmukh',
+      technician: 'IT Support Specialist',
       issue: 'Intermittent screen flickering and battery draining fast',
       diagnosis: 'EDP display cable loose and battery health degraded to 64%',
       resolution: 'Replaced EDP display cable and installed genuine Dell 54Wh battery',
@@ -272,7 +268,7 @@ export const seedComprehensiveITAMData = async () => {
       ticketId: 'MNT-2024-002',
       assetTag: 'AST-VIT-0022',
       assetName: 'HP EliteBook 840 G10',
-      technician: 'Kunal Deshmukh',
+      technician: 'IT Support Specialist',
       issue: 'CPU fan making loud grinding noise; thermal throttling under load',
       diagnosis: 'Bearing failure in primary cooling fan assembly',
       resolution: '',
@@ -298,10 +294,10 @@ export const seedComprehensiveITAMData = async () => {
 
   // 10. Seed Audit Logs
   await AuditLog.create([
-    { user: 'Aditya Vikram', role: 'Super Admin', action: 'System Initialized', assetTag: 'ALL', details: 'Full ITAM platform seeded with enterprise dataset', ipAddress: '127.0.0.1' },
-    { user: 'Pooja Verma', role: 'IT Admin', action: 'Asset Assigned', assetTag: 'AST-VIT-0001', details: 'Assigned Dell Latitude 5440 to Rahul Sharma (VIT-1001)', ipAddress: '192.168.1.45' },
-    { user: 'Pooja Verma', role: 'IT Admin', action: 'Asset Assigned', assetTag: 'AST-VIT-0005', details: 'Assigned MacBook Pro to Vikas Gupta (VIT-1005)', ipAddress: '192.168.1.45' },
-    { user: 'Kunal Deshmukh', role: 'IT Technician', action: 'Maintenance Created', assetTag: 'AST-VIT-0022', details: 'Opened ticket MNT-2024-002 for fan thermal throttling', ipAddress: '192.168.1.88' },
+    { user: 'IT Administrator', role: 'IT Admin', action: 'System Initialized', assetTag: 'ALL', details: 'Full ITAM platform seeded with enterprise dataset', ipAddress: '127.0.0.1' },
+    { user: 'IT Administrator', role: 'IT Admin', action: 'Asset Assigned', assetTag: 'AST-VIT-0001', details: 'Assigned Dell Latitude 5440 to Rahul Sharma (VIT-1001)', ipAddress: '192.168.1.45' },
+    { user: 'IT Administrator', role: 'IT Admin', action: 'Asset Assigned', assetTag: 'AST-VIT-0005', details: 'Assigned MacBook Pro to Vikas Gupta (VIT-1005)', ipAddress: '192.168.1.45' },
+    { user: 'IT Support Specialist', role: 'IT Technician', action: 'Maintenance Created', assetTag: 'AST-VIT-0022', details: 'Opened ticket MNT-2024-002 for fan thermal throttling', ipAddress: '192.168.1.88' },
     { user: 'Simran Chadha', role: 'Manager', action: 'Report Exported', assetTag: 'REPORTS', details: 'Exported Complete Asset Inventory CSV', ipAddress: '192.168.1.12' },
   ]);
 

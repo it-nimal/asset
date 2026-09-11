@@ -16,18 +16,83 @@ import {
   AlertTriangle,
   Plus,
   FileText,
+  Activity,
 } from 'lucide-react';
 
 export default function Dashboard({ stats, assets = [], onNavigate }) {
   const cards = [
-    { title: 'Total Assets', value: stats?.total || 0, icon: Boxes, color: '#818cf8', target: 'assets-all' },
-    { title: 'Assigned', value: stats?.assigned || 0, icon: UserCheck, color: '#38bdf8', target: 'asset-assign' },
-    { title: 'Available in Stock', value: stats?.available || 0, icon: CheckCircle2, color: '#34d399', target: 'assets-all' },
-    { title: 'Under Maintenance', value: stats?.maintenance || 0, icon: Wrench, color: '#fbbf24', target: 'asset-maintenance' },
-    { title: 'Retired / Disposed', value: stats?.retired || 0, icon: Archive, color: '#94a3b8', target: 'assets-all' },
-    { title: 'Lost or Stolen', value: stats?.lost || 0, icon: AlertOctagon, color: '#f87171', target: 'assets-all' },
-    { title: 'Warranty Expiring (30d)', value: stats?.warrantyExpiringSoon || 3, icon: ShieldAlert, color: '#fb923c', target: 'asset-warranty' },
-    { title: 'Licenses Expiring', value: stats?.licensesExpiringSoon || 0, icon: KeyRound, color: '#f472b6', target: 'software-licenses' },
+    {
+      title: 'Total Hardware Fleet',
+      value: stats?.total || 0,
+      subtext: 'Across all plants',
+      icon: Boxes,
+      color: '#818cf8',
+      bgGlow: 'rgba(99, 102, 241, 0.12)',
+      target: 'assets-all',
+    },
+    {
+      title: 'Assigned Custodians',
+      value: stats?.assigned || 0,
+      subtext: `${stats?.total ? Math.round(((stats?.assigned || 0) / stats.total) * 100) : 0}% fleet utilization`,
+      icon: UserCheck,
+      color: '#38bdf8',
+      bgGlow: 'rgba(56, 189, 248, 0.12)',
+      target: 'asset-assign',
+    },
+    {
+      title: 'Available in Stock',
+      value: stats?.available || 0,
+      subtext: 'Ready for allocation',
+      icon: CheckCircle2,
+      color: '#34d399',
+      bgGlow: 'rgba(16, 185, 129, 0.12)',
+      target: 'assets-all',
+    },
+    {
+      title: 'Under Maintenance',
+      value: stats?.maintenance || 0,
+      subtext: 'In service centers',
+      icon: Wrench,
+      color: '#fbbf24',
+      bgGlow: 'rgba(245, 158, 11, 0.12)',
+      target: 'asset-maintenance',
+    },
+    {
+      title: 'Retired / Disposed',
+      value: stats?.retired || 0,
+      subtext: 'Decommissioned units',
+      icon: Archive,
+      color: '#94a3b8',
+      bgGlow: 'rgba(148, 163, 184, 0.12)',
+      target: 'assets-all',
+    },
+    {
+      title: 'Lost or Stolen',
+      value: stats?.lost || 0,
+      subtext: 'Security incidents',
+      icon: AlertOctagon,
+      color: '#f87171',
+      bgGlow: 'rgba(239, 68, 68, 0.12)',
+      target: 'assets-all',
+    },
+    {
+      title: 'Warranty Expiring (30d)',
+      value: stats?.warrantyExpiringSoon || 3,
+      subtext: 'Requires AMC review',
+      icon: ShieldAlert,
+      color: '#fb923c',
+      bgGlow: 'rgba(251, 146, 60, 0.12)',
+      target: 'asset-warranty',
+    },
+    {
+      title: 'Licenses Expiring',
+      value: stats?.licensesExpiringSoon || 0,
+      subtext: 'SAM renewal notice',
+      icon: KeyRound,
+      color: '#f472b6',
+      bgGlow: 'rgba(244, 114, 182, 0.12)',
+      target: 'software-licenses',
+    },
   ];
 
   const categoryData = stats?.categoryBreakdown || [];
@@ -36,54 +101,40 @@ export default function Dashboard({ stats, assets = [], onNavigate }) {
   const recentActs = stats?.recentActivities || [];
 
   return (
-    <div style={{ padding: '1.5rem 2rem 4rem', maxWidth: '1400px', margin: '0 auto' }}>
-      {/* Sleek Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+    <div style={{ padding: '1.5rem 2rem 4rem', maxWidth: '1440px', margin: '0 auto' }}>
+      {/* Page Header */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1.75rem',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
         <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#f8fafc', letterSpacing: '-0.02em' }}>
-            System Overview
+          <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            System Infrastructure Overview
           </h1>
-          <p style={{ fontSize: '0.825rem', color: '#64748b', marginTop: '0.15rem' }}>
-            Hardware lifecycle, warranty deadlines, and facility distribution across plants.
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+            Hardware lifecycle health, warranty tracking, and facility deployment across corporate plants.
           </p>
         </div>
 
-        {/* Minimal Quick Actions */}
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.65rem' }}>
           <button
+            type="button"
             onClick={() => onNavigate('reports')}
-            style={{
-              padding: '0.45rem 0.85rem',
-              borderRadius: '6px',
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              color: '#cbd5e1',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              fontSize: '0.78rem',
-              fontWeight: 500,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-            }}
+            className="btn btn-outline btn-sm"
           >
             <FileText size={14} />
-            <span>Reports</span>
+            <span>Audit Reports</span>
           </button>
           <button
+            type="button"
             onClick={() => onNavigate('asset-add')}
-            style={{
-              padding: '0.45rem 0.85rem',
-              borderRadius: '6px',
-              backgroundColor: '#4f46e5',
-              color: '#ffffff',
-              border: 'none',
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-            }}
+            className="btn btn-primary btn-sm"
           >
             <Plus size={14} />
             <span>Inward Asset</span>
@@ -91,12 +142,12 @@ export default function Dashboard({ stats, assets = [], onNavigate }) {
         </div>
       </div>
 
-      {/* 8 Stat Cards Minimal Grid */}
+      {/* KPI Metric Cards Grid */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-          gap: '0.85rem',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '1rem',
           marginBottom: '1.5rem',
         }}
       >
@@ -106,51 +157,81 @@ export default function Dashboard({ stats, assets = [], onNavigate }) {
             <div
               key={i}
               onClick={() => onNavigate(c.target)}
+              className="card card-hoverable"
               style={{
-                backgroundColor: '#0f172a',
-                border: '1px solid rgba(255, 255, 255, 0.06)',
-                borderRadius: '8px',
-                padding: '1rem',
+                padding: '1.15rem',
                 cursor: 'pointer',
-                transition: 'border-color 0.15s, transform 0.15s',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.4)';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)';
-                e.currentTarget.style.transform = 'translateY(0)';
+                position: 'relative',
+                overflow: 'hidden',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>
+              {/* Subtle top edge accent */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '2px',
+                  backgroundColor: c.color,
+                  opacity: 0.7,
+                }}
+              />
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                   {c.title}
                 </span>
-                <Icon size={16} color={c.color} />
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: c.bgGlow,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Icon size={16} color={c.color} />
+                </div>
               </div>
 
-              <div style={{ marginTop: '0.85rem', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '1.65rem', fontWeight: 700, color: '#f8fafc', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-                  {c.value}
-                </span>
-                <ArrowUpRight size={13} color="#475569" />
+              <div style={{ marginTop: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                  <span
+                    style={{
+                      fontSize: '1.75rem',
+                      fontWeight: 800,
+                      color: 'var(--text-primary)',
+                      fontVariantNumeric: 'tabular-nums',
+                      lineHeight: 1,
+                    }}
+                  >
+                    {c.value}
+                  </span>
+                  <ArrowUpRight size={14} color="var(--text-faint)" />
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', marginTop: '0.35rem' }}>
+                  {c.subtext}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Minimal Attention Required Banner */}
+      {/* Attention / Expiring Warranties Banner */}
       <div
         style={{
-          backgroundColor: 'rgba(239, 68, 68, 0.04)',
-          border: '1px solid rgba(239, 68, 68, 0.15)',
-          borderRadius: '8px',
-          padding: '0.75rem 1rem',
+          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(239, 68, 68, 0.08) 100%)',
+          border: '1px solid rgba(245, 158, 11, 0.25)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '0.85rem 1.25rem',
           marginBottom: '1.5rem',
           display: 'flex',
           alignItems: 'center',
@@ -159,55 +240,123 @@ export default function Dashboard({ stats, assets = [], onNavigate }) {
           gap: '0.75rem',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          <AlertTriangle size={16} color="#f87171" />
-          <span style={{ color: '#cbd5e1', fontSize: '0.8rem' }}>
-            <strong style={{ color: '#f87171', fontWeight: 600 }}>Attention:</strong> 3 hardware warranties and 2 software licenses expire within 30 days.
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div
+            style={{
+              padding: '0.35rem',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: 'rgba(245, 158, 11, 0.2)',
+              display: 'flex',
+            }}
+          >
+            <AlertTriangle size={17} color="#fbbf24" />
+          </div>
+          <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+            <strong style={{ color: '#fbbf24', fontWeight: 700 }}>Maintenance & Warranty Alert:</strong> 3 hardware warranties and 2 software licenses approach expiration within 30 days.
           </span>
         </div>
         <button
+          type="button"
           onClick={() => onNavigate('asset-warranty')}
-          style={{
-            backgroundColor: 'transparent',
-            color: '#f87171',
-            border: 'none',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            padding: 0,
-            textDecoration: 'underline',
-          }}
+          className="btn btn-outline btn-xs"
+          style={{ borderColor: 'rgba(245, 158, 11, 0.3)', color: '#fbbf24' }}
         >
-          View Expiring Assets →
+          View Warranty Monitor →
         </button>
       </div>
 
-      {/* Analytical Breakdown Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+      {/* Distribution Grids */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: '1.25rem',
+          marginBottom: '1.5rem',
+        }}
+      >
         {/* Category Breakdown */}
-        <div style={chartCardStyle}>
-          <div style={chartTitleStyle}>
-            <Layers size={15} color="#818cf8" />
-            <span>Devices by Category</span>
+        <div className="card" style={{ padding: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <Layers size={16} color="#818cf8" />
+            <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>Hardware by Category</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginTop: '0.85rem' }}>
-            {categoryData.map((item, idx) => {
-              const maxCount = Math.max(...categoryData.map(c => c.count), 1);
-              const pct = Math.round((item.count / maxCount) * 100);
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {categoryData.length === 0 ? (
+              <div style={{ color: 'var(--text-faint)', fontSize: '0.8rem', padding: '1rem 0' }}>No categories registered</div>
+            ) : (
+              categoryData.map((item, idx) => {
+                const maxCount = Math.max(...categoryData.map((c) => c.count), 1);
+                const pct = Math.round((item.count / maxCount) * 100);
+                return (
+                  <div key={idx}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '4px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>{item.name}</span>
+                      <span style={{ color: '#818cf8', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                        {item.count} units
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '6px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: 'var(--radius-full)',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${pct}%`,
+                          height: '100%',
+                          background: 'linear-gradient(90deg, #4f46e5, #818cf8)',
+                          borderRadius: 'var(--radius-full)',
+                          transition: 'width 0.4s ease',
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Department Breakdown */}
+        <div className="card" style={{ padding: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <Building2 size={16} color="#34d399" />
+            <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>Top Department Deployments</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {deptData.slice(0, 6).map((d, idx) => {
+              const maxCount = Math.max(...deptData.map((c) => c.count), 1);
+              const pct = Math.round((d.count / maxCount) * 100);
               return (
                 <div key={idx}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px' }}>
-                    <span style={{ color: '#cbd5e1' }}>{item.name}</span>
-                    <span style={{ color: '#818cf8', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{item.count}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '4px' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{d.name}</span>
+                    <span style={{ color: '#34d399', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                      {d.count} devices
+                    </span>
                   </div>
-                  <div style={{ width: '100%', height: '5px', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '9999px', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '6px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: 'var(--radius-full)',
+                      overflow: 'hidden',
+                    }}
+                  >
                     <div
                       style={{
                         width: `${pct}%`,
                         height: '100%',
-                        backgroundColor: '#6366f1',
-                        borderRadius: '9999px',
-                        transition: 'width 0.3s ease',
+                        background: 'linear-gradient(90deg, #059669, #34d399)',
+                        borderRadius: 'var(--radius-full)',
+                        transition: 'width 0.4s ease',
                       }}
                     />
                   </div>
@@ -217,49 +366,43 @@ export default function Dashboard({ stats, assets = [], onNavigate }) {
           </div>
         </div>
 
-        {/* Department Breakdown */}
-        <div style={chartCardStyle}>
-          <div style={chartTitleStyle}>
-            <Building2 size={15} color="#34d399" />
-            <span>Department Deployment</span>
+        {/* Facility Distribution */}
+        <div className="card" style={{ padding: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <MapPin size={16} color="#38bdf8" />
+            <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>Facility & Plant Distribution</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginTop: '0.85rem' }}>
-            {deptData.slice(0, 6).map((d, idx) => {
-              const maxCount = Math.max(...deptData.map(c => c.count), 1);
-              const pct = Math.round((d.count / maxCount) * 100);
-              return (
-                <div key={idx}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px' }}>
-                    <span style={{ color: '#cbd5e1' }}>{d.name}</span>
-                    <span style={{ color: '#34d399', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{d.count}</span>
-                  </div>
-                  <div style={{ width: '100%', height: '5px', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', backgroundColor: '#10b981', borderRadius: '9999px' }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
-        {/* Plant / Location Breakdown */}
-        <div style={chartCardStyle}>
-          <div style={chartTitleStyle}>
-            <MapPin size={15} color="#38bdf8" />
-            <span>Facility Distribution</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginTop: '0.85rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {locData.map((l, idx) => {
-              const maxCount = Math.max(...locData.map(c => c.count), 1);
+              const maxCount = Math.max(...locData.map((c) => c.count), 1);
               const pct = Math.round((l.count / maxCount) * 100);
               return (
                 <div key={idx}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px' }}>
-                    <span style={{ color: '#cbd5e1' }}>{l.name}</span>
-                    <span style={{ color: '#38bdf8', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{l.count}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '4px' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{l.name}</span>
+                    <span style={{ color: '#38bdf8', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                      {l.count} assets
+                    </span>
                   </div>
-                  <div style={{ width: '100%', height: '5px', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', backgroundColor: '#06b6d4', borderRadius: '9999px' }} />
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '6px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: 'var(--radius-full)',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${pct}%`,
+                        height: '100%',
+                        background: 'linear-gradient(90deg, #0284c7, #38bdf8)',
+                        borderRadius: 'var(--radius-full)',
+                        transition: 'width 0.4s ease',
+                      }}
+                    />
                   </div>
                 </div>
               );
@@ -268,99 +411,88 @@ export default function Dashboard({ stats, assets = [], onNavigate }) {
         </div>
       </div>
 
-      {/* Recent Activity Log */}
-      <div style={chartCardStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: '0.65rem', marginBottom: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: '#f8fafc', fontWeight: 600, fontSize: '0.85rem' }}>
-            <Clock size={15} color="#818cf8" />
-            <span>Recent Activity</span>
+      {/* Recent Activity Timeline */}
+      <div className="card" style={{ padding: '1.25rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '1rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Activity size={16} color="#818cf8" />
+            <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>Recent Operational Activities</span>
           </div>
           <button
+            type="button"
             onClick={() => onNavigate('audit-logs')}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#818cf8',
-              fontSize: '0.75rem',
-              fontWeight: 500,
-              cursor: 'pointer',
-              padding: 0,
-            }}
+            className="btn btn-ghost btn-xs"
+            style={{ color: '#818cf8' }}
           >
-            Audit Log →
+            View Complete Audit Log →
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-          {recentActs.slice(0, 5).map((act, i) => (
-            <div
-              key={i}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0.55rem 0.75rem',
-                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                borderRadius: '6px',
-                border: '1px solid rgba(255, 255, 255, 0.04)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <span
-                  style={{
-                    fontSize: '0.68rem',
-                    fontWeight: 600,
-                    padding: '0.15rem 0.45rem',
-                    borderRadius: '4px',
-                    backgroundColor: act.action.includes('Assigned')
-                      ? 'rgba(6, 182, 212, 0.12)'
-                      : act.action.includes('Maintenance')
-                      ? 'rgba(245, 158, 11, 0.12)'
-                      : 'rgba(99, 102, 241, 0.12)',
-                    color: act.action.includes('Assigned')
-                      ? '#38bdf8'
-                      : act.action.includes('Maintenance')
-                      ? '#fbbf24'
-                      : '#818cf8',
-                  }}
-                >
-                  {act.action}
-                </span>
-                <div>
-                  <span style={{ color: '#f8fafc', fontWeight: 500, fontSize: '0.78rem' }}>
-                    {act.assetTag}
-                  </span>
-                  <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.45rem' }}>
-                    {act.details}
-                  </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+          {recentActs.length === 0 ? (
+            <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-faint)', fontSize: '0.8rem' }}>
+              No recent activity entries recorded
+            </div>
+          ) : (
+            recentActs.slice(0, 5).map((act, idx) => (
+              <div
+                key={act._id || idx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--border-subtle)',
+                  gap: '1rem',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: 'var(--radius-full)',
+                      backgroundColor: 'var(--primary-light)',
+                      color: '#a5b4fc',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {act.user?.charAt(0) || 'U'}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {act.action} {act.assetTag ? `• ${act.assetTag}` : ''}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '1px' }}>
+                      {act.details}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-faint)', fontSize: '0.7rem' }}>
+                  <Clock size={12} />
+                  <span>{new Date(act.createdAt).toLocaleString()}</span>
                 </div>
               </div>
-
-              <div style={{ fontSize: '0.7rem', color: '#64748b', textAlign: 'right' }}>
-                <span>{act.user}</span> • <span>{new Date(act.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>
   );
 }
-
-const chartCardStyle = {
-  backgroundColor: '#0f172a',
-  border: '1px solid rgba(255, 255, 255, 0.06)',
-  borderRadius: '8px',
-  padding: '1rem 1.15rem',
-};
-
-const chartTitleStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.45rem',
-  fontSize: '0.825rem',
-  fontWeight: 600,
-  color: '#f8fafc',
-  borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-  paddingBottom: '0.5rem',
-};
