@@ -19,10 +19,9 @@ export const REPORT_TYPES = [
   { id: 'retired', title: 'Retired & Disposed Units', desc: 'Decommissioned machines marked for recycling or safe disposal' },
   { id: 'lost', title: 'Lost or Security Incidents', desc: 'Incident-flagged devices requiring network credential revocation' },
   { id: 'warranty', title: 'OEM Warranty Expiry Report', desc: 'Hardware approaching 30-day and 60-day warranty expiration' },
-  { id: 'maintenance', title: 'Maintenance & Service Report', desc: 'Authorized technician repair history and cumulative expenses' },
+  { id: 'maintenance', title: 'Maintenance & Service Report', desc: 'Authorized technician repair history and service tickets' },
   { id: 'software', title: 'Software License Compliance', desc: 'SAM subscription utilization, allocated seats, and compliance standing' },
-  { id: 'purchase', title: 'Procurement & Billing Report', desc: 'Historical inward capital outlay grouped by PO, vendor, and date' },
-  { id: 'depreciation', title: 'Asset Valuation & Depreciation', desc: 'Book value, purchase cost, and estimated depreciated asset worth' },
+  { id: 'purchase', title: 'Procurement & Inward Report', desc: 'Historical inward logs grouped by PO, vendor, and date' },
 ];
 
 export default function ReportsView({ assets = [], software = [], maintenance = [] }) {

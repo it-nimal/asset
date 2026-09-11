@@ -23,6 +23,7 @@ import AssetTable from '../assets/AssetTable';
 export default function Dashboard({
   stats,
   assets = [],
+  globalSearch = '',
   onNavigate,
   onViewDetails,
   onAssign,
@@ -113,7 +114,7 @@ export default function Dashboard({
   const recentActs = stats?.recentActivities || [];
 
   return (
-    <div style={{ padding: '1.5rem 2rem 4rem', maxWidth: '1440px', margin: '0 auto' }}>
+    <div className="page-container">
       {/* Page Header */}
       <div
         style={{
@@ -281,7 +282,7 @@ export default function Dashboard({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
           gap: '1.25rem',
           marginBottom: '1.5rem',
         }}
@@ -539,6 +540,7 @@ export default function Dashboard({
         <AssetTable
           assets={assets}
           categoryFilter="All"
+          globalSearch={globalSearch}
           onViewDetails={onViewDetails}
           onAssign={onAssign}
           onTransfer={onTransfer}

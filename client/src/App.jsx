@@ -217,6 +217,12 @@ function ITAMApp() {
       notifications={notifications}
       dbConnected={dbConnected}
       onToggleMobile={() => setMobileNavOpen((prev) => !prev)}
+      assets={assets}
+      onSelectAsset={(asset) => {
+        setSelectedAssetForDetails(asset);
+        setDetailsInitialTab('overview');
+      }}
+      onNavigate={(page) => setActivePage(page)}
     />
   );
 
@@ -227,6 +233,7 @@ function ITAMApp() {
         <Dashboard
           stats={stats}
           assets={assets}
+          globalSearch={globalSearch}
           onNavigate={(page) => setActivePage(page)}
           onViewDetails={(asset, tab = 'overview') => {
             setSelectedAssetForDetails(asset);
@@ -243,7 +250,7 @@ function ITAMApp() {
 
       {/* ASSET INVENTORY TABLES (Filtered by Category) */}
       {isAssetListingPage && (
-        <div style={{ padding: '1.5rem 2rem 4rem', maxWidth: '1440px', margin: '0 auto' }}>
+        <div className="page-container">
           <div
             style={{
               display: 'flex',
@@ -309,7 +316,7 @@ function ITAMApp() {
 
       {/* ASSIGN ASSET PAGE */}
       {activePage === 'asset-assign' && (
-        <div style={{ padding: '1.5rem 2rem 4rem', maxWidth: '1440px', margin: '0 auto' }}>
+        <div className="page-container">
           <div style={{ marginBottom: '1.5rem' }}>
             <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
               Asset Allocation & Issuance
@@ -339,7 +346,7 @@ function ITAMApp() {
 
       {/* TRANSFER ASSET */}
       {activePage === 'asset-transfer' && (
-        <div style={{ padding: '1.5rem 2rem 4rem', maxWidth: '1440px', margin: '0 auto' }}>
+        <div className="page-container">
           <div style={{ marginBottom: '1.5rem' }}>
             <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
               Inter-Departmental Custody Transfer
@@ -369,7 +376,7 @@ function ITAMApp() {
 
       {/* RETURN ASSET */}
       {activePage === 'asset-return' && (
-        <div style={{ padding: '1.5rem 2rem 4rem', maxWidth: '1440px', margin: '0 auto' }}>
+        <div className="page-container">
           <div style={{ marginBottom: '1.5rem' }}>
             <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
               Asset Return & Stock Handover
@@ -408,7 +415,7 @@ function ITAMApp() {
 
       {/* WARRANTY TRACKER */}
       {activePage === 'asset-warranty' && (
-        <div style={{ padding: '1.5rem 2rem 4rem', maxWidth: '1440px', margin: '0 auto' }}>
+        <div className="page-container">
           <div style={{ marginBottom: '1.5rem' }}>
             <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
               OEM Hardware Warranty Expiration Monitor
@@ -445,6 +452,7 @@ function ITAMApp() {
           locations={locations}
           vendors={vendors}
           assets={assets}
+          globalSearch={globalSearch}
           onSuccess={loadData}
         />
       )}
@@ -457,6 +465,7 @@ function ITAMApp() {
           locations={locations}
           vendors={vendors}
           assets={assets}
+          globalSearch={globalSearch}
         />
       )}
 

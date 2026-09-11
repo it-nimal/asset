@@ -19,7 +19,6 @@ import {
   Layers,
   HardDrive,
   Calendar,
-  DollarSign,
   Tag,
   Building2,
   MapPin,
@@ -836,7 +835,7 @@ export function EditAssetModal({
     { id: "hardware", label: "Hardware & Specs", icon: Cpu },
     { id: "network", label: "Network & Access", icon: Globe },
     { id: "software", label: "Software & Keys", icon: Key },
-    { id: "procurement", label: "Procurement & AMC", icon: DollarSign },
+    { id: "procurement", label: "Procurement & AMC", icon: FileText },
     { id: "notes", label: "Remarks & Notes", icon: FileText },
   ];
 
@@ -1451,32 +1450,6 @@ export function EditAssetModal({
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                   <div className="form-group">
-                    <label className="form-label">Purchase Price (₹)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      name="purchasePrice"
-                      value={formData.purchasePrice}
-                      onChange={handleChange}
-                      className="form-control"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Current Book Value (₹)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      name="currentValue"
-                      value={formData.currentValue}
-                      onChange={handleChange}
-                      className="form-control"
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
                     <label className="form-label">Purchase Date</label>
                     <input
                       type="date"
@@ -1580,18 +1553,6 @@ export function EditAssetModal({
                       placeholder="e.g. Dell Support Partner, In-house IT"
                     />
                   </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Latest Repair Cost (₹)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      name="repairCost"
-                      value={formData.repairCost}
-                      onChange={handleChange}
-                      className="form-control"
-                    />
-                  </div>
                 </div>
 
                 <div className="form-group">
@@ -1659,6 +1620,9 @@ export function QuickMaintenanceModal({ asset, onClose, onSuccess }) {
     try {
       await api.updateAsset(asset._id, {
         status: "Under Maintenance",
+        maintenanceStartDate: new Date().toISOString(),
+        serviceVendor,
+        maintenanceNotes: issue,
         remarks: "Maintenance Opened: " + issue + " (" + serviceVendor + ")",
       });
 
@@ -1726,26 +1690,15 @@ export function QuickMaintenanceModal({ asset, onClose, onSuccess }) {
               />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <div className="form-group">
-                <label className="form-label">Service Provider / Tech</label>
-                <input
-                  type="text"
-                  value={serviceVendor}
-                  onChange={(e) => setServiceVendor(e.target.value)}
-                  className="form-control"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Estimated Repair Cost (₹)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={repairCost}
-                  onChange={(e) => setRepairCost(e.target.value)}
-                  className="form-control"
-                />
-              </div>
+            <div className="form-group">
+              <label className="form-label">Service Provider / Tech</label>
+              <input
+                type="text"
+                placeholder="e.g. Authorized Tech, In-house IT"
+                value={serviceVendor}
+                onChange={(e) => setServiceVendor(e.target.value)}
+                className="form-control"
+              />
             </div>
           </div>
 

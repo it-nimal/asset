@@ -5,7 +5,6 @@ import {
   Building2,
   Clock,
   Plus,
-  DollarSign,
   Search,
   AlertCircle,
   X,
@@ -244,7 +243,6 @@ export default function MaintenanceTracker({ assets = [], onRefresh, loading }) 
                 <th>Hardware Model</th>
                 <th>Service Center Vendor</th>
                 <th>Diagnosis & Issue Notes</th>
-                <th>Repair Cost</th>
                 <th>Date Initiated</th>
                 <th style={{ textAlign: 'right' }}>Action</th>
               </tr>
@@ -252,7 +250,7 @@ export default function MaintenanceTracker({ assets = [], onRefresh, loading }) 
             <tbody>
               {filteredList.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '3rem 1rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
                       <CheckCircle2 size={32} color="#34d399" style={{ opacity: 0.8 }} />
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -297,15 +295,9 @@ export default function MaintenanceTracker({ assets = [], onRefresh, loading }) 
                     </td>
 
                     <td>
-                      <span style={{ fontWeight: 700, color: '#fbbf24', fontVariantNumeric: 'tabular-nums' }}>
-                        ₹{(asset.repairCost || 0).toLocaleString()}
-                      </span>
-                    </td>
-
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                        <Clock size={12} />
-                        <span>{asset.maintenanceStartDate ? new Date(asset.maintenanceStartDate).toLocaleDateString() : 'N/A'}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-primary)', fontSize: '0.78rem', fontWeight: 600 }}>
+                        <Clock size={13} color="#818cf8" />
+                        <span>{new Date(asset.maintenanceStartDate || asset.updatedAt || Date.now()).toLocaleDateString('en-GB')}</span>
                       </div>
                     </td>
 
@@ -376,27 +368,15 @@ export default function MaintenanceTracker({ assets = [], onRefresh, loading }) 
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Estimated Cost (₹)</label>
-                    <input
-                      type="number"
-                      value={serviceData.repairCost}
-                      onChange={(e) => setServiceData({ ...serviceData, repairCost: e.target.value })}
-                      className="form-control"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Dispatch Date</label>
-                    <input
-                      type="date"
-                      value={serviceData.maintenanceStartDate}
-                      onChange={(e) => setServiceData({ ...serviceData, maintenanceStartDate: e.target.value })}
-                      className="form-control"
-                      style={{ colorScheme: 'dark' }}
-                    />
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">Date Initiated</label>
+                  <input
+                    type="date"
+                    value={serviceData.maintenanceStartDate || new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setServiceData({ ...serviceData, maintenanceStartDate: e.target.value })}
+                    className="form-control"
+                    style={{ colorScheme: 'dark' }}
+                  />
                 </div>
               </div>
 

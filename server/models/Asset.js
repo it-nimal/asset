@@ -187,6 +187,9 @@ const assetSchema = new mongoose.Schema(
     warrantyEndDate: { type: Date },
     assignedDate: { type: Date },
     expectedReturnDate: { type: Date },
+    maintenanceStartDate: { type: Date, default: Date.now },
+    serviceVendor: { type: String, trim: true },
+    maintenanceNotes: { type: String, trim: true },
 
     // 9. Detailed Timeline History
     history: [

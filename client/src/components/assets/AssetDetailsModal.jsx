@@ -9,7 +9,6 @@ import {
   FileText,
   Clock,
   Calendar,
-  DollarSign,
   Cpu,
   HardDrive,
   CheckCircle2,
@@ -364,7 +363,7 @@ export default function AssetDetailsModal({
             gap: '0.5rem',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <div className="modal-footer-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
             {asset.status === 'Available' && onAssign && (
               <button
                 type="button"

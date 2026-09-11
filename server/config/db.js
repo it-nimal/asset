@@ -18,9 +18,10 @@ let mongoMemoryServer = null;
 
 export const connectDB = async () => {
   const uri = process.env.MONGO_URI;
+  const forceLocal = process.env.USE_LOCAL_DB === 'true';
 
-  // 1. Try Connecting to MongoDB (Atlas or local instance) with retries
-  if (uri) {
+  // 1. If not forced to local, try connecting to specified MONGO_URI (e.g. Atlas)
+  if (!forceLocal && uri && !uri.includes('localhost') && !uri.includes('127.0.0.1')) {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         console.log(`[MongoDB] Connecting to database (attempt ${attempt}/3)...`);
@@ -46,20 +47,35 @@ export const connectDB = async () => {
     console.log(`[MongoDB] Initializing resilient local persistent database fallback...`);
   }
 
-  // 2. Resilient Auto-Local Fallback with Persistent Storage on Disk
+  // 2. Local Persistent Database on Disk (.mongodb-data with wiredTiger)
   try {
     const dbPath = path.resolve(__dirname, '../../.mongodb-data');
     if (!fs.existsSync(dbPath)) fs.mkdirSync(dbPath, { recursive: true });
 
-    mongoMemoryServer = await MongoMemoryServer.create({
-      instance: {
-        dbName: 'asset_mgmt',
-        dbPath: dbPath,
-        storageEngine: 'wiredTiger',
-      },
-      autoStart: true,
-      timeout: 30000,
-    });
+    // Try starting on default port 27017 for Compass/GUI access, fallback to random free port
+    try {
+      mongoMemoryServer = await MongoMemoryServer.create({
+        instance: {
+          dbName: 'asset_mgmt',
+          dbPath: dbPath,
+          storageEngine: 'wiredTiger',
+          port: 27017,
+        },
+        autoStart: true,
+        timeout: 30000,
+      });
+    } catch (portErr) {
+      mongoMemoryServer = await MongoMemoryServer.create({
+        instance: {
+          dbName: 'asset_mgmt',
+          dbPath: dbPath,
+          storageEngine: 'wiredTiger',
+        },
+        autoStart: true,
+        timeout: 30000,
+      });
+    }
+
     const localUri = mongoMemoryServer.getUri();
     const conn = await mongoose.connect(localUri, { autoIndex: false });
     console.log(`[MongoDB] Local Persistent Database running & connected: ${localUri}`);

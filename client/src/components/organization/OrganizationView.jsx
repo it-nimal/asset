@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users,
   Building2,
@@ -9,7 +9,6 @@ import {
   Search,
   Laptop,
   CheckCircle2,
-  DollarSign,
   Layers,
   Plus,
   Edit3,
@@ -39,12 +38,19 @@ export default function OrganizationView({
   locations = [],
   vendors = [],
   assets = [],
+  globalSearch = '',
   onSuccess,
 }) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(globalSearch || '');
   const [departmentFilter, setDepartmentFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [fleetFilter, setFleetFilter] = useState('All');
+
+  useEffect(() => {
+    if (globalSearch !== undefined) {
+      setSearchTerm(globalSearch);
+    }
+  }, [globalSearch]);
 
   // Modals state
   const [selectedEmpForId, setSelectedEmpForId] = useState(null);
@@ -109,7 +115,7 @@ export default function OrganizationView({
   }, [departments, employees]);
 
   return (
-    <div style={{ padding: '1.5rem 2rem 4rem', maxWidth: '1440px', margin: '0 auto' }}>
+    <div className="page-container">
       {/* 1. EMPLOYEES DIRECTORY */}
       {type === 'employees' && (
         <div>
@@ -766,7 +772,7 @@ export default function OrganizationView({
                 Department Management ({departments.length})
               </h1>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem', marginBottom: 0 }}>
-                Operational cost centers, departmental managers, device counts, and hardware valuations.
+                Operational cost centers, departmental managers, and assigned device counts.
               </p>
             </div>
             <button
@@ -789,7 +795,6 @@ export default function OrganizationView({
           >
             {departments.map((dept) => {
               const deptAssets = assets.filter((a) => a.department === dept.name);
-              const totalVal = deptAssets.reduce((acc, a) => acc + (a.purchasePrice || 0), 0);
               return (
                 <div key={dept._id || dept.code} className="card card-hoverable" style={{ padding: '1.25rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -853,27 +858,33 @@ export default function OrganizationView({
                   <div
                     style={{
                       marginTop: '1.25rem',
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '0.75rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
                       backgroundColor: 'rgba(99, 102, 241, 0.05)',
-                      padding: '0.75rem',
+                      padding: '0.75rem 1rem',
                       borderRadius: 'var(--radius-md)',
                       border: '1px solid var(--border-subtle)',
                     }}
                   >
                     <div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Allocated Devices</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Allocated Systems</div>
                       <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#38bdf8', marginTop: '2px' }}>
-                        {deptAssets.length}
+                        {deptAssets.length} {deptAssets.length === 1 ? 'Device' : 'Devices'}
                       </div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Asset Valuation</div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#34d399', marginTop: '2px' }}>
-                        ₹{totalVal > 0 ? `${(totalVal / 1000).toFixed(0)}k` : 'Covered'}
-                      </div>
-                    </div>
+                    <span
+                      style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        color: deptAssets.length > 0 ? '#34d399' : 'var(--text-faint)',
+                        backgroundColor: deptAssets.length > 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: 'var(--radius-xs)',
+                      }}
+                    >
+                      {deptAssets.length > 0 ? 'Active Fleet' : 'No Devices'}
+                    </span>
                   </div>
                 </div>
               );
@@ -2032,35 +2043,22 @@ function AddEditDepartmentModal({ dept, locations = [], onClose, onSuccess }) {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-              <div className="form-group">
-                <label className="form-label">Base Location / Plant</label>
-                <select
-                  value={formData.location}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
-                  className="form-select"
-                >
-                  <option value="Vitromed">Vitromed</option>
-                  {locations
-                    .filter((l) => l.name !== 'Vitromed')
-                    .map((l) => (
-                      <option key={l._id || l.name} value={l.name}>
-                        {l.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Annual Budget</label>
-                <input
-                  type="text"
-                  placeholder="e.g. ₹5,00,000"
-                  value={formData.budget}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, budget: e.target.value }))}
-                  className="form-control"
-                />
-              </div>
+            <div className="form-group">
+              <label className="form-label">Base Location / Plant</label>
+              <select
+                value={formData.location}
+                onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
+                className="form-select"
+              >
+                <option value="Vitromed">Vitromed</option>
+                {locations
+                  .filter((l) => l.name !== 'Vitromed')
+                  .map((l) => (
+                    <option key={l._id || l.name} value={l.name}>
+                      {l.name}
+                    </option>
+                  ))}
+              </select>
             </div>
           </div>
 

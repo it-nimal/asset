@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Search,
   Bell,
@@ -7,6 +7,8 @@ import {
   Menu,
   X,
   User,
+  Laptop,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../common/Toast';
@@ -20,16 +22,56 @@ export default function Header({
   notifications = [],
   dbConnected = false,
   onToggleMobile,
+  assets = [],
+  onSelectAsset,
+  onNavigate,
 }) {
   const { user } = useAuth();
   const toast = useToast();
   const [notifMenuOpen, setNotifMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const searchInputRef = useRef(null);
+  const searchContainerRef = useRef(null);
   const notifMenuRef = useRef(null);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  // Search results computed for global quick dropdown
+  const searchResults = useMemo(() => {
+    const q = (globalSearch || '').trim().toLowerCase();
+    if (!q) return [];
+    const terms = q.split(/\s+/).filter(Boolean);
+    return assets.filter((item) => {
+      const text = [
+        item.assetNo,
+        item.sr,
+        item.serialNo,
+        item.serialNumber,
+        item.deviceType,
+        item.make,
+        item.model,
+        item.userName,
+        item.empCode,
+        item.department,
+        item.plant,
+        item.location,
+        item.floorCabin,
+        item.ipAddress,
+        item.hostName,
+        item.status,
+        item.processor,
+        item.ramSize,
+        item.storage,
+        item.billNo,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return terms.every((t) => text.includes(t));
+    });
+  }, [assets, globalSearch]);
 
   // Keyboard shortcut for search (/)
   useEffect(() => {
@@ -37,17 +79,21 @@ export default function Header({
       if (e.key === '/' && document.activeElement !== searchInputRef.current) {
         e.preventDefault();
         searchInputRef.current?.focus();
+        setSearchFocused(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Close notifications menu on outside click
+  // Close menus on outside click
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (notifMenuRef.current && !notifMenuRef.current.contains(e.target)) {
         setNotifMenuOpen(false);
+      }
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
+        setSearchFocused(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
@@ -101,6 +147,7 @@ export default function Header({
 
   return (
     <header
+      className="header-content"
       style={{
         height: '60px',
         backgroundColor: 'var(--bg-surface)',
@@ -112,10 +159,11 @@ export default function Header({
         position: 'sticky',
         top: 0,
         zIndex: 30,
+        gap: '0.75rem',
       }}
     >
       {/* Left Area: Mobile Hamburger + Breadcrumbs */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
         {onToggleMobile && (
           <button
             type="button"
@@ -125,19 +173,19 @@ export default function Header({
             id="mobile-nav-toggle"
             title="Toggle Menu"
           >
-            <Menu size={19} />
+            <Menu size={20} />
           </button>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem' }}>
+        <div className="header-breadcrumbs" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem' }}>
           <span style={{ color: 'var(--text-faint)', fontWeight: 500 }}>{section}</span>
           <span style={{ color: 'var(--border-strong)', fontSize: '0.75rem' }}>/</span>
           <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{pageTitle}</span>
         </div>
       </div>
 
-      {/* Global Search Bar */}
-      <div style={{ position: 'relative', width: '320px', maxWidth: '38vw' }}>
+      {/* Global Search Bar with Live Quick-Search Results */}
+      <div ref={searchContainerRef} className="header-search-container" style={{ position: 'relative', width: '340px', maxWidth: '40vw' }}>
         <Search
           size={14}
           style={{
@@ -152,9 +200,23 @@ export default function Header({
         <input
           ref={searchInputRef}
           type="text"
-          placeholder="Search serial, tag, user, IP..."
+          placeholder="Search tag, serial, user... (Press /)"
           value={globalSearch}
-          onChange={(e) => setGlobalSearch(e.target.value)}
+          onFocus={() => setSearchFocused(true)}
+          onChange={(e) => {
+            setGlobalSearch(e.target.value);
+            setSearchFocused(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (onNavigate) onNavigate('assets-all');
+              setSearchFocused(false);
+            } else if (e.key === 'Escape') {
+              setSearchFocused(false);
+              searchInputRef.current?.blur();
+            }
+          }}
           className="form-control"
           style={{
             paddingLeft: '2rem',
@@ -166,7 +228,10 @@ export default function Header({
         {globalSearch ? (
           <button
             type="button"
-            onClick={() => setGlobalSearch('')}
+            onClick={() => {
+              setGlobalSearch('');
+              setSearchFocused(false);
+            }}
             style={{
               position: 'absolute',
               right: '8px',
@@ -201,10 +266,149 @@ export default function Header({
             /
           </span>
         )}
+
+        {/* Live Instant Search Dropdown */}
+        {searchFocused && Boolean((globalSearch || '').trim()) && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              marginTop: '6px',
+              backgroundColor: 'var(--bg-surface-raised)',
+              border: '1px solid var(--border-focus)',
+              borderRadius: 'var(--radius-md)',
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
+              zIndex: 100,
+              maxHeight: '380px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <div
+              style={{
+                padding: '0.55rem 0.85rem',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                color: 'var(--text-muted)',
+                borderBottom: '1px solid var(--border-subtle)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+              }}
+            >
+              <span>{searchResults.length} systems found</span>
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)' }}>Press Enter to view all</span>
+            </div>
+
+            {searchResults.length === 0 ? (
+              <div style={{ padding: '1.25rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                No assets matching "<strong>{globalSearch}</strong>"
+              </div>
+            ) : (
+              <div>
+                {searchResults.slice(0, 6).map((item) => (
+                  <div
+                    key={item._id}
+                    onClick={() => {
+                      if (onSelectAsset) onSelectAsset(item);
+                      setSearchFocused(false);
+                    }}
+                    style={{
+                      padding: '0.6rem 0.85rem',
+                      borderBottom: '1px solid var(--border-subtle)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.75rem',
+                      transition: 'background 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.1)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0 }}>
+                      <div
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: 'var(--radius-sm)',
+                          backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                          color: '#38bdf8',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Laptop size={14} />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{ fontFamily: 'monospace', color: '#38bdf8' }}>{item.assetNo || item.sr}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.make} {item.model}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: '0.45rem' }}>
+                          <span>{item.userName || 'Unassigned'}</span>
+                          <span>•</span>
+                          <span>{item.department || 'General'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <span
+                      style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        padding: '0.15rem 0.45rem',
+                        borderRadius: 'var(--radius-xs)',
+                        backgroundColor: item.status === 'Assigned' ? 'rgba(56, 189, 248, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                        color: item.status === 'Assigned' ? '#38bdf8' : '#34d399',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {item.status || 'Available'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (onNavigate) onNavigate('assets-all');
+                setSearchFocused(false);
+              }}
+              style={{
+                padding: '0.6rem 0.85rem',
+                border: 'none',
+                background: 'rgba(99, 102, 241, 0.08)',
+                color: '#818cf8',
+                fontSize: '0.76rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+                borderTop: '1px solid var(--border-subtle)',
+              }}
+            >
+              <span>View all matching results in Hardware Inventory</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Right Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
         {/* System Health Badge */}
         <div
           style={{
@@ -213,7 +417,7 @@ export default function Header({
             gap: '0.45rem',
             fontSize: '0.72rem',
             fontWeight: 600,
-            padding: '0.28rem 0.65rem',
+            padding: '0.28rem 0.6rem',
             borderRadius: 'var(--radius-full)',
             backgroundColor: dbConnected ? 'var(--status-available-bg)' : 'var(--status-maintenance-bg)',
             color: dbConnected ? 'var(--status-available-text)' : 'var(--status-maintenance-text)',
@@ -230,7 +434,7 @@ export default function Header({
             }}
             className={dbConnected ? 'pulse-dot' : ''}
           />
-          <span>{dbConnected ? 'Online' : 'Offline'}</span>
+          <span className="hide-on-mobile">{dbConnected ? 'Online' : 'Offline'}</span>
         </div>
 
         {/* Inward / New Asset CTA */}
@@ -239,9 +443,10 @@ export default function Header({
           onClick={onOpenAddAsset}
           className="btn btn-primary btn-sm"
           style={{ height: '32px' }}
+          title="Inward New Asset"
         >
           <Plus size={14} />
-          <span>Inward Asset</span>
+          <span className="hide-on-mobile">Inward Asset</span>
         </button>
 
         {/* Refresh Data Button */}

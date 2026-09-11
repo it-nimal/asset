@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Eye,
   UserCheck,
@@ -19,6 +19,8 @@ import {
   Layers,
   Edit3,
   CheckCircle2,
+  Search,
+  X,
 } from 'lucide-react';
 import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from '../../constants/organization';
 
@@ -46,6 +48,7 @@ export default function AssetTable({
   onMaintenance,
   onDelete,
 }) {
+  const [localSearch, setLocalSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [deptFilter, setDeptFilter] = useState('All');
   const [locationFilter, setLocationFilter] = useState('All');
@@ -54,6 +57,14 @@ export default function AssetTable({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [selectedIds, setSelectedIds] = useState([]);
+
+  // Combine local table search with global header search
+  const effectiveSearch = (localSearch || globalSearch || '').trim();
+
+  // Reset pagination to page 1 whenever search query or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [effectiveSearch, categoryFilter, statusFilter, deptFilter, locationFilter]);
 
   // Filter options derived from company standards & data
   const departments = useMemo(
@@ -96,25 +107,55 @@ export default function AssetTable({
       // Location filter
       if (locationFilter !== 'All' && item.plant !== locationFilter) return false;
 
-      // Search query
-      if (globalSearch) {
-        const q = globalSearch.toLowerCase();
-        const match =
-          (item.assetNo || '').toLowerCase().includes(q) ||
-          (item.sr || '').toLowerCase().includes(q) ||
-          (item.make || '').toLowerCase().includes(q) ||
-          (item.model || '').toLowerCase().includes(q) ||
-          (item.userName || '').toLowerCase().includes(q) ||
-          (item.empCode || '').toLowerCase().includes(q) ||
-          (item.department || '').toLowerCase().includes(q) ||
-          (item.ipAddress || '').toLowerCase().includes(q) ||
-          (item.hostName || '').toLowerCase().includes(q);
+      // Comprehensive multi-word search query
+      if (effectiveSearch) {
+        const terms = effectiveSearch.toLowerCase().split(/\s+/).filter(Boolean);
+        const searchableText = [
+          item.assetNo,
+          item.sr,
+          item.serialNo,
+          item.serialNumber,
+          item.deviceType,
+          item.make,
+          item.model,
+          item.userName,
+          item.empCode,
+          item.department,
+          item.plant,
+          item.location,
+          item.floorCabin,
+          item.floor,
+          item.room,
+          item.ipAddress,
+          item.hostName,
+          item.status,
+          item.processor,
+          item.ramSize,
+          item.ram,
+          item.hddType,
+          item.storage,
+          item.hddModel,
+          item.billNo,
+          item.invoiceNo,
+          item.indentNo,
+          item.po,
+          item.vendorName,
+          item.vendor,
+          item.remarks,
+          item.operatingSystem,
+          item.os,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        const match = terms.every((t) => searchableText.includes(t));
         if (!match) return false;
       }
 
       return true;
     });
-  }, [assets, categoryFilter, statusFilter, deptFilter, locationFilter, globalSearch]);
+  }, [assets, categoryFilter, statusFilter, deptFilter, locationFilter, effectiveSearch]);
 
   // Sort logic
   const sortedAssets = useMemo(() => {
@@ -313,10 +354,80 @@ export default function AssetTable({
               ))}
             </select>
           </div>
+
+          {/* In-Table Dedicated Search Bar */}
+          <div style={{ position: 'relative', width: '220px', minWidth: '150px', flex: '1 1 180px' }}>
+            <Search
+              size={13}
+              style={{
+                position: 'absolute',
+                left: '9px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--text-faint)',
+                pointerEvents: 'none',
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Search tag, user, specs..."
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              className="form-control"
+              style={{
+                paddingLeft: '1.85rem',
+                paddingRight: localSearch ? '1.8rem' : '0.6rem',
+                height: '30px',
+                fontSize: '0.76rem',
+                width: '100%',
+              }}
+            />
+            {localSearch && (
+              <button
+                type="button"
+                onClick={() => setLocalSearch('')}
+                style={{
+                  position: 'absolute',
+                  right: '6px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-faint)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                title="Clear table search"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Export & Count */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {globalSearch && (
+            <span
+              style={{
+                fontSize: '0.72rem',
+                backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                color: '#a5b4fc',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                padding: '0.2rem 0.5rem',
+                borderRadius: 'var(--radius-sm)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+            >
+              <Search size={11} />
+              <span>Query: "{globalSearch}"</span>
+            </span>
+          )}
+
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Showing <strong>{sortedAssets.length}</strong> {sortedAssets.length === 1 ? 'system' : 'systems'}
           </span>
@@ -374,7 +485,7 @@ export default function AssetTable({
 
       {/* Modern Data Table */}
       <div className="table-container">
-        <div style={{ overflowX: 'auto' }}>
+        <div className="table-responsive-wrapper">
           <table className="table-modern">
             <thead>
               <tr>

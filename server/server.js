@@ -92,9 +92,9 @@ const startServer = async () => {
       console.warn('[Express] Auto-populate warning:', e.message);
     }
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(
-        `[Express] Server running on http://localhost:${PORT} in ${
+        `[Express] Server running on http://0.0.0.0:${PORT} (Access on: http://192.168.8.123:${PORT} / http://localhost:${PORT}) in ${
           process.env.NODE_ENV || 'development'
         } mode`
       );
@@ -107,4 +107,3 @@ const startServer = async () => {
 };
 
 startServer();
-

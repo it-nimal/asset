@@ -121,9 +121,9 @@ export default function SoftwareManagement({ software = [], onRefresh }) {
         </div>
 
         <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Annual License Investment</div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Active Packages</div>
           <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#f59e0b', marginTop: '0.5rem', lineHeight: 1 }}>
-            ₹{totalInvestment > 0 ? `${(totalInvestment / 100000).toFixed(2)} L` : 'Covered'}
+            {software.length} Suites
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', marginTop: '0.35rem' }}>
             Verified corporate standing

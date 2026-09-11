@@ -22,7 +22,6 @@ import {
   Calendar,
   MapPin,
   User,
-  DollarSign,
   X,
   Tag,
   Cpu,
@@ -386,10 +385,10 @@ export default function Addasset({
   };
 
   return (
-    <div style={{ maxWidth: '1240px', margin: '1.5rem auto 4rem', padding: '0 1.5rem' }}>
+    <div className="page-container" style={{ maxWidth: '1240px' }}>
       {/* Header & Title */}
       <div style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
             Inward New Hardware Asset
           </h1>
@@ -436,15 +435,18 @@ export default function Addasset({
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
                   gap: '0.5rem',
-                  padding: '0.9rem 0.6rem',
-                  borderRadius: 'var(--radius-md)',
-                  backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.14)' : 'var(--bg-surface)',
-                  border: isSelected ? '2px solid #6366f1' : '1px solid var(--border-subtle)',
+                  padding: '0.85rem 0.65rem',
+                  borderRadius: 'var(--radius-lg)',
+                  border: isSelected
+                    ? `1.5px solid ${cat.badgeColor}`
+                    : '1px solid var(--border-default)',
+                  backgroundColor: isSelected
+                    ? `${cat.badgeColor}12`
+                    : 'var(--bg-surface)',
+                  boxShadow: isSelected ? `0 0 16px ${cat.badgeColor}25` : 'var(--shadow-sm)',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  boxShadow: isSelected ? '0 4px 14px rgba(99, 102, 241, 0.25)' : 'none',
+                  transition: 'all 0.18s ease',
                   textAlign: 'center',
                 }}
               >
@@ -452,9 +454,9 @@ export default function Addasset({
                   style={{
                     width: '36px',
                     height: '36px',
-                    borderRadius: 'var(--radius-sm)',
-                    backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255, 255, 255, 0.04)',
-                    color: isSelected ? '#a5b4fc' : cat.badgeColor,
+                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: `${cat.badgeColor}18`,
+                    color: cat.badgeColor,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -479,7 +481,7 @@ export default function Addasset({
       </div>
 
       {/* Main Inward Form & Live Preview */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', gap: '1.75rem', alignItems: 'start' }}>
+      <div className="two-col-responsive">
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* SECTION 1: CORE HARDWARE IDENTIFICATION */}
           <div className="card" style={{ padding: '1.5rem' }}>
@@ -1270,7 +1272,7 @@ export default function Addasset({
           {/* SECTION 4: PROCUREMENT, BILLING & INVOICE DOCUMENT */}
           <div className="card" style={{ padding: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
-              <DollarSign size={16} color="#fbbf24" />
+              <FileText size={16} color="#fbbf24" />
               <span style={{ fontWeight: 700, fontSize: '0.94rem' }}>4. Procurement & Invoice Records</span>
             </div>
 
@@ -1303,18 +1305,6 @@ export default function Addasset({
                     <option key={v._id || v.name} value={v.name} />
                   ))}
                 </datalist>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Purchase Price (₹)</label>
-                <input
-                  type="number"
-                  name="purchasePrice"
-                  placeholder="e.g. 58500"
-                  value={formData.purchasePrice}
-                  onChange={handleChange}
-                  className="form-control"
-                />
               </div>
 
               <div className="form-group">

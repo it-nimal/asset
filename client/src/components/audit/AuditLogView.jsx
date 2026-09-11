@@ -25,9 +25,8 @@ export default function AuditLogView({ logs: initialLogs = [] }) {
       setLoading(true);
       try {
         const res = await api.getAuditLogs({ limit: 100 });
-        if (res.success && res.data) {
-          setLogs(res.data);
-        }
+        const list = Array.isArray(res) ? res : res?.data || [];
+        setLogs(list);
       } catch (err) {
         console.warn('Failed to load audit logs:', err);
       } finally {
@@ -38,17 +37,22 @@ export default function AuditLogView({ logs: initialLogs = [] }) {
   }, []);
 
   const filteredLogs = logs.filter((log) => {
-    const q = searchTerm.toLowerCase();
+    const q = searchTerm.toLowerCase().trim();
+    const actor = (log.user || log.actorName || '').toLowerCase();
+    const action = (log.action || '').toLowerCase();
+    const tag = (log.assetTag || '').toLowerCase();
+    const details = (log.details || '').toLowerCase();
+
     const matchesSearch =
-      !searchTerm ||
-      (log.action || '').toLowerCase().includes(q) ||
-      (log.actorName || '').toLowerCase().includes(q) ||
-      (log.assetTag || '').toLowerCase().includes(q) ||
-      (log.details || '').toLowerCase().includes(q);
+      !q ||
+      action.includes(q) ||
+      actor.includes(q) ||
+      tag.includes(q) ||
+      details.includes(q);
 
     const matchesAction =
       actionFilter === 'All' ||
-      (log.action || '').toLowerCase().includes(actionFilter.toLowerCase());
+      action.includes(actionFilter.toLowerCase());
 
     return matchesSearch && matchesAction;
   });
@@ -121,9 +125,27 @@ export default function AuditLogView({ logs: initialLogs = [] }) {
       {/* Timeline Feed */}
       <div className="card" style={{ padding: '1.25rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          {filteredLogs.length === 0 ? (
+          {loading ? (
+            <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              Loading audit logs...
+            </div>
+          ) : filteredLogs.length === 0 ? (
             <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-faint)' }}>
-              No audit logs match current filter criteria.
+              <div>{logs.length === 0 ? 'No audit records found in database.' : 'No audit logs match current filter criteria.'}</div>
+              {(searchTerm || actionFilter !== 'All') && (
+                <div style={{ marginTop: '0.85rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setActionFilter('All');
+                    }}
+                    className="btn btn-outline btn-xs"
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             filteredLogs.map((log, idx) => {
