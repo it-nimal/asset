@@ -20,6 +20,7 @@ import {
   Edit3,
   CheckCircle2,
 } from 'lucide-react';
+import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from '../../constants/organization';
 
 export const STATUS_COLORS = {
   Available: { text: '#34d399', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.28)' },
@@ -54,14 +55,14 @@ export default function AssetTable({
   const [pageSize, setPageSize] = useState(15);
   const [selectedIds, setSelectedIds] = useState([]);
 
-  // Filter options derived from data
+  // Filter options derived from company standards & data
   const departments = useMemo(
-    () => ['All', ...new Set(assets.map((a) => a.department).filter(Boolean))].sort(),
+    () => ['All', ...new Set([...COMPANY_DEPARTMENTS, ...assets.map((a) => a.department).filter(Boolean)])],
     [assets]
   );
   const locations = useMemo(
-    () => ['All', ...new Set(assets.map((a) => a.plant).filter(Boolean))].sort(),
-    [assets]
+    () => ['All', ...COMPANY_PLANTS],
+    []
   );
 
   // Multi-attribute search & filter logic

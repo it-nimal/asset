@@ -334,8 +334,47 @@ router.delete('/employees/:id', async (req, res) => {
   }
 });
 
+export const COMPANY_DEPARTMENTS = [
+  'Vitromed Baisgodam 3rd Floor',
+  'Vitromed Baisgodam 2nd Floor',
+  'Accounts',
+  'Production',
+  'Vitromed Baisgodam 1st Floor',
+  'JPPL',
+  'Quality Lab',
+  'HRD',
+  'ETO & Dispatch',
+  'Tool Room',
+  'Maintenance',
+  'Purchase',
+  'Moulding',
+  'IT',
+  'Admin',
+  'Avacara',
+  'Audit',
+  'Store (Main Store)',
+  'OPEX',
+  'Tubing',
+  'Store (Component)',
+  'Store (Metal gate)',
+  'Trocar',
+  'Marketing',
+  'Store (Duplex & MFG)',
+];
+
 router.get('/departments', async (req, res) => {
   try {
+    const existingCount = await Department.countDocuments();
+    if (existingCount < 25) {
+      for (let i = 0; i < COMPANY_DEPARTMENTS.length; i++) {
+        const name = COMPANY_DEPARTMENTS[i];
+        await Department.findOneAndUpdate(
+          { name },
+          { name, code: `DEPT-${String(i + 1).padStart(2, '0')}`, location: 'Vitromed' },
+          { upsert: true }
+        );
+      }
+    }
     const departments = await Department.find().sort({ name: 1 });
     res.status(200).json({ success: true, data: departments });
   } catch (err) {
@@ -345,6 +384,17 @@ router.get('/departments', async (req, res) => {
 
 router.get('/locations', async (req, res) => {
   try {
+    // Ensure only 'Vitromed' is the plant location
+    await Location.deleteMany({ name: { $ne: 'Vitromed' } });
+    await Location.findOneAndUpdate(
+      { name: 'Vitromed' },
+      { name: 'Vitromed', address: 'Vitromed Manufacturing & Operations Facility, Jaipur', building: 'Main Facility' },
+      { upsert: true }
+    );
+    // Ensure all assets and employees have plant/location set to 'Vitromed'
+    await Asset.updateMany({ plant: { $ne: 'Vitromed' } }, { $set: { plant: 'Vitromed' } });
+    await Employee.updateMany({ location: { $ne: 'Vitromed' } }, { $set: { location: 'Vitromed' } });
+
     const locations = await Location.find().sort({ name: 1 });
     res.status(200).json({ success: true, data: locations });
   } catch (err) {

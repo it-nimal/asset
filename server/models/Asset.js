@@ -7,7 +7,7 @@ const assetSchema = new mongoose.Schema(
     // 1. Plant & Identification
     plant: {
       type: String,
-      default: 'Plant 1 - Bangalore',
+      default: 'Vitromed',
       trim: true,
     },
     assetNo: {
@@ -31,7 +31,7 @@ const assetSchema = new mongoose.Schema(
     },
     department: {
       type: String,
-      default: 'IT & Software',
+      default: 'IT',
       trim: true,
     },
     floorCabin: {
@@ -228,7 +228,7 @@ const departmentSchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
   code: { type: String, required: true, unique: true },
   manager: { type: String, default: 'Head of Department' },
-  location: { type: String, default: 'Vitromed HQ - Delhi NCR' },
+  location: { type: String, default: 'Vitromed' },
 }, { timestamps: true, autoIndex: false });
 
 export const Department = mongoose.model('Department', departmentSchema);
@@ -252,7 +252,7 @@ const employeeSchema = new mongoose.Schema({
   phone: { type: String },
   department: { type: String, required: true },
   designation: { type: String, default: 'Associate' },
-  location: { type: String, default: 'Vitromed HQ - Delhi NCR' },
+  location: { type: String, default: 'Vitromed' },
   joiningDate: { type: Date, default: Date.now },
   status: { type: String, enum: ['Active', 'On Leave', 'Resigned'], default: 'Active' },
 }, { timestamps: true, autoIndex: false });

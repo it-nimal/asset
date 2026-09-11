@@ -30,6 +30,7 @@ import {
 import { api } from '../../services/api';
 import { useToast } from '../common/Toast';
 import { useAuth } from '../../context/AuthContext';
+import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from '../../constants/organization';
 
 export default function OrganizationView({
   type = 'employees',
@@ -101,7 +102,7 @@ export default function OrganizationView({
   const deptList = useMemo(() => {
     const fromDepts = departments.map((d) => d.name);
     const fromEmps = employees.map((e) => e.department).filter(Boolean);
-    return Array.from(new Set([...fromDepts, ...fromEmps])).sort();
+    return Array.from(new Set([...COMPANY_DEPARTMENTS, ...fromDepts, ...fromEmps])).sort();
   }, [departments, employees]);
 
   return (
@@ -558,7 +559,7 @@ export default function OrganizationView({
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                         <MapPin size={13} color="var(--text-faint)" style={{ flexShrink: 0 }} />
-                        <span>{emp.location || '22Godam'}</span>
+                        <span>{emp.location || 'Vitromed'}</span>
                       </div>
                       {emp.phone && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
@@ -1034,8 +1035,8 @@ function AssignEmployeeIdModal({ employee, departments = [], locations = [], onC
     employeeId: employee.employeeId || '',
     name: employee.name || '',
     email: employee.email || '',
-    department: employee.department || 'General',
-    location: employee.location || '22Godam',
+    department: employee.department || COMPANY_DEPARTMENTS[0],
+    location: employee.location || 'Vitromed',
     designation: employee.designation || 'Staff',
     phone: employee.phone || '',
     status: employee.status || 'Active',
@@ -1279,36 +1280,28 @@ function AssignEmployeeIdModal({ employee, departments = [], locations = [], onC
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div className="form-group">
                 <label className="form-label">Department</label>
-                <input
-                  type="text"
-                  list="dept-options"
-                  placeholder="e.g. Accounts"
+                <select
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  className="form-control"
-                />
-                <datalist id="dept-options">
-                  {departments.map((d) => (
-                    <option key={d._id || d.name} value={d.name} />
+                  className="form-select"
+                >
+                  {COMPANY_DEPARTMENTS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </div>
 
               <div className="form-group">
                 <label className="form-label">Plant / Facility</label>
-                <input
-                  type="text"
-                  list="loc-options"
-                  placeholder="e.g. 22Godam"
+                <select
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="form-control"
-                />
-                <datalist id="loc-options">
-                  {locations.map((l) => (
-                    <option key={l._id || l.name} value={l.name} />
-                  ))}
-                </datalist>
+                  className="form-select"
+                >
+                  <option value="Vitromed">Vitromed</option>
+                </select>
               </div>
             </div>
 
@@ -1383,8 +1376,8 @@ function AddEmployeeModal({ departments = [], locations = [], employees = [], on
     employeeId: suggestNextId(),
     name: '',
     email: '',
-    department: departments[0]?.name || 'Production',
-    location: locations[0]?.name || '22Godam',
+    department: COMPANY_DEPARTMENTS[0],
+    location: 'Vitromed',
     designation: 'Staff Associate',
     phone: '',
     status: 'Active',
@@ -1526,34 +1519,28 @@ function AddEmployeeModal({ departments = [], locations = [], employees = [], on
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div className="form-group">
                 <label className="form-label">Department</label>
-                <input
-                  type="text"
-                  list="dept-options-add"
+                <select
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  className="form-control"
-                />
-                <datalist id="dept-options-add">
-                  {departments.map((d) => (
-                    <option key={d._id || d.name} value={d.name} />
+                  className="form-select"
+                >
+                  {COMPANY_DEPARTMENTS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </div>
 
               <div className="form-group">
                 <label className="form-label">Plant Location</label>
-                <input
-                  type="text"
-                  list="loc-options-add"
+                <select
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="form-control"
-                />
-                <datalist id="loc-options-add">
-                  {locations.map((l) => (
-                    <option key={l._id || l.name} value={l.name} />
-                  ))}
-                </datalist>
+                  className="form-select"
+                >
+                  <option value="Vitromed">Vitromed</option>
+                </select>
               </div>
             </div>
           </div>

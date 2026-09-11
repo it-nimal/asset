@@ -13,7 +13,7 @@ export const REPORT_TYPES = [
   { id: 'all-inventory', title: 'Complete Hardware Inventory', desc: 'Full registry of all hardware serials, models, custodians, and locations' },
   { id: 'by-dept', title: 'Assets by Department', desc: 'Breakdown of IT devices grouped across corporate business units' },
   { id: 'by-emp', title: 'Assets by Employee', desc: 'Auditable roster of equipment currently issued to staff' },
-  { id: 'by-location', title: 'Assets by Facility & Plant', desc: 'Distribution across 22Godam, Sitapura, and branch manufacturing plants' },
+  { id: 'by-location', title: 'Assets by Facility & Plant', desc: 'Distribution across Vitromed manufacturing and operations plant' },
   { id: 'available', title: 'Available & In-Stock Systems', desc: 'Unassigned inventory ready for immediate provisioning' },
   { id: 'assigned', title: 'Active Assigned Assets', desc: 'Active deployment of computing hardware in live operations' },
   { id: 'retired', title: 'Retired & Disposed Units', desc: 'Decommissioned machines marked for recycling or safe disposal' },

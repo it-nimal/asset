@@ -33,6 +33,7 @@ import {
 import { api } from '../services/api';
 import { useToast } from './common/Toast';
 import { useAuth } from '../context/AuthContext';
+import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from '../constants/organization';
 
 // ASSET CATEGORIES CONFIGURATION
 const ASSET_CATEGORIES = [
@@ -150,7 +151,7 @@ export default function Addasset({
     customMake: '',
     model: '',
     sr: '',
-    plant: locations[0]?.name || '22Godam',
+    plant: 'Vitromed',
     floorCabin: 'Main Floor',
 
     // Custody & Status
@@ -161,7 +162,7 @@ export default function Addasset({
     userName: 'Unassigned',
     empCode: '',
     mailId: '',
-    department: 'General',
+    department: COMPANY_DEPARTMENTS[0] || 'Vitromed Baisgodam 3rd Floor',
 
     // Technical Specs - Computing
     processor: 'Intel Core i5',
@@ -648,17 +649,24 @@ export default function Addasset({
                   onChange={handleChange}
                   className="form-select"
                 >
-                  {locations.map((l) => (
-                    <option key={l._id || l.name} value={l.name}>
-                      {l.name}
+                  <option value="Vitromed">Vitromed</option>
+                </select>
+              </div>
+
+              {/* Department */}
+              <div className="form-group">
+                <label className="form-label">Assigned Department</label>
+                <select
+                  name="department"
+                  value={formData.department}
+                  onChange={handleChange}
+                  className="form-select"
+                >
+                  {COMPANY_DEPARTMENTS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
                     </option>
                   ))}
-                  {locations.length === 0 && (
-                    <>
-                      <option value="22Godam">22Godam - Production Plant</option>
-                      <option value="Sitapura">Sitapura - Manufacturing Site</option>
-                    </>
-                  )}
                 </select>
               </div>
 
@@ -1238,6 +1246,20 @@ export default function Addasset({
                         onChange={(e) => setFormData({ ...formData, mailId: e.target.value })}
                         className="form-control"
                       />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Department</label>
+                      <select
+                        value={formData.department}
+                        onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                        className="form-select"
+                      >
+                        {COMPANY_DEPARTMENTS.map((dept) => (
+                          <option key={dept} value={dept}>
+                            {dept}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 )}

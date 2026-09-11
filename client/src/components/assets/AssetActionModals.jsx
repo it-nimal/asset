@@ -27,6 +27,7 @@ import {
 import { api } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../common/Toast";
+import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from "../../constants/organization";
 
 const formatDateInput = (d) => {
   if (!d) return "";
@@ -56,8 +57,8 @@ export function AssignModal({
   const [manualName, setManualName] = useState("");
   const [manualEmpCode, setManualEmpCode] = useState("");
   const [manualEmail, setManualEmail] = useState("");
-  const [manualDept, setManualDept] = useState(asset.department || (departments[0]?.name || "Production"));
-  const [manualPlant, setManualPlant] = useState(asset.plant || (locations[0]?.name || "22Godam"));
+  const [manualDept, setManualDept] = useState(asset.department || COMPANY_DEPARTMENTS[0]);
+  const [manualPlant, setManualPlant] = useState("Vitromed");
   const [floorCabin, setFloorCabin] = useState(asset.floorCabin || "Main Floor");
 
   const [expectedReturnDate, setExpectedReturnDate] = useState("");
@@ -141,7 +142,7 @@ export function AssignModal({
             {asset.make} {asset.model}
           </div>
           <div style={{ fontSize: "0.75rem", color: "#818cf8", fontFamily: "var(--font-mono)" }}>
-            Tag: {asset.assetNo || "AST-N/A"} • S/N: {asset.sr} • Current Plant: {asset.plant || "22Godam"}
+            Tag: {asset.assetNo || "AST-N/A"} • S/N: {asset.sr} • Current Plant: {asset.plant || "Vitromed"}
           </div>
         </div>
 
@@ -273,35 +274,27 @@ export function AssignModal({
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                   <div className="form-group">
                     <label className="form-label">Department</label>
-                    <input
-                      type="text"
-                      list="assign-dept-list"
+                    <select
                       value={manualDept}
                       onChange={(e) => setManualDept(e.target.value)}
-                      className="form-control"
-                      placeholder="e.g. Accounts"
-                    />
-                    <datalist id="assign-dept-list">
-                      {departments.map((d) => (
-                        <option key={d._id || d.name} value={d.name} />
+                      className="form-select"
+                    >
+                      {COMPANY_DEPARTMENTS.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
                       ))}
-                    </datalist>
+                    </select>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Plant / Facility</label>
-                    <input
-                      type="text"
-                      list="assign-plant-list"
+                    <select
                       value={manualPlant}
                       onChange={(e) => setManualPlant(e.target.value)}
-                      className="form-control"
-                      placeholder="e.g. 22Godam"
-                    />
-                    <datalist id="assign-plant-list">
-                      {locations.map((l) => (
-                        <option key={l._id || l.name} value={l.name} />
-                      ))}
-                    </datalist>
+                      className="form-select"
+                    >
+                      <option value="Vitromed">Vitromed</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -363,8 +356,8 @@ export function TransferModal({
   const [manualName, setManualName] = useState("");
   const [manualEmpCode, setManualEmpCode] = useState("");
   const [manualEmail, setManualEmail] = useState("");
-  const [manualDept, setManualDept] = useState(asset.department || (departments[0]?.name || "Production"));
-  const [manualPlant, setManualPlant] = useState(asset.plant || (locations[0]?.name || "22Godam"));
+  const [manualDept, setManualDept] = useState(asset.department || COMPANY_DEPARTMENTS[0]);
+  const [manualPlant, setManualPlant] = useState("Vitromed");
 
   const [transferReason, setTransferReason] = useState("");
   const [loading, setLoading] = useState(false);
@@ -547,35 +540,27 @@ export function TransferModal({
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                   <div className="form-group">
                     <label className="form-label">New Department</label>
-                    <input
-                      type="text"
-                      list="transfer-dept-list"
+                    <select
                       value={manualDept}
                       onChange={(e) => setManualDept(e.target.value)}
-                      className="form-control"
-                      placeholder="e.g. Quality Lab"
-                    />
-                    <datalist id="transfer-dept-list">
-                      {departments.map((d) => (
-                        <option key={d._id || d.name} value={d.name} />
+                      className="form-select"
+                    >
+                      {COMPANY_DEPARTMENTS.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
                       ))}
-                    </datalist>
+                    </select>
                   </div>
                   <div className="form-group">
                     <label className="form-label">New Plant / Facility</label>
-                    <input
-                      type="text"
-                      list="transfer-plant-list"
+                    <select
                       value={manualPlant}
                       onChange={(e) => setManualPlant(e.target.value)}
-                      className="form-control"
-                      placeholder="e.g. Sitapura"
-                    />
-                    <datalist id="transfer-plant-list">
-                      {locations.map((l) => (
-                        <option key={l._id || l.name} value={l.name} />
-                      ))}
-                    </datalist>
+                      className="form-select"
+                    >
+                      <option value="Vitromed">Vitromed</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -748,8 +733,8 @@ export function EditAssetModal({
     userName: asset.userName || "Unassigned",
     empCode: asset.empCode || "",
     mailId: asset.mailId || "",
-    department: asset.department || "General",
-    plant: asset.plant || "22Godam",
+    department: asset.department || COMPANY_DEPARTMENTS[0],
+    plant: 'Vitromed',
     floorCabin: asset.floorCabin || "",
     assignedDate: formatDateInput(asset.assignedDate),
     expectedReturnDate: formatDateInput(asset.expectedReturnDate),
@@ -1038,38 +1023,30 @@ export function EditAssetModal({
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                   <div className="form-group">
                     <label className="form-label">Department</label>
-                    <input
-                      type="text"
-                      list="edit-dept-options"
+                    <select
                       name="department"
                       value={formData.department}
                       onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. Accounts, JPPL, Production"
-                    />
-                    <datalist id="edit-dept-options">
-                      {departments.map((d) => (
-                        <option key={d._id || d.name} value={d.name} />
+                      className="form-select"
+                    >
+                      {COMPANY_DEPARTMENTS.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
                       ))}
-                    </datalist>
+                    </select>
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Plant / Facility</label>
-                    <input
-                      type="text"
-                      list="edit-plant-options"
+                    <select
                       name="plant"
                       value={formData.plant}
                       onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. 22Godam, Sitapura"
-                    />
-                    <datalist id="edit-plant-options">
-                      {locations.map((l) => (
-                        <option key={l._id || l.name} value={l.name} />
-                      ))}
-                    </datalist>
+                      className="form-select"
+                    >
+                      <option value="Vitromed">Vitromed</option>
+                    </select>
                   </div>
                 </div>
 

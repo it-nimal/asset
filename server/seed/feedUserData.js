@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { connectDB } from '../config/db.js';
 import { Asset, Department, Location, AuditLog } from '../models/Asset.js';
+import { COMPANY_DEPARTMENTS } from '../routes/assetRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -162,7 +163,7 @@ export const feedRealUserData = async () => {
     locationSet.add(item.plant);
 
     assetDocs.push({
-      plant: item.plant,
+      plant: 'Vitromed',
       assetNo: assetTag,
       userName: custodian,
       department: item.department,
@@ -201,24 +202,23 @@ export const feedRealUserData = async () => {
     createdAssets.push(saved);
   }
 
-  // Sync Departments in DB
+  // Sync the exact 25 Departments in DB
   let deptIdx = 1;
-  for (const deptName of deptSet) {
+  for (const deptName of COMPANY_DEPARTMENTS) {
     await Department.findOneAndUpdate(
       { name: deptName },
-      { name: deptName, location: '22Godam', code: `DEPT-${deptIdx++}` },
+      { name: deptName, location: 'Vitromed', code: `DEPT-${String(deptIdx++).padStart(2, '0')}` },
       { upsert: true }
     );
   }
 
-  // Sync Locations in DB
-  for (const locName of locationSet) {
-    await Location.findOneAndUpdate(
-      { name: locName },
-      { name: locName, address: `${locName} Industrial Facility, Jaipur`, building: 'Main Unit' },
-      { upsert: true }
-    );
-  }
+  // Sync only Vitromed Location in DB
+  await Location.deleteMany({ name: { $ne: 'Vitromed' } });
+  await Location.findOneAndUpdate(
+    { name: 'Vitromed' },
+    { name: 'Vitromed', address: 'Vitromed Manufacturing & Operations Facility, Jaipur', building: 'Main Campus' },
+    { upsert: true }
+  );
 
   // Record Audit Log entry
   await AuditLog.create({

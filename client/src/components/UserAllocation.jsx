@@ -1,24 +1,9 @@
 import React, { useState } from 'react';
 import { api } from '../services/api';
+import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from '../constants/organization';
 
-const DEPARTMENTS = [
-  'IT & Software Engineering',
-  'Production & Plant Operations',
-  'Quality Control (QA/QC)',
-  'HR & Admin',
-  'Sales & Marketing',
-  'Finance & Accounts',
-  'Supply Chain & Procurement',
-  'Management & Executive',
-];
-
-const PLANTS = [
-  'Plant 1 - Bangalore',
-  'Plant 2 - Pune',
-  'Plant 3 - Jaipur',
-  'Vitromed HQ - Delhi NCR',
-  'Remote / WFH',
-];
+const DEPARTMENTS = COMPANY_DEPARTMENTS;
+const PLANTS = COMPANY_PLANTS;
 
 const DEVICE_TYPES = ['Laptop', 'Desktop', 'Server', 'Workstation', 'Tablet', 'Network Switch', 'Other'];
 
@@ -38,9 +23,9 @@ export default function UserAllocation({ assets, onRefresh, loading }) {
     userName: '',
     empCode: '',
     mailId: '',
-    department: 'IT & Software Engineering',
-    plant: 'Plant 1 - Bangalore',
-    floorCabin: '1st Floor - IT Bay',
+    department: 'Production',
+    plant: 'Vitromed',
+    floorCabin: 'Main Floor',
     assetNo: '',
 
     // Hardware Specs
@@ -85,9 +70,9 @@ export default function UserAllocation({ assets, onRefresh, loading }) {
       userName: asset.userName !== 'Unassigned' ? asset.userName : '',
       empCode: asset.empCode || '',
       mailId: asset.mailId || '',
-      department: asset.department || 'IT & Software Engineering',
-      plant: asset.plant || 'Plant 1 - Bangalore',
-      floorCabin: asset.floorCabin || '1st Floor - Main Office',
+      department: asset.department || 'Production',
+      plant: asset.plant || 'Vitromed',
+      floorCabin: asset.floorCabin || 'Main Floor',
       assetNo: asset.assetNo || `AST-${asset.sr}`,
 
       deviceType: asset.deviceType || 'Laptop',
@@ -266,7 +251,7 @@ export default function UserAllocation({ assets, onRefresh, loading }) {
         ? item.status === 'Available'
         : item.status === 'In Use';
 
-    const matchesPlant = plantFilter === 'All' || (item.plant || 'Plant 1 - Bangalore') === plantFilter;
+    const matchesPlant = plantFilter === 'All' || (item.plant || 'Vitromed') === plantFilter;
 
     return matchesSearch && matchesStatus && matchesPlant;
   });

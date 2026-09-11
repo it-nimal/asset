@@ -30,8 +30,9 @@ export const connectDB = async () => {
           autoIndex: false,
           maxPoolSize: 10,
         });
-        // Probe ping to confirm connection is stable and not dropping
+        // Probe ping and query to confirm connection is stable and not dropping
         await mongoose.connection.db.admin().ping();
+        await mongoose.connection.db.collection('assets').findOne({});
         console.log(`[MongoDB] Connected successfully to database: ${conn.connection.host}`);
         return true;
       } catch (error) {
