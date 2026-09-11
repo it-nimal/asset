@@ -201,6 +201,7 @@ const assetSchema = new mongoose.Schema(
   {
     timestamps: true,
     autoIndex: false,
+    strict: false,
   }
 );
 

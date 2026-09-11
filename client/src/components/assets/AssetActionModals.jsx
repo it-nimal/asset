@@ -95,7 +95,7 @@ export function AssignModal({
 
     setLoading(true);
     try {
-      await api.assignAsset(asset._id, {
+      const res = await api.assignAsset(asset._id, {
         userName: targetName,
         empCode: targetCode,
         mailId: targetEmail,
@@ -108,7 +108,7 @@ export function AssignModal({
       });
 
       toast.success("Asset successfully allocated to " + targetName + "!", "Asset Assigned");
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(res.data);
       onClose();
     } catch (err) {
       toast.error(err.message, "Assignment Failed");
@@ -392,7 +392,7 @@ export function TransferModal({
 
     setLoading(true);
     try {
-      await api.transferAsset(asset._id, {
+      const res = await api.transferAsset(asset._id, {
         newUserName: targetName,
         newEmpCode: targetCode,
         newMailId: targetEmail,
@@ -403,7 +403,7 @@ export function TransferModal({
       });
 
       toast.success("Custody transferred to " + targetName + " successfully!", "Asset Transferred");
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(res.data);
       onClose();
     } catch (err) {
       toast.error(err.message, "Transfer Failed");
@@ -606,7 +606,7 @@ export function ReturnModal({ asset, onClose, onSuccess }) {
     setLoading(true);
 
     try {
-      await api.returnAsset(asset._id, {
+      const res = await api.returnAsset(asset._id, {
         returnCondition,
         workingCondition: returnCondition,
         notes: returnNotes || ("Returned to inventory by " + (asset.userName || "Employee")),
@@ -616,7 +616,7 @@ export function ReturnModal({ asset, onClose, onSuccess }) {
       });
 
       toast.success("\"" + asset.make + " " + asset.model + "\" checked in to available stock!", "Asset Returned");
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(res.data);
       onClose();
     } catch (err) {
       toast.error(err.message, "Return Failed");
@@ -816,13 +816,13 @@ export function EditAssetModal({
     setLoading(true);
 
     try {
-      await api.updateAsset(asset._id, {
+      const res = await api.updateAsset(asset._id, {
         ...formData,
         actorName: user?.name || "IT Admin",
       });
 
       toast.success(`Asset "${formData.make} ${formData.model}" updated successfully!`, "Changes Saved");
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(res.data);
       onClose();
     } catch (err) {
       toast.error(err.message, "Update Failed");

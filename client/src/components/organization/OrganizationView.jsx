@@ -51,6 +51,9 @@ export default function OrganizationView({
   const [selectedEmpForAsset, setSelectedEmpForAsset] = useState(null);
   const [showAddEmpModal, setShowAddEmpModal] = useState(false);
   const [empToDelete, setEmpToDelete] = useState(null);
+  const [showAddDeptModal, setShowAddDeptModal] = useState(false);
+  const [deptToEdit, setDeptToEdit] = useState(null);
+  const [deptToDelete, setDeptToDelete] = useState(null);
 
   // Filtered employees list
   const filteredEmployees = useMemo(() => {
@@ -748,13 +751,33 @@ export default function OrganizationView({
       {/* 2. DEPARTMENTS */}
       {type === 'departments' && (
         <div>
-          <div style={{ marginBottom: '1.75rem' }}>
-            <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-              Department Management ({departments.length})
-            </h1>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-              Operational cost centers, departmental managers, device counts, and hardware valuations.
-            </p>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              marginBottom: '1.75rem',
+              flexWrap: 'wrap',
+              gap: '1rem',
+            }}
+          >
+            <div>
+              <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+                Department Management ({departments.length})
+              </h1>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem', marginBottom: 0 }}>
+                Operational cost centers, departmental managers, device counts, and hardware valuations.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddDeptModal(true)}
+              className="btn btn-primary btn-sm"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 700 }}
+            >
+              <Plus size={16} />
+              + Add Department
+            </button>
           </div>
 
           <div
@@ -786,6 +809,24 @@ export default function OrganizationView({
                       <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.45rem' }}>
                         {dept.name}
                       </h3>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setDeptToEdit(dept)}
+                        className="btn btn-ghost btn-icon btn-xs"
+                        title="Edit Department"
+                      >
+                        <Edit3 size={13} color="var(--text-muted)" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeptToDelete(dept)}
+                        className="btn btn-ghost btn-icon btn-xs"
+                        title="Delete Department"
+                      >
+                        <Trash2 size={13} color="#f87171" />
+                      </button>
                     </div>
                   </div>
 
@@ -1018,6 +1059,29 @@ export default function OrganizationView({
             ).length
           }
           onClose={() => setEmpToDelete(null)}
+          onSuccess={onSuccess}
+        />
+      )}
+
+      {/* MODAL 5: ADD / EDIT DEPARTMENT */}
+      {(showAddDeptModal || deptToEdit) && (
+        <AddEditDepartmentModal
+          dept={deptToEdit}
+          locations={locations}
+          onClose={() => {
+            setShowAddDeptModal(false);
+            setDeptToEdit(null);
+          }}
+          onSuccess={onSuccess}
+        />
+      )}
+
+      {/* MODAL 6: DELETE DEPARTMENT */}
+      {deptToDelete && (
+        <DeleteDepartmentModal
+          dept={deptToDelete}
+          assetCount={assets.filter((a) => a.department === deptToDelete.name).length}
+          onClose={() => setDeptToDelete(null)}
           onSuccess={onSuccess}
         />
       )}
@@ -1847,6 +1911,242 @@ function DeleteEmployeeModal({ employee, assignedCount, onClose, onSuccess }) {
             Cancel
           </button>
           {assignedCount === 0 && (
+            <button type="button" onClick={handleDelete} className="btn btn-danger btn-sm" disabled={loading}>
+              {loading ? 'Deleting...' : 'Confirm Delete'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ----------------- MODAL 5: ADD / EDIT DEPARTMENT -----------------
+function AddEditDepartmentModal({ dept, locations = [], onClose, onSuccess }) {
+  const toast = useToast();
+  const [loading, setLoading] = useState(false);
+  const isEdit = Boolean(dept && dept._id);
+
+  const [formData, setFormData] = useState({
+    name: dept?.name || '',
+    code: dept?.code || '',
+    manager: dept?.manager || '',
+    location: dept?.location || 'Vitromed',
+    budget: dept?.budget || '',
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name.trim()) {
+      return toast.error('Department Name is required', 'Missing Name');
+    }
+
+    setLoading(true);
+    try {
+      if (isEdit) {
+        await api.updateDepartment(dept._id, formData);
+        toast.success(`Department "${formData.name}" updated successfully!`, 'Department Updated');
+      } else {
+        await api.createDepartment(formData);
+        toast.success(`Department "${formData.name}" added successfully!`, 'Department Created');
+      }
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err) {
+      toast.error(err.message || 'Failed to save department', 'Error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+        <div className="modal-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                color: '#818cf8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Building2 size={18} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>
+                {isEdit ? 'Edit Department' : 'Add New Department'}
+              </h3>
+              <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: 0 }}>
+                {isEdit ? 'Modify department parameters and leadership' : 'Register a new operational department & cost center'}
+              </p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
+            <X size={16} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+            <div className="form-group">
+              <label className="form-label">
+                Department Name <span style={{ color: '#f87171' }}>*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Quality Control, Tool Room"
+                value={formData.name}
+                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                className="form-control"
+                required
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div className="form-group">
+                <label className="form-label">Department Code</label>
+                <input
+                  type="text"
+                  placeholder="e.g. QC, TR, HRD"
+                  value={formData.code}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                  className="form-control"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Department Head / Manager</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Head of Dept"
+                  value={formData.manager}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, manager: e.target.value }))}
+                  className="form-control"
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div className="form-group">
+                <label className="form-label">Base Location / Plant</label>
+                <select
+                  value={formData.location}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
+                  className="form-select"
+                >
+                  <option value="Vitromed">Vitromed</option>
+                  {locations
+                    .filter((l) => l.name !== 'Vitromed')
+                    .map((l) => (
+                      <option key={l._id || l.name} value={l.name}>
+                        {l.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Annual Budget</label>
+                <input
+                  type="text"
+                  placeholder="e.g. ₹5,00,000"
+                  value={formData.budget}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, budget: e.target.value }))}
+                  className="form-control"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="modal-footer">
+            <button type="button" onClick={onClose} className="btn btn-secondary btn-sm" disabled={loading}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>
+              {loading ? 'Saving...' : isEdit ? 'Update Department' : 'Save Department'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ----------------- MODAL 6: DELETE DEPARTMENT -----------------
+function DeleteDepartmentModal({ dept, assetCount, onClose, onSuccess }) {
+  const toast = useToast();
+  const [loading, setLoading] = useState(false);
+
+  const handleDelete = async () => {
+    if (assetCount > 0) {
+      return toast.error(
+        `Cannot delete department "${dept.name}" because ${assetCount} hardware asset(s) are currently tagged with it. Reassign or edit those assets first.`,
+        'Cannot Delete'
+      );
+    }
+
+    setLoading(true);
+    try {
+      await api.deleteDepartment(dept._id);
+      toast.success(`Department "${dept.name}" deleted successfully!`, 'Department Deleted');
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete department', 'Delete Failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+        <div className="modal-header">
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f87171', margin: 0 }}>
+            Delete Department
+          </h3>
+          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="modal-body">
+          {assetCount > 0 ? (
+            <div
+              style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                padding: '0.85rem',
+                borderRadius: 'var(--radius-sm)',
+                color: '#f87171',
+                fontSize: '0.82rem',
+                lineHeight: 1.5,
+              }}
+            >
+              <strong>Cannot Delete Department:</strong>
+              <div style={{ marginTop: '0.25rem' }}>
+                Department <strong>{dept.name}</strong> has{' '}
+                <strong>{assetCount} hardware asset(s)</strong> assigned. Please reassign those systems before removing this department.
+              </div>
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-primary)', fontSize: '0.88rem', margin: 0 }}>
+              Are you sure you want to remove <strong>{dept.name}</strong> ({dept.code || 'Dept'}) from the departments list?
+            </p>
+          )}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" onClick={onClose} className="btn btn-secondary btn-sm" disabled={loading}>
+            Cancel
+          </button>
+          {assetCount === 0 && (
             <button type="button" onClick={handleDelete} className="btn btn-danger btn-sm" disabled={loading}>
               {loading ? 'Deleting...' : 'Confirm Delete'}
             </button>

@@ -382,6 +382,45 @@ router.get('/departments', async (req, res) => {
   }
 });
 
+router.post('/departments', async (req, res) => {
+  try {
+    const { name, manager, location, code } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Department name is required' });
+    }
+    const cleanName = name.trim();
+    const cleanCode = code?.trim() || `DEPT-${Math.floor(100 + Math.random() * 900)}`;
+    const dept = await Department.findOneAndUpdate(
+      { name: cleanName },
+      { name: cleanName, manager: manager || 'Head of Department', location: location || 'Vitromed', code: cleanCode },
+      { upsert: true, new: true }
+    );
+    res.status(201).json({ success: true, data: dept, message: 'Department saved successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/departments/:id', async (req, res) => {
+  try {
+    const dept = await Department.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!dept) return res.status(404).json({ success: false, message: 'Department not found' });
+    res.status(200).json({ success: true, data: dept, message: 'Department updated successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/departments/:id', async (req, res) => {
+  try {
+    const dept = await Department.findByIdAndDelete(req.params.id);
+    if (!dept) return res.status(404).json({ success: false, message: 'Department not found' });
+    res.status(200).json({ success: true, message: `Department "${dept.name}" deleted successfully` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.get('/locations', async (req, res) => {
   try {
     // Ensure only 'Vitromed' is the plant location

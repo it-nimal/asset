@@ -165,6 +165,37 @@ export const api = {
     return data.data || [];
   },
 
+  async createDepartment(deptData) {
+    const res = await fetch(`${API_BASE}/assets/departments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(deptData),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to create department');
+    return data;
+  },
+
+  async updateDepartment(id, deptData) {
+    const res = await fetch(`${API_BASE}/assets/departments/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(deptData),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update department');
+    return data;
+  },
+
+  async deleteDepartment(id) {
+    const res = await fetch(`${API_BASE}/assets/departments/${id}`, {
+      method: 'DELETE',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to delete department');
+    return data;
+  },
+
   async getLocations() {
     const res = await fetch(`${API_BASE}/assets/locations`);
     const data = await res.json();

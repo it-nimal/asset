@@ -155,6 +155,19 @@ function ITAMApp() {
     return map;
   }, [assets]);
 
+  // Immediate state update when any asset is modified, assigned, transferred, or returned
+  const handleAssetUpdated = (updatedAsset) => {
+    if (updatedAsset && updatedAsset._id) {
+      setAssets((prev) =>
+        prev.map((a) => (a._id === updatedAsset._id ? { ...a, ...updatedAsset } : a))
+      );
+      if (selectedAssetForDetails && selectedAssetForDetails._id === updatedAsset._id) {
+        setSelectedAssetForDetails((prev) => ({ ...prev, ...updatedAsset }));
+      }
+    }
+    loadData();
+  };
+
   // Asset deletion handler
   const handleDeleteAsset = (asset) => {
     setAssetToDelete(asset);
@@ -280,7 +293,8 @@ function ITAMApp() {
       {/* ADD / INWARD ASSET */}
       {activePage === 'asset-add' && (
         <Addasset
-          onAssetCreated={() => {
+          onAssetCreated={(newAsset) => {
+            if (newAsset) setAssets((prev) => [newAsset, ...prev]);
             loadData();
             setActivePage('assets-all');
           }}
@@ -533,7 +547,7 @@ function ITAMApp() {
           departments={departments}
           locations={locations}
           onClose={() => setSelectedAssetForAssign(null)}
-          onSuccess={loadData}
+          onSuccess={handleAssetUpdated}
         />
       )}
 
@@ -544,7 +558,7 @@ function ITAMApp() {
           departments={departments}
           locations={locations}
           onClose={() => setSelectedAssetForTransfer(null)}
-          onSuccess={loadData}
+          onSuccess={handleAssetUpdated}
         />
       )}
 
@@ -552,7 +566,7 @@ function ITAMApp() {
         <ReturnModal
           asset={selectedAssetForReturn}
           onClose={() => setSelectedAssetForReturn(null)}
-          onSuccess={loadData}
+          onSuccess={handleAssetUpdated}
         />
       )}
 
@@ -563,7 +577,7 @@ function ITAMApp() {
           departments={departments}
           locations={locations}
           onClose={() => setSelectedAssetForEdit(null)}
-          onSuccess={loadData}
+          onSuccess={handleAssetUpdated}
         />
       )}
 
@@ -571,7 +585,7 @@ function ITAMApp() {
         <QuickMaintenanceModal
           asset={selectedAssetForMaintenance}
           onClose={() => setSelectedAssetForMaintenance(null)}
-          onSuccess={loadData}
+          onSuccess={handleAssetUpdated}
         />
       )}
 

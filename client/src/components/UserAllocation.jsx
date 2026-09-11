@@ -106,7 +106,7 @@ export default function UserAllocation({ assets, onRefresh, loading }) {
 
     try {
       await api.updateAsset(selectedAsset._id, {
-        status: 'In Use',
+        status: 'Assigned',
         ...assignData,
       });
 
