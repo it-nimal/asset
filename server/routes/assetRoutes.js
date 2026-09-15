@@ -9,6 +9,11 @@ import {
   assignAsset,
   returnAsset,
   transferAsset,
+  returnFromMaintenance,
+  retireAsset,
+  bulkImportAssets,
+  exportAssetsCSV,
+  seedSampleMasterRow,
 } from '../controllers/assetController.js';
 import {
   User,
@@ -69,6 +74,9 @@ router.post('/system/feed-user-data', async (req, res) => {
 
 // ----------------- ASSET STATS & COLLECTION ROUTES -----------------
 router.get('/stats/summary', getAssetStats);
+router.post('/bulk-import', bulkImportAssets);
+router.get('/export-master-csv', exportAssetsCSV);
+router.post('/seed/sample-master-row', seedSampleMasterRow);
 router.route('/').get(getAssets).post(createAsset);
 
 // ----------------- AUTHENTICATION -----------------
@@ -613,5 +621,7 @@ router.route('/:id').get(getAssetById).put(updateAsset).delete(deleteAsset);
 router.post('/:id/assign', assignAsset);
 router.post('/:id/return', returnAsset);
 router.post('/:id/transfer', transferAsset);
+router.post('/:id/maintenance-return', returnFromMaintenance);
+router.post('/:id/retire', retireAsset);
 
 export default router;

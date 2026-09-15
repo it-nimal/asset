@@ -9,6 +9,8 @@ import {
   User,
   Laptop,
   ArrowRight,
+  Palette,
+  Check,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../common/Toast';
@@ -32,9 +34,45 @@ export default function Header({
   const [refreshing, setRefreshing] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
 
+  // Theme Management (Defaults to White Background & Black Words with Sky Blue)
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('it_asset_theme') || 'light';
+  });
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+
   const searchInputRef = useRef(null);
   const searchContainerRef = useRef(null);
   const notifMenuRef = useRef(null);
+  const themeMenuRef = useRef(null);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('it_asset_theme', theme);
+  }, [theme]);
+
+  const themeOptions = [
+    {
+      id: 'light',
+      name: 'White & Black (Sky Blue)',
+      badge: 'Active Default',
+      desc: 'Crisp White background, high-contrast Black words & Sky Blue accents',
+      colors: ['#ffffff', '#000000', '#0284c7'],
+    },
+    {
+      id: 'bw-sky',
+      name: 'Black & White Dark Mode',
+      badge: 'Dark Mode',
+      desc: 'Pitch Black canvas, crisp white typography & sky blue accents',
+      colors: ['#050505', '#ffffff', '#38bdf8'],
+    },
+    {
+      id: 'midnight',
+      name: 'Midnight Obsidian',
+      badge: 'Dark Slate',
+      desc: 'Deep navy-slate background with vibrant sky blue highlights',
+      colors: ['#090d16', '#334155', '#38bdf8'],
+    },
+  ];
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -91,6 +129,9 @@ export default function Header({
     const handleOutsideClick = (e) => {
       if (notifMenuRef.current && !notifMenuRef.current.contains(e.target)) {
         setNotifMenuOpen(false);
+      }
+      if (themeMenuRef.current && !themeMenuRef.current.contains(e.target)) {
+        setThemeMenuOpen(false);
       }
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
         setSearchFocused(false);
@@ -465,6 +506,142 @@ export default function Header({
           />
         </button>
 
+        {/* Theme Switcher Popover */}
+        <div style={{ position: 'relative' }} ref={themeMenuRef}>
+          <button
+            type="button"
+            onClick={() => setThemeMenuOpen(!themeMenuOpen)}
+            className="btn btn-outline"
+            style={{
+              height: '32px',
+              padding: '0 0.65rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              fontSize: '0.76rem',
+              fontWeight: 600,
+              borderColor: themeMenuOpen ? 'var(--primary)' : 'var(--border-default)',
+              backgroundColor: themeMenuOpen ? 'var(--bg-surface-raised)' : 'transparent',
+            }}
+            title="Switch UI Color Theme"
+          >
+            <Palette size={14} style={{ color: 'var(--primary)' }} />
+            <span className="hide-on-mobile">Theme</span>
+          </button>
+
+          {themeMenuOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: '38px',
+                width: '300px',
+                backgroundColor: 'var(--bg-surface-raised)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: 'var(--shadow-xl)',
+                overflow: 'hidden',
+                zIndex: 70,
+                animation: 'slideUp 0.15s ease-out',
+              }}
+            >
+              <div
+                style={{
+                  padding: '0.75rem 0.95rem',
+                  borderBottom: '1px solid var(--border-default)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  backgroundColor: 'var(--bg-surface)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Palette size={14} style={{ color: 'var(--primary)' }} />
+                  <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)' }}>Color Theme</span>
+                </div>
+                <span
+                  style={{
+                    fontSize: '0.68rem',
+                    padding: '0.15rem 0.45rem',
+                    borderRadius: 'var(--radius-xs)',
+                    backgroundColor: 'var(--primary-light)',
+                    color: 'var(--primary)',
+                    fontWeight: 700,
+                  }}
+                >
+                  {theme === 'light' || theme === 'wb-sky' ? 'White & Black' : theme === 'bw-sky' ? 'Dark Mode' : 'Midnight'}
+                </span>
+              </div>
+
+              <div style={{ padding: '0.5rem' }}>
+                {themeOptions.map((opt) => {
+                  const isSelected = theme === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        setTheme(opt.id);
+                        toast.success(`Theme switched to ${opt.name}`);
+                      }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '0.65rem 0.75rem',
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: isSelected ? 'var(--primary-light)' : 'transparent',
+                        border: isSelected ? '1px solid var(--border-focus)' : '1px solid transparent',
+                        cursor: 'pointer',
+                        marginBottom: '0.35rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.25rem',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              borderRadius: '3px',
+                              overflow: 'hidden',
+                              border: '1px solid rgba(128, 128, 128, 0.4)',
+                            }}
+                          >
+                            {opt.colors.map((c, i) => (
+                              <span key={i} style={{ width: '9px', height: '14px', backgroundColor: c }} />
+                            ))}
+                          </div>
+                          <span
+                            style={{
+                              fontSize: '0.8rem',
+                              fontWeight: isSelected ? 700 : 600,
+                              color: 'var(--text-primary)',
+                            }}
+                          >
+                            {opt.name}
+                          </span>
+                        </div>
+                        {isSelected && <Check size={14} style={{ color: 'var(--primary)' }} />}
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: '2rem' }}>
+                        {opt.desc}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Notifications Popover */}
         <div style={{ position: 'relative' }} ref={notifMenuRef}>
           <button
@@ -483,7 +660,7 @@ export default function Header({
                   right: '4px',
                   width: '6px',
                   height: '6px',
-                  backgroundColor: '#6366f1',
+                  backgroundColor: '#38bdf8',
                   borderRadius: '50%',
                 }}
               />

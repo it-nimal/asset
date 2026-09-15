@@ -1,52 +1,56 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
-:root {
-  /* Surface Tokens */
-  --bg-canvas: #070b14;
-  --bg-surface: #0e1726;
-  --bg-surface-raised: #131e33;
-  --bg-surface-elevated: #1a2842;
-  --bg-surface-hover: rgba(255, 255, 255, 0.04);
-  --bg-surface-active: rgba(99, 102, 241, 0.12);
+:root,
+[data-theme="light"],
+[data-theme="wb-sky"] {
+  color-scheme: light;
+
+  /* Surface Tokens (Pure Crisp White Canvas & Light Surfaces) */
+  --bg-canvas: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-raised: #f1f5f9;
+  --bg-surface-elevated: #e2e8f0;
+  --bg-surface-hover: rgba(0, 0, 0, 0.04);
+  --bg-surface-active: rgba(2, 132, 199, 0.08);
 
   /* Border Tokens */
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-default: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.18);
-  --border-focus: #6366f1;
+  --border-subtle: #f1f5f9;
+  --border-default: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-focus: #0284c7;
 
-  /* Typography Colors */
-  --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
+  /* Typography Colors (High-contrast pure black words and deep charcoal) */
+  --text-primary: #000000;
+  --text-secondary: #0f172a;
+  --text-muted: #475569;
   --text-faint: #64748b;
 
-  /* Brand Accents */
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --primary-light: rgba(99, 102, 241, 0.14);
-  --primary-glow: rgba(99, 102, 241, 0.25);
+  /* Brand Accents (Vibrant Sky Blue) */
+  --primary: #0284c7;
+  --primary-hover: #0369a1;
+  --primary-light: rgba(2, 132, 199, 0.1);
+  --primary-glow: rgba(2, 132, 199, 0.25);
 
-  /* Status Tokens */
-  --status-available-text: #34d399;
-  --status-available-bg: rgba(16, 185, 129, 0.12);
-  --status-available-border: rgba(16, 185, 129, 0.28);
+  /* Status Tokens (Adapted for high-contrast light background) */
+  --status-available-text: #059669;
+  --status-available-bg: #ecfdf5;
+  --status-available-border: #a7f3d0;
 
-  --status-assigned-text: #38bdf8;
-  --status-assigned-bg: rgba(56, 189, 248, 0.12);
-  --status-assigned-border: rgba(56, 189, 248, 0.28);
+  --status-assigned-text: #0284c7;
+  --status-assigned-bg: #f0f9ff;
+  --status-assigned-border: #bae6fd;
 
-  --status-maintenance-text: #fbbf24;
-  --status-maintenance-bg: rgba(245, 158, 11, 0.12);
-  --status-maintenance-border: rgba(245, 158, 11, 0.28);
+  --status-maintenance-text: #d97706;
+  --status-maintenance-bg: #fffbeb;
+  --status-maintenance-border: #fde68a;
 
-  --status-retired-text: #94a3b8;
-  --status-retired-bg: rgba(148, 163, 184, 0.12);
-  --status-retired-border: rgba(148, 163, 184, 0.28);
+  --status-retired-text: #475569;
+  --status-retired-bg: #f1f5f9;
+  --status-retired-border: #cbd5e1;
 
-  --status-lost-text: #f87171;
-  --status-lost-bg: rgba(239, 68, 68, 0.12);
-  --status-lost-border: rgba(239, 68, 68, 0.28);
+  --status-lost-text: #dc2626;
+  --status-lost-bg: #fef2f2;
+  --status-lost-border: #fecaca;
 
   /* Dimensions & Radius */
   --radius-xs: 4px;
@@ -62,10 +66,93 @@
   --font-brand: 'Poppins', 'Inter', sans-serif;
 
   /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="bw-sky"],
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-canvas: #050505;
+  --bg-surface: #0d0d0f;
+  --bg-surface-raised: #141416;
+  --bg-surface-elevated: #1a1a1e;
+  --bg-surface-hover: rgba(255, 255, 255, 0.05);
+  --bg-surface-active: rgba(56, 189, 248, 0.12);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-default: rgba(255, 255, 255, 0.14);
+  --border-strong: rgba(255, 255, 255, 0.26);
+  --border-focus: #38bdf8;
+  --text-primary: #ffffff;
+  --text-secondary: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --text-faint: #71717a;
+  --primary: #0ea5e9;
+  --primary-hover: #0284c7;
+  --primary-light: rgba(56, 189, 248, 0.14);
+  --primary-glow: rgba(56, 189, 248, 0.3);
+  --status-available-text: #34d399;
+  --status-available-bg: rgba(16, 185, 129, 0.12);
+  --status-available-border: rgba(16, 185, 129, 0.28);
+  --status-assigned-text: #38bdf8;
+  --status-assigned-bg: rgba(56, 189, 248, 0.12);
+  --status-assigned-border: rgba(56, 189, 248, 0.28);
+  --status-maintenance-text: #fbbf24;
+  --status-maintenance-bg: rgba(245, 158, 11, 0.12);
+  --status-maintenance-border: rgba(245, 158, 11, 0.28);
+  --status-retired-text: #94a3b8;
+  --status-retired-bg: rgba(148, 163, 184, 0.12);
+  --status-retired-border: rgba(148, 163, 184, 0.28);
+  --status-lost-text: #f87171;
+  --status-lost-bg: rgba(239, 68, 68, 0.12);
+  --status-lost-border: rgba(239, 68, 68, 0.28);
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.4);
   --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="midnight"] {
+  color-scheme: dark;
+  --bg-canvas: #090d16;
+  --bg-surface: #0f172a;
+  --bg-surface-raised: #1e293b;
+  --bg-surface-elevated: #334155;
+  --bg-surface-hover: rgba(255, 255, 255, 0.06);
+  --bg-surface-active: rgba(56, 189, 248, 0.15);
+  --border-subtle: rgba(148, 163, 184, 0.12);
+  --border-default: rgba(148, 163, 184, 0.22);
+  --border-strong: rgba(148, 163, 184, 0.38);
+  --border-focus: #38bdf8;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-faint: #64748b;
+  --primary: #38bdf8;
+  --primary-hover: #0ea5e9;
+  --primary-light: rgba(56, 189, 248, 0.15);
+  --primary-glow: rgba(56, 189, 248, 0.35);
+  --status-available-text: #34d399;
+  --status-available-bg: rgba(16, 185, 129, 0.12);
+  --status-available-border: rgba(16, 185, 129, 0.28);
+  --status-assigned-text: #38bdf8;
+  --status-assigned-bg: rgba(56, 189, 248, 0.12);
+  --status-assigned-border: rgba(56, 189, 248, 0.28);
+  --status-maintenance-text: #fbbf24;
+  --status-maintenance-bg: rgba(245, 158, 11, 0.12);
+  --status-maintenance-border: rgba(245, 158, 11, 0.28);
+  --status-retired-text: #94a3b8;
+  --status-retired-bg: rgba(148, 163, 184, 0.12);
+  --status-retired-border: rgba(148, 163, 184, 0.28);
+  --status-lost-text: #f87171;
+  --status-lost-bg: rgba(239, 68, 68, 0.12);
+  --status-lost-border: rgba(239, 68, 68, 0.28);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.65);
 }
 
 /* Global Reset */
@@ -77,7 +164,6 @@
 
 html {
   font-size: 14px;
-  color-scheme: dark;
 }
 
 body {
@@ -94,7 +180,7 @@ body {
 
 /* Selection */
 ::selection {
-  background: rgba(99, 102, 241, 0.35);
+  background: rgba(56, 189, 248, 0.35);
   color: #ffffff;
 }
 
@@ -131,7 +217,7 @@ a {
 }
 
 a:hover {
-  color: #818cf8;
+  color: #38bdf8;
 }
 
 button, input, select, textarea {
@@ -182,15 +268,17 @@ button, input, select, textarea {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+  font-weight: 700;
+  border: 1px solid rgba(2, 132, 199, 0.4);
+  box-shadow: 0 2px 10px rgba(14, 165, 233, 0.25);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
-  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.45);
+  background: linear-gradient(135deg, #0369a1 0%, #0ea5e9 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(14, 165, 233, 0.4);
 }
 
 .btn-secondary {
@@ -205,8 +293,8 @@ button, input, select, textarea {
 }
 
 .btn-outline {
-  background-color: transparent;
-  color: var(--text-secondary);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
   border: 1px solid var(--border-default);
 }
 
@@ -229,7 +317,7 @@ button, input, select, textarea {
 
 .btn-danger {
   background-color: rgba(239, 68, 68, 0.14);
-  color: #fca5a5;
+  color: #ef4444;
   border: 1px solid rgba(239, 68, 68, 0.28);
 }
 
@@ -274,7 +362,7 @@ button, input, select, textarea {
 .form-select,
 .form-textarea {
   width: 100%;
-  background-color: rgba(11, 18, 32, 0.75);
+  background-color: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   padding: 0.52rem 0.8rem;
@@ -289,8 +377,8 @@ button, input, select, textarea {
 .form-select:focus,
 .form-textarea:focus {
   border-color: var(--border-focus);
-  background-color: rgba(14, 23, 38, 0.95);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  background-color: var(--bg-surface);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .form-control::placeholder,
@@ -373,7 +461,7 @@ button, input, select, textarea {
 }
 
 .table-modern th {
-  background-color: rgba(9, 15, 26, 0.85);
+  background-color: var(--bg-surface-raised);
   padding: 0.75rem 1rem;
   color: var(--text-muted);
   font-size: 0.72rem;
@@ -387,8 +475,8 @@ button, input, select, textarea {
 
 .table-modern td {
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-default);
+  color: var(--text-primary);
   vertical-align: middle;
 }
 
@@ -408,8 +496,8 @@ button, input, select, textarea {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(4, 7, 15, 0.78);
-  backdrop-filter: blur(8px);
+  background-color: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -420,7 +508,7 @@ button, input, select, textarea {
 
 .modal-content {
   background-color: var(--bg-surface);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
   width: 100%;
   max-width: 600px;
@@ -438,7 +526,7 @@ button, input, select, textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: rgba(9, 15, 26, 0.6);
+  background-color: var(--bg-surface-raised);
 }
 
 .modal-body {
@@ -453,7 +541,7 @@ button, input, select, textarea {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-  background-color: rgba(9, 15, 26, 0.4);
+  background-color: var(--bg-surface-raised);
 }
 
 /* Pulse indicator dot */

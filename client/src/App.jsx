@@ -14,6 +14,8 @@ import {
   ReturnModal,
   EditAssetModal,
   QuickMaintenanceModal,
+  MaintenanceReturnModal,
+  RetireAssetModal,
 } from './components/assets/AssetActionModals';
 import Addasset from './components/addasset';
 import MaintenanceTracker from './components/MaintenanceTracker';
@@ -52,6 +54,8 @@ function ITAMApp() {
   const [selectedAssetForReturn, setSelectedAssetForReturn] = useState(null);
   const [selectedAssetForEdit, setSelectedAssetForEdit] = useState(null);
   const [selectedAssetForMaintenance, setSelectedAssetForMaintenance] = useState(null);
+  const [selectedAssetForMaintenanceReturn, setSelectedAssetForMaintenanceReturn] = useState(null);
+  const [selectedAssetForRetire, setSelectedAssetForRetire] = useState(null);
   const [assetToDelete, setAssetToDelete] = useState(null);
 
   // Load all enterprise data
@@ -242,8 +246,10 @@ function ITAMApp() {
           onAssign={(asset) => setSelectedAssetForAssign(asset)}
           onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
           onReturn={(asset) => setSelectedAssetForReturn(asset)}
+          onMaintenanceReturn={(asset) => setSelectedAssetForMaintenanceReturn(asset)}
           onMaintenance={(asset) => setSelectedAssetForMaintenance(asset)}
           onEdit={(asset) => setSelectedAssetForEdit(asset)}
+          onRetire={(asset) => setSelectedAssetForRetire(asset)}
           onDelete={(asset) => handleDeleteAsset(asset)}
         />
       )}
@@ -290,9 +296,12 @@ function ITAMApp() {
             onAssign={(asset) => setSelectedAssetForAssign(asset)}
             onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
             onReturn={(asset) => setSelectedAssetForReturn(asset)}
+            onMaintenanceReturn={(asset) => setSelectedAssetForMaintenanceReturn(asset)}
             onMaintenance={(asset) => setSelectedAssetForMaintenance(asset)}
             onEdit={(asset) => setSelectedAssetForEdit(asset)}
+            onRetire={(asset) => setSelectedAssetForRetire(asset)}
             onDelete={(asset) => handleDeleteAsset(asset)}
+            onRefresh={loadData}
           />
         </div>
       )}
@@ -337,8 +346,10 @@ function ITAMApp() {
             onAssign={(asset) => setSelectedAssetForAssign(asset)}
             onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
             onReturn={(asset) => setSelectedAssetForReturn(asset)}
+            onMaintenanceReturn={(asset) => setSelectedAssetForMaintenanceReturn(asset)}
             onMaintenance={(asset) => setSelectedAssetForMaintenance(asset)}
             onEdit={(asset) => setSelectedAssetForEdit(asset)}
+            onRetire={(asset) => setSelectedAssetForRetire(asset)}
             onDelete={(asset) => handleDeleteAsset(asset)}
           />
         </div>
@@ -367,8 +378,10 @@ function ITAMApp() {
             onAssign={(asset) => setSelectedAssetForAssign(asset)}
             onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
             onReturn={(asset) => setSelectedAssetForReturn(asset)}
+            onMaintenanceReturn={(asset) => setSelectedAssetForMaintenanceReturn(asset)}
             onMaintenance={(asset) => setSelectedAssetForMaintenance(asset)}
             onEdit={(asset) => setSelectedAssetForEdit(asset)}
+            onRetire={(asset) => setSelectedAssetForRetire(asset)}
             onDelete={(asset) => handleDeleteAsset(asset)}
           />
         </div>
@@ -397,8 +410,10 @@ function ITAMApp() {
             onAssign={(asset) => setSelectedAssetForAssign(asset)}
             onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
             onReturn={(asset) => setSelectedAssetForReturn(asset)}
+            onMaintenanceReturn={(asset) => setSelectedAssetForMaintenanceReturn(asset)}
             onMaintenance={(asset) => setSelectedAssetForMaintenance(asset)}
             onEdit={(asset) => setSelectedAssetForEdit(asset)}
+            onRetire={(asset) => setSelectedAssetForRetire(asset)}
             onDelete={(asset) => handleDeleteAsset(asset)}
           />
         </div>
@@ -437,6 +452,8 @@ function ITAMApp() {
             onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
             onReturn={(asset) => setSelectedAssetForReturn(asset)}
             onMaintenance={(asset) => setSelectedAssetForMaintenance(asset)}
+            onMaintenanceReturn={(asset) => setSelectedAssetForMaintenanceReturn(asset)}
+            onRetire={(asset) => setSelectedAssetForRetire(asset)}
             onEdit={(asset) => setSelectedAssetForEdit(asset)}
             onDelete={(asset) => handleDeleteAsset(asset)}
           />
@@ -454,6 +471,10 @@ function ITAMApp() {
           assets={assets}
           globalSearch={globalSearch}
           onSuccess={loadData}
+          onViewAsset={(asset) => setSelectedAssetForDetails(asset)}
+          onAssign={(asset) => setSelectedAssetForAssign(asset)}
+          onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
+          onReturn={(asset) => setSelectedAssetForReturn(asset)}
         />
       )}
 
@@ -544,8 +565,11 @@ function ITAMApp() {
           onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
           onReturn={(asset) => setSelectedAssetForReturn(asset)}
           onMaintenance={(asset) => setSelectedAssetForMaintenance(asset)}
+          onMaintenanceReturn={(asset) => setSelectedAssetForMaintenanceReturn(asset)}
+          onRetire={(asset) => setSelectedAssetForRetire(asset)}
           onEdit={(asset) => setSelectedAssetForEdit(asset)}
           onDelete={(asset) => handleDeleteAsset(asset)}
+          onUpdate={handleAssetUpdated}
         />
       )}
 
@@ -594,6 +618,22 @@ function ITAMApp() {
         <QuickMaintenanceModal
           asset={selectedAssetForMaintenance}
           onClose={() => setSelectedAssetForMaintenance(null)}
+          onSuccess={handleAssetUpdated}
+        />
+      )}
+
+      {selectedAssetForMaintenanceReturn && (
+        <MaintenanceReturnModal
+          asset={selectedAssetForMaintenanceReturn}
+          onClose={() => setSelectedAssetForMaintenanceReturn(null)}
+          onSuccess={handleAssetUpdated}
+        />
+      )}
+
+      {selectedAssetForRetire && (
+        <RetireAssetModal
+          asset={selectedAssetForRetire}
+          onClose={() => setSelectedAssetForRetire(null)}
           onSuccess={handleAssetUpdated}
         />
       )}

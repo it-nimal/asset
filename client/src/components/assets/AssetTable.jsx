@@ -21,8 +21,11 @@ import {
   CheckCircle2,
   Search,
   X,
+  Archive,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from '../../constants/organization';
+import BulkImportExportModal from './BulkImportExportModal';
 
 export const STATUS_COLORS = {
   Available: { text: '#34d399', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.28)' },
@@ -44,10 +47,14 @@ export default function AssetTable({
   onAssign,
   onTransfer,
   onReturn,
+  onMaintenanceReturn,
   onEdit,
   onMaintenance,
+  onRetire,
   onDelete,
+  onRefresh,
 }) {
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [localSearch, setLocalSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [deptFilter, setDeptFilter] = useState('All');
@@ -203,9 +210,9 @@ export default function AssetTable({
   const getSortIcon = (field) => {
     if (sortBy !== field) return <ArrowUpDown size={12} color="var(--text-faint)" />;
     return sortOrder === 'asc' ? (
-      <ArrowUp size={12} color="#818cf8" />
+      <ArrowUp size={12} color="#38bdf8" />
     ) : (
-      <ArrowDown size={12} color="#818cf8" />
+      <ArrowDown size={12} color="#38bdf8" />
     );
   };
 
@@ -436,10 +443,31 @@ export default function AssetTable({
             type="button"
             onClick={exportFilteredCSV}
             className="btn btn-outline btn-xs"
-            title="Export CSV"
+            title="Export Quick CSV"
           >
             <Download size={13} />
-            <span>Export CSV</span>
+            <span>Export Table</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowBulkModal(true)}
+            className="btn btn-xs"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              backgroundColor: 'rgba(99, 102, 241, 0.2)',
+              color: '#38bdf8',
+              border: '1px solid rgba(99, 102, 241, 0.35)',
+              fontWeight: 600,
+              cursor: 'pointer',
+              borderRadius: 'var(--radius-sm)',
+            }}
+            title="Import or Export full 38-column company roster"
+          >
+            <FileSpreadsheet size={13} />
+            <span>Master Excel / CSV</span>
           </button>
         </div>
       </div>
@@ -496,7 +524,7 @@ export default function AssetTable({
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}
                   >
                     {selectedIds.length === paginatedAssets.length && paginatedAssets.length > 0 ? (
-                      <CheckSquare size={16} color="#818cf8" />
+                      <CheckSquare size={16} color="#38bdf8" />
                     ) : (
                       <Square size={16} />
                     )}
@@ -583,7 +611,7 @@ export default function AssetTable({
                           onClick={() => toggleSelectOne(asset._id)}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}
                         >
-                          {isSelected ? <CheckSquare size={16} color="#818cf8" /> : <Square size={16} />}
+                          {isSelected ? <CheckSquare size={16} color="#38bdf8" /> : <Square size={16} />}
                         </button>
                       </td>
 
@@ -595,7 +623,7 @@ export default function AssetTable({
                             style={{
                               fontFamily: 'var(--font-mono)',
                               fontWeight: 700,
-                              color: '#818cf8',
+                              color: '#38bdf8',
                               cursor: 'pointer',
                             }}
                           >
@@ -711,7 +739,7 @@ export default function AssetTable({
                               onClick={() => onTransfer(asset)}
                               className="btn btn-ghost btn-icon btn-xs"
                               title="Transfer Custody"
-                              style={{ color: '#818cf8' }}
+                              style={{ color: '#38bdf8' }}
                             >
                               <ArrowRightLeft size={14} />
                             </button>
@@ -729,19 +757,22 @@ export default function AssetTable({
                             </button>
                           )}
 
-                          {asset.status === 'Under Maintenance' && onReturn && (
+                          {asset.status === 'Under Maintenance' && (onMaintenanceReturn || onReturn) && (
                             <button
                               type="button"
-                              onClick={() => onReturn(asset)}
+                              onClick={() => {
+                                if (onMaintenanceReturn) onMaintenanceReturn(asset);
+                                else onReturn(asset);
+                              }}
                               className="btn btn-ghost btn-icon btn-xs"
-                              title="Mark Repaired / Return to Stock"
+                              title="Record Return from Repair (Wapsi / Repaired)"
                               style={{ color: '#34d399' }}
                             >
                               <CheckCircle2 size={14} />
                             </button>
                           )}
 
-                          {onMaintenance && (
+                          {onMaintenance && asset.status !== 'Under Maintenance' && asset.status !== 'Retired' && (
                             <button
                               type="button"
                               onClick={() => onMaintenance(asset)}
@@ -759,9 +790,21 @@ export default function AssetTable({
                               onClick={() => onEdit(asset)}
                               className="btn btn-ghost btn-icon btn-xs"
                               title="Edit Asset Details"
-                              style={{ color: '#818cf8' }}
+                              style={{ color: '#38bdf8' }}
                             >
                               <Edit3 size={14} />
+                            </button>
+                          )}
+
+                          {onRetire && asset.status !== 'Retired' && (
+                            <button
+                              type="button"
+                              onClick={() => onRetire(asset)}
+                              className="btn btn-ghost btn-icon btn-xs"
+                              title="Retire / Decommission Asset"
+                              style={{ color: '#94a3b8' }}
+                            >
+                              <Archive size={14} />
                             </button>
                           )}
 
@@ -842,6 +885,16 @@ export default function AssetTable({
           </div>
         </div>
       </div>
+
+      {/* Bulk Import / Export Modal for 38-Column Roster */}
+      <BulkImportExportModal
+        isOpen={showBulkModal}
+        onClose={() => setShowBulkModal(false)}
+        onImportSuccess={() => {
+          if (onRefresh) onRefresh();
+          else window.location.reload();
+        }}
+      />
     </div>
   );
 }

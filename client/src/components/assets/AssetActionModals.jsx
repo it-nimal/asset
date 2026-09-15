@@ -27,6 +27,7 @@ import { api } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../common/Toast";
 import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from "../../constants/organization";
+import HardwareAllocationSelector from "./HardwareAllocationSelector";
 
 const formatDateInput = (d) => {
   if (!d) return "";
@@ -60,9 +61,15 @@ export function AssignModal({
   const [manualPlant, setManualPlant] = useState("Vitromed");
   const [floorCabin, setFloorCabin] = useState(asset.floorCabin || "Main Floor");
 
+  const [assignedDate, setAssignedDate] = useState(new Date().toISOString().split("T")[0]);
   const [expectedReturnDate, setExpectedReturnDate] = useState("");
   const [remarks, setRemarks] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Peripherals & Hardware Allocation Options
+  const [deviceType, setDeviceType] = useState(asset.deviceType || "Laptop");
+  const [accessories, setAccessories] = useState(asset.accessories || "UPS, Wireless K/B & Mouse");
+  const [monitorDetails, setMonitorDetails] = useState(asset.monitorDetails || "");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -101,7 +108,11 @@ export function AssignModal({
         department: targetDept,
         plant: targetPlant,
         floorCabin,
+        assignedDate,
         expectedReturnDate,
+        deviceType,
+        accessories,
+        monitorDetails,
         remarks: remarks || ("Assigned to " + targetName + " by " + (user?.name || "IT Admin")),
         actorName: user?.name || "IT Admin",
       });
@@ -118,7 +129,7 @@ export function AssignModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "580px" }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "680px", width: "95vw" }}>
         <div className="modal-header">
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <UserCheck size={18} color="#34d399" />
@@ -140,7 +151,7 @@ export function AssignModal({
           <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>
             {asset.make} {asset.model}
           </div>
-          <div style={{ fontSize: "0.75rem", color: "#818cf8", fontFamily: "var(--font-mono)" }}>
+          <div style={{ fontSize: "0.75rem", color: "#38bdf8", fontFamily: "var(--font-mono)" }}>
             Tag: {asset.assetNo || "AST-N/A"} • S/N: {asset.sr} • Current Plant: {asset.plant || "Vitromed"}
           </div>
         </div>
@@ -299,16 +310,44 @@ export function AssignModal({
               </div>
             )}
 
-            <div className="form-group">
-              <label className="form-label">Expected Handover / Return Date</label>
-              <input
-                type="date"
-                value={expectedReturnDate}
-                onChange={(e) => setExpectedReturnDate(e.target.value)}
-                className="form-control"
-                style={{ colorScheme: "dark" }}
-              />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              <div className="form-group">
+                <label className="form-label">
+                  Date Given / Handover Date <span style={{ color: "#f87171" }}>*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={assignedDate}
+                  onChange={(e) => setAssignedDate(e.target.value)}
+                  className="form-control"
+                  style={{ colorScheme: "dark" }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Expected Handover / Return Date</label>
+                <input
+                  type="date"
+                  value={expectedReturnDate}
+                  onChange={(e) => setExpectedReturnDate(e.target.value)}
+                  className="form-control"
+                  style={{ colorScheme: "dark" }}
+                />
+              </div>
             </div>
+
+            {/* Hardware & Peripherals Allocation (Laptop/Desktop, Monitor, K/B & Mouse, Headphone, Printer, Scanner, UPS) */}
+            <HardwareAllocationSelector
+              deviceType={deviceType}
+              onDeviceTypeChange={setDeviceType}
+              accessories={accessories}
+              onAccessoriesChange={setAccessories}
+              monitorDetails={monitorDetails}
+              onMonitorDetailsChange={setMonitorDetails}
+              compact={false}
+              title="Hardware & Peripherals Handed Over to User"
+            />
 
             <div className="form-group">
               <label className="form-label">Handover Checklist & Allocation Remarks</label>
@@ -358,6 +397,7 @@ export function TransferModal({
   const [manualDept, setManualDept] = useState(asset.department || COMPANY_DEPARTMENTS[0]);
   const [manualPlant, setManualPlant] = useState("Vitromed");
 
+  const [transferDate, setTransferDate] = useState(new Date().toISOString().split("T")[0]);
   const [transferReason, setTransferReason] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -397,6 +437,7 @@ export function TransferModal({
         newMailId: targetEmail,
         newDepartment: targetDept,
         newLocation: targetPlant,
+        transferDate,
         transferReason: transferReason || ("Custody transferred from " + asset.userName + " to " + targetName + " by " + (user?.name || "IT Admin")),
         actorName: user?.name || "IT Admin",
       });
@@ -416,7 +457,7 @@ export function TransferModal({
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "580px" }}>
         <div className="modal-header">
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <ArrowRightLeft size={18} color="#818cf8" />
+            <ArrowRightLeft size={18} color="#38bdf8" />
             <h3 style={{ fontSize: "1.05rem", fontWeight: 700 }}>Transfer Hardware Custody</h3>
           </div>
           <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
@@ -564,6 +605,20 @@ export function TransferModal({
                 </div>
               </div>
             )}
+
+            <div className="form-group">
+              <label className="form-label">
+                Transfer Handover Date <span style={{ color: "#f87171" }}>*</span>
+              </label>
+              <input
+                type="date"
+                required
+                value={transferDate}
+                onChange={(e) => setTransferDate(e.target.value)}
+                className="form-control"
+                style={{ colorScheme: "dark" }}
+              />
+            </div>
 
             <div className="form-group">
               <label className="form-label">Reason for Inter-Departmental Transfer</label>
@@ -727,6 +782,7 @@ export function EditAssetModal({
     assetNo: asset.assetNo || "",
     status: asset.status || "Available",
     workingCondition: asset.workingCondition || "Good",
+    accessories: asset.accessories || "",
 
     // 2. Custodian & Placement
     userName: asset.userName || "Unassigned",
@@ -850,7 +906,7 @@ export function EditAssetModal({
         <div className="modal-header" style={{ padding: "1rem 1.5rem" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-              <Edit3 size={18} color="#818cf8" />
+              <Edit3 size={18} color="#38bdf8" />
               <h3 style={{ fontSize: "1.15rem", fontWeight: 800 }}>
                 Edit Asset: {asset.make} {asset.model}
               </h3>
@@ -869,7 +925,7 @@ export function EditAssetModal({
               </span>
             </div>
             <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px", fontFamily: "var(--font-mono)" }}>
-              Tag: {formData.assetNo || "AST-NEW"} • S/N: {formData.sr} • Custodian: <strong style={{ color: "#818cf8" }}>{formData.userName}</strong>
+              Tag: {formData.assetNo || "AST-NEW"} • S/N: {formData.sr} • Custodian: <strong style={{ color: "#38bdf8" }}>{formData.userName}</strong>
             </div>
           </div>
           <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
@@ -912,7 +968,7 @@ export function EditAssetModal({
                   transition: "all 0.15s ease",
                 }}
               >
-                <Icon size={14} color={isAct ? "#818cf8" : "currentColor"} />
+                <Icon size={14} color={isAct ? "#38bdf8" : "currentColor"} />
                 <span>{t.label}</span>
               </button>
             );
@@ -944,7 +1000,7 @@ export function EditAssetModal({
                       borderRadius: "var(--radius-md)",
                     }}
                   >
-                    <label className="form-label" style={{ color: "#818cf8", marginBottom: "0.35rem" }}>
+                    <label className="form-label" style={{ color: "#38bdf8", marginBottom: "0.35rem" }}>
                       ⚡ Quick-Assign from Staff Directory
                     </label>
                     <select
@@ -1113,6 +1169,18 @@ export function EditAssetModal({
                     />
                   </div>
                 </div>
+
+                {/* Hardware & Peripherals Allocated Bundle */}
+                <HardwareAllocationSelector
+                  deviceType={formData.deviceType}
+                  onDeviceTypeChange={(val) => setFormData((prev) => ({ ...prev, deviceType: val }))}
+                  accessories={formData.accessories}
+                  onAccessoriesChange={(val) => setFormData((prev) => ({ ...prev, accessories: val }))}
+                  monitorDetails={formData.monitorDetails}
+                  onMonitorDetailsChange={(val) => setFormData((prev) => ({ ...prev, monitorDetails: val }))}
+                  compact={true}
+                  title="Hardware & Peripherals Allocated with Machine"
+                />
               </div>
             )}
 
@@ -1264,6 +1332,18 @@ export function EditAssetModal({
                     />
                   </div>
                 </div>
+
+                {/* Hardware & Peripherals Allocation Checklist */}
+                <HardwareAllocationSelector
+                  deviceType={formData.deviceType}
+                  onDeviceTypeChange={(val) => setFormData((prev) => ({ ...prev, deviceType: val }))}
+                  accessories={formData.accessories}
+                  onAccessoriesChange={(val) => setFormData((prev) => ({ ...prev, accessories: val }))}
+                  monitorDetails={formData.monitorDetails}
+                  onMonitorDetailsChange={(val) => setFormData((prev) => ({ ...prev, monitorDetails: val }))}
+                  compact={false}
+                  title="Hardware & Peripherals Allocation Checklist"
+                />
               </div>
             )}
 
@@ -1607,8 +1687,9 @@ export function EditAssetModal({
 // ----------------- QUICK MAINTENANCE MODAL -----------------
 export function QuickMaintenanceModal({ asset, onClose, onSuccess }) {
   const toast = useToast();
+  const [maintenanceStartDate, setMaintenanceStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [issue, setIssue] = useState("");
-  const [serviceVendor, setServiceVendor] = useState("Authorized OEM Service Partner");
+  const [serviceVendor, setServiceVendor] = useState(asset.serviceVendor || "Authorized OEM Service Partner");
   const [repairCost, setRepairCost] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -1618,12 +1699,13 @@ export function QuickMaintenanceModal({ asset, onClose, onSuccess }) {
 
     setLoading(true);
     try {
+      const sentDate = maintenanceStartDate ? new Date(maintenanceStartDate) : new Date();
       await api.updateAsset(asset._id, {
         status: "Under Maintenance",
-        maintenanceStartDate: new Date().toISOString(),
+        maintenanceStartDate: sentDate.toISOString(),
         serviceVendor,
         maintenanceNotes: issue,
-        remarks: "Maintenance Opened: " + issue + " (" + serviceVendor + ")",
+        remarks: "Maintenance Opened: " + issue + " (" + serviceVendor + ") on " + sentDate.toLocaleDateString("en-GB"),
       });
 
       // Also create formal ticket in maintenance collection
@@ -1634,7 +1716,7 @@ export function QuickMaintenanceModal({ asset, onClose, onSuccess }) {
         technician: serviceVendor,
         issue,
         cost: parseFloat(repairCost) || 0,
-        startDate: new Date(),
+        startDate: sentDate,
         status: "In Progress",
       }).catch(() => {});
 
@@ -1650,7 +1732,7 @@ export function QuickMaintenanceModal({ asset, onClose, onSuccess }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "520px" }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "540px" }}>
         <div className="modal-header">
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Wrench size={18} color="#fbbf24" />
@@ -1676,6 +1758,33 @@ export function QuickMaintenanceModal({ asset, onClose, onSuccess }) {
 
         <form onSubmit={handleSubmit}>
           <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              <div className="form-group">
+                <label className="form-label">
+                  Date Sent to Maintenance <span style={{ color: "#f87171" }}>*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={maintenanceStartDate}
+                  onChange={(e) => setMaintenanceStartDate(e.target.value)}
+                  className="form-control"
+                  style={{ colorScheme: "dark" }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Service Provider / Partner</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Dell Service Partner, In-house IT"
+                  value={serviceVendor}
+                  onChange={(e) => setServiceVendor(e.target.value)}
+                  className="form-control"
+                />
+              </div>
+            </div>
+
             <div className="form-group">
               <label className="form-label">
                 Reported Hardware / Software Fault <span style={{ color: "#f87171" }}>*</span>
@@ -1691,12 +1800,13 @@ export function QuickMaintenanceModal({ asset, onClose, onSuccess }) {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Service Provider / Tech</label>
+              <label className="form-label">Estimated Repair Cost (₹)</label>
               <input
-                type="text"
-                placeholder="e.g. Authorized Tech, In-house IT"
-                value={serviceVendor}
-                onChange={(e) => setServiceVendor(e.target.value)}
+                type="number"
+                min="0"
+                placeholder="0"
+                value={repairCost}
+                onChange={(e) => setRepairCost(e.target.value)}
                 className="form-control"
               />
             </div>
@@ -1708,6 +1818,327 @@ export function QuickMaintenanceModal({ asset, onClose, onSuccess }) {
             </button>
             <button type="submit" disabled={loading} className="btn btn-primary btn-sm" style={{ backgroundColor: "#d97706", borderColor: "#d97706" }}>
               {loading ? "Submitting..." : "Flag Under Maintenance"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ----------------- RECORD RETURN FROM MAINTENANCE MODAL -----------------
+export function MaintenanceReturnModal({ asset, onClose, onSuccess }) {
+  const { user } = useAuth();
+  const toast = useToast();
+
+  const [returnDate, setReturnDate] = useState(new Date().toISOString().split("T")[0]);
+  const [resolution, setResolution] = useState("");
+  const [repairCost, setRepairCost] = useState(asset.lastMaintenanceCost || 0);
+  const [workingCondition, setWorkingCondition] = useState(asset.workingCondition || "Good");
+  const [serviceVendor, setServiceVendor] = useState(asset.serviceVendor || "OEM Service Partner");
+  const [returnTo, setReturnTo] = useState("Stock"); // "Stock" | "Custodian"
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const sentDateFormatted = asset.maintenanceStartDate
+    ? new Date(asset.maintenanceStartDate).toLocaleDateString("en-GB")
+    : "N/A";
+
+  const handleReturnFromMaintenance = async (e) => {
+    e.preventDefault();
+    if (!resolution.trim()) {
+      return toast.error("Please enter the repair resolution / work done details");
+    }
+
+    setLoading(true);
+    try {
+      const res = await api.returnFromMaintenance(asset._id, {
+        returnDate,
+        resolution,
+        repairCost: parseFloat(repairCost) || 0,
+        workingCondition,
+        serviceVendor,
+        returnTo,
+        notes,
+        actorName: user?.name || "IT Admin",
+      });
+
+      toast.success(
+        `"${asset.make} ${asset.model}" returned from maintenance and marked ${returnTo === "Custodian" ? "Assigned" : "In Stock"}!`,
+        "Maintenance Completed"
+      );
+      if (onSuccess) onSuccess(res.data);
+      onClose();
+    } catch (err) {
+      toast.error(err.message, "Return from Maintenance Failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "560px" }}>
+        <div className="modal-header">
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <CheckCircle2 size={18} color="#34d399" />
+            <h3 style={{ fontSize: "1.05rem", fontWeight: 700 }}>Record Return from Maintenance</h3>
+          </div>
+          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Header Preview showing Sent Date and Issue */}
+        <div
+          style={{
+            padding: "0.75rem 1.5rem",
+            backgroundColor: "rgba(9, 15, 26, 0.5)",
+            borderBottom: "1px solid var(--border-default)",
+          }}
+        >
+          <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{asset.make} {asset.model}</div>
+          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "3px" }}>
+            <span>Tag: <strong style={{ color: "#38bdf8", fontFamily: "var(--font-mono)" }}>{asset.assetNo || "AST-N/A"}</strong></span>
+            <span>Sent for Repair: <strong style={{ color: "#fbbf24" }}>{sentDateFormatted}</strong></span>
+            <span>Vendor: <strong>{asset.serviceVendor || "Service Center"}</strong></span>
+          </div>
+          {asset.maintenanceNotes && (
+            <div style={{ fontSize: "0.74rem", color: "#fbbf24", marginTop: "4px", backgroundColor: "rgba(251, 191, 36, 0.08)", padding: "0.25rem 0.5rem", borderRadius: "4px" }}>
+              Reported Issue: {asset.maintenanceNotes}
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleReturnFromMaintenance}>
+          <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              <div className="form-group">
+                <label className="form-label">
+                  Return / Received Date <span style={{ color: "#f87171" }}>*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={returnDate}
+                  onChange={(e) => setReturnDate(e.target.value)}
+                  className="form-control"
+                  style={{ colorScheme: "dark" }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Actual Repair Cost (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={repairCost}
+                  onChange={(e) => setRepairCost(e.target.value)}
+                  className="form-control"
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                Work Done / Repair Resolution <span style={{ color: "#f87171" }}>*</span>
+              </label>
+              <textarea
+                required
+                rows={3}
+                placeholder="e.g. Replaced display panel, applied thermal paste, tested hardware diagnostics."
+                value={resolution}
+                onChange={(e) => setResolution(e.target.value)}
+                className="form-control"
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              <div className="form-group">
+                <label className="form-label">Working Condition Upon Return</label>
+                <select
+                  value={workingCondition}
+                  onChange={(e) => setWorkingCondition(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="Excellent">Excellent (Like New)</option>
+                  <option value="Good">Good (Fully Operational)</option>
+                  <option value="Fair">Fair (Minor cosmetic wear)</option>
+                  <option value="Needs Repair">Needs Repair (Partially fixed)</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Return Destination</label>
+                <select
+                  value={returnTo}
+                  onChange={(e) => setReturnTo(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="Stock">Return to Available Stock</option>
+                  {asset.userName && asset.userName !== "Unassigned" && (
+                    <option value="Custodian">Restore to Custodian ({asset.userName})</option>
+                  )}
+                </select>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Service Vendor / Technician</label>
+              <input
+                type="text"
+                value={serviceVendor}
+                onChange={(e) => setServiceVendor(e.target.value)}
+                className="form-control"
+                placeholder="e.g. Dell Authorized Service Center"
+              />
+            </div>
+          </div>
+
+          <div className="modal-footer">
+            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
+              Cancel
+            </button>
+            <button type="submit" disabled={loading} className="btn btn-primary btn-sm" style={{ backgroundColor: "#059669", borderColor: "#059669" }}>
+              {loading ? "Recording..." : "Complete Return & Update Asset"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ----------------- RETIRE ASSET MODAL -----------------
+export function RetireAssetModal({ asset, onClose, onSuccess }) {
+  const { user } = useAuth();
+  const toast = useToast();
+
+  const [retireDate, setRetireDate] = useState(new Date().toISOString().split("T")[0]);
+  const [reasonCategory, setReasonCategory] = useState("End of Life / Obsolete");
+  const [customReason, setCustomReason] = useState("");
+  const [workingCondition, setWorkingCondition] = useState("Fair");
+  const [loading, setLoading] = useState(false);
+
+  const handleRetire = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const finalReason = customReason.trim()
+      ? `${reasonCategory}: ${customReason.trim()}`
+      : reasonCategory;
+
+    try {
+      const res = await api.retireAsset(asset._id, {
+        retireDate,
+        reason: finalReason,
+        workingCondition,
+        actorName: user?.name || "IT Admin",
+      });
+
+      toast.success(`Asset "${asset.make} ${asset.model}" has been successfully decommissioned / retired.`, "Asset Retired");
+      if (onSuccess) onSuccess(res.data);
+      onClose();
+    } catch (err) {
+      toast.error(err.message, "Retire Failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "520px" }}>
+        <div className="modal-header">
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "1.1rem" }}>📦</span>
+            <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#f87171" }}>Decommission / Retire Asset</h3>
+          </div>
+          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div
+          style={{
+            padding: "0.75rem 1.5rem",
+            backgroundColor: "rgba(239, 68, 68, 0.08)",
+            borderBottom: "1px solid rgba(239, 68, 68, 0.2)",
+          }}
+        >
+          <div style={{ fontWeight: 600 }}>{asset.make} {asset.model}</div>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px", fontFamily: "var(--font-mono)" }}>
+            Tag: {asset.assetNo || "AST-N/A"} • S/N: {asset.sr} • Current Custodian: {asset.userName || "Unassigned"}
+          </div>
+        </div>
+
+        <form onSubmit={handleRetire}>
+          <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              <div className="form-group">
+                <label className="form-label">
+                  Retirement Date <span style={{ color: "#f87171" }}>*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={retireDate}
+                  onChange={(e) => setRetireDate(e.target.value)}
+                  className="form-control"
+                  style={{ colorScheme: "dark" }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Physical Working Condition</label>
+                <select
+                  value={workingCondition}
+                  onChange={(e) => setWorkingCondition(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="Fair">Fair (Operational but aged)</option>
+                  <option value="Damaged">Damaged / Beyond Economical Repair</option>
+                  <option value="Needs Repair">Needs Repair (Obsolete components)</option>
+                  <option value="Good">Good (Replaced under upgrade cycle)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Primary Decommissioning Reason</label>
+              <select
+                value={reasonCategory}
+                onChange={(e) => setReasonCategory(e.target.value)}
+                className="form-select"
+              >
+                <option value="End of Life / Obsolete">End of Life / Obsolete (Warranty expired)</option>
+                <option value="Hardware Failure Beyond Repair">Hardware Failure Beyond Economical Repair</option>
+                <option value="Sent for E-Waste Disposal / Recycling">Sent for E-Waste Disposal / Recycling</option>
+                <option value="Stripped for Spare Parts">Stripped for Spare Parts</option>
+                <option value="Lost or Stolen">Lost or Stolen</option>
+                <option value="Other">Other Reason</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Additional Decommissioning Notes</label>
+              <textarea
+                rows={2}
+                placeholder="e.g. Scrapped HDD degaussed, motherboard sent to certified recycler."
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+                className="form-control"
+              />
+            </div>
+          </div>
+
+          <div className="modal-footer">
+            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
+              Cancel
+            </button>
+            <button type="submit" disabled={loading} className="btn btn-primary btn-sm" style={{ backgroundColor: "#ef4444", borderColor: "#ef4444" }}>
+              {loading ? "Retiring..." : "Confirm & Retire Asset"}
             </button>
           </div>
         </form>

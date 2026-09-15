@@ -127,7 +127,7 @@ export default function Sidebar({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          backgroundColor: 'rgba(9, 15, 26, 0.45)',
+          backgroundColor: 'var(--bg-surface-raised)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -138,39 +138,12 @@ export default function Sidebar({
               height: '32px',
               width: 'auto',
               objectFit: 'contain',
-              filter: 'drop-shadow(0 2px 6px rgba(99,102,241,0.4))',
+              filter: 'drop-shadow(0 2px 6px rgba(56,189,248,0.4))',
             }}
           />
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <span
-                style={{
-                  fontFamily: 'var(--font-brand)',
-                  fontWeight: 800,
-                  fontSize: '0.96rem',
-                  color: 'var(--text-primary)',
-                  letterSpacing: '0.01em',
-                }}
-              >
-                VITROMED
-              </span>
-              <span
-                style={{
-                  fontSize: '0.62rem',
-                  fontWeight: 700,
-                  backgroundColor: 'var(--primary-light)',
-                  color: '#a5b4fc',
-                  padding: '0.1rem 0.35rem',
-                  borderRadius: 'var(--radius-xs)',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                ITAM
-              </span>
-            </div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '1px' }}>
-              Enterprise Systems
-            </div>
+            
+           
           </div>
         </div>
 
@@ -228,14 +201,14 @@ export default function Sidebar({
                       padding: '0.52rem 0.7rem',
                       borderRadius: 'var(--radius-md)',
                       border: '1px solid',
-                      borderColor: isActive ? 'rgba(99, 102, 241, 0.3)' : 'transparent',
+                      borderColor: isActive ? 'rgba(56, 189, 248, 0.4)' : 'transparent',
                       backgroundColor: isActive
                         ? 'var(--bg-surface-active)'
                         : 'transparent',
                       color: isActive
                         ? '#ffffff'
                         : item.isAction
-                        ? '#a5b4fc'
+                        ? '#38bdf8'
                         : 'var(--text-secondary)',
                       cursor: 'pointer',
                       fontSize: '0.8rem',
@@ -252,7 +225,7 @@ export default function Sidebar({
                     onMouseLeave={(e) => {
                       if (!isActive) {
                         e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = item.isAction ? '#a5b4fc' : 'var(--text-secondary)';
+                        e.currentTarget.style.color = item.isAction ? '#38bdf8' : 'var(--text-secondary)';
                       }
                     }}
                   >
@@ -261,9 +234,9 @@ export default function Sidebar({
                         size={15}
                         color={
                           isActive
-                            ? '#818cf8'
+                            ? '#38bdf8'
                             : item.isAction
-                            ? '#a5b4fc'
+                            ? '#38bdf8'
                             : 'var(--text-muted)'
                         }
                       />
@@ -302,7 +275,7 @@ export default function Sidebar({
         style={{
           padding: '0.85rem 1rem',
           borderTop: '1px solid var(--border-default)',
-          backgroundColor: 'rgba(9, 15, 26, 0.6)',
+          backgroundColor: 'var(--bg-surface-raised)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -315,7 +288,7 @@ export default function Sidebar({
               width: '30px',
               height: '30px',
               borderRadius: 'var(--radius-full)',
-              background: 'linear-gradient(135deg, #4f46e5, #06b6d4)',
+              background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -352,7 +325,7 @@ export default function Sidebar({
             padding: '0.15rem 0.4rem',
             borderRadius: 'var(--radius-sm)',
             backgroundColor: 'var(--primary-light)',
-            color: '#a5b4fc',
+            color: 'var(--primary)',
             fontWeight: 700,
           }}
         >

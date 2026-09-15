@@ -29,8 +29,10 @@ export default function Dashboard({
   onAssign,
   onTransfer,
   onReturn,
+  onMaintenanceReturn,
   onMaintenance,
   onEdit,
+  onRetire,
   onDelete,
 }) {
   const cards = [
@@ -39,8 +41,8 @@ export default function Dashboard({
       value: stats?.total || 0,
       subtext: 'Across all plants',
       icon: Boxes,
-      color: '#818cf8',
-      bgGlow: 'rgba(99, 102, 241, 0.12)',
+      color: '#38bdf8',
+      bgGlow: 'rgba(56, 189, 248, 0.14)',
       target: 'assets-all',
     },
     {
@@ -290,7 +292,7 @@ export default function Dashboard({
         {/* Category Breakdown */}
         <div className="card" style={{ padding: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-            <Layers size={16} color="#818cf8" />
+            <Layers size={16} color="#38bdf8" />
             <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>Hardware by Category</span>
           </div>
 
@@ -305,7 +307,7 @@ export default function Dashboard({
                   <div key={idx}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '4px' }}>
                       <span style={{ color: 'var(--text-secondary)' }}>{item.name}</span>
-                      <span style={{ color: '#818cf8', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                      <span style={{ color: '#38bdf8', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                         {item.count} units
                       </span>
                     </div>
@@ -322,7 +324,7 @@ export default function Dashboard({
                         style={{
                           width: `${pct}%`,
                           height: '100%',
-                          background: 'linear-gradient(90deg, #4f46e5, #818cf8)',
+                          background: 'linear-gradient(90deg, #0284c7, #38bdf8)',
                           borderRadius: 'var(--radius-full)',
                           transition: 'width 0.4s ease',
                         }}
@@ -435,14 +437,14 @@ export default function Dashboard({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Activity size={16} color="#818cf8" />
+            <Activity size={16} color="#38bdf8" />
             <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>Recent Operational Activities</span>
           </div>
           <button
             type="button"
             onClick={() => onNavigate('audit-logs')}
             className="btn btn-ghost btn-xs"
-            style={{ color: '#818cf8' }}
+            style={{ color: '#38bdf8' }}
           >
             View Complete Audit Log →
           </button>
@@ -545,8 +547,10 @@ export default function Dashboard({
           onAssign={onAssign}
           onTransfer={onTransfer}
           onReturn={onReturn}
+          onMaintenanceReturn={onMaintenanceReturn}
           onMaintenance={onMaintenance}
           onEdit={onEdit}
+          onRetire={onRetire}
           onDelete={onDelete}
         />
       </div>

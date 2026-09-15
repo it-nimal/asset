@@ -5,6 +5,10 @@ mongoose.set('autoIndex', false);
 const assetSchema = new mongoose.Schema(
   {
     // 1. Plant & Identification
+    sn: {
+      type: Number,
+      default: null,
+    },
     plant: {
       type: String,
       default: 'Vitromed',
@@ -16,6 +20,11 @@ const assetSchema = new mongoose.Schema(
     },
 
     // 2. User & Allocation Details
+    userStatus: {
+      type: String,
+      default: 'Active',
+      trim: true,
+    },
     userName: {
       type: String,
       default: 'Unassigned',
@@ -32,6 +41,14 @@ const assetSchema = new mongoose.Schema(
     department: {
       type: String,
       default: 'IT',
+      trim: true,
+    },
+    officialNumber: {
+      type: String,
+      trim: true,
+    },
+    sapId: {
+      type: String,
       trim: true,
     },
     floorCabin: {
@@ -89,11 +106,23 @@ const assetSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    dataBackup: {
+      type: String,
+      trim: true,
+    },
+    accessories: {
+      type: String,
+      trim: true,
+    },
 
     // 4. Software & Licenses
     osVersion: {
       type: String,
       default: 'Windows 11 Pro',
+      trim: true,
+    },
+    windowsType: {
+      type: String,
       trim: true,
     },
     windowsKey: {
@@ -109,14 +138,39 @@ const assetSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    mailSoftware: {
+      type: String,
+      trim: true,
+    },
+    loginUserName: {
+      type: String,
+      trim: true,
+    },
+    loginPassword: {
+      type: String,
+      trim: true,
+    },
     antivirus: {
       type: String,
-      default: 'QuickHeal Endpoint',
+      default: 'eScan',
+      trim: true,
+    },
+    otherSoftware: {
+      type: String,
       trim: true,
     },
 
     // 5. Network & System Identity
     hostName: {
+      type: String,
+      trim: true,
+    },
+    pcGroup: {
+      type: String,
+      default: 'Workgroup',
+      trim: true,
+    },
+    escanPolicy: {
       type: String,
       trim: true,
     },
@@ -139,6 +193,10 @@ const assetSchema = new mongoose.Schema(
       trim: true,
     },
     billNo: {
+      type: String,
+      trim: true,
+    },
+    billCopyDate: {
       type: String,
       trim: true,
     },
@@ -188,6 +246,9 @@ const assetSchema = new mongoose.Schema(
     assignedDate: { type: Date },
     expectedReturnDate: { type: Date },
     maintenanceStartDate: { type: Date, default: Date.now },
+    maintenanceEndDate: { type: Date },
+    lastMaintenanceCost: { type: Number, default: 0 },
+    lastMaintenanceResolution: { type: String, trim: true },
     serviceVendor: { type: String, trim: true },
     maintenanceNotes: { type: String, trim: true },
 

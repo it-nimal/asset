@@ -3,6 +3,7 @@ import React from 'react';
 export default function AppLayout({ sidebar, header, children, mobileNavOpen, setMobileNavOpen }) {
   return (
     <div
+      className="app-main-layout"
       style={{
         display: 'flex',
         minHeight: '100vh',

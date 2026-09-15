@@ -37,6 +37,34 @@ export const api = {
     return await res.json();
   },
 
+  // Bulk Import 38-column Assets
+  async bulkImportAssets(items, overwrite = false, actorName = 'IT Admin') {
+    const res = await fetch(`${API_BASE}/assets/bulk-import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items, overwrite, actorName }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Bulk import failed');
+    return data;
+  },
+
+  // Seed exact 9-page sample row
+  async seedSampleMasterRow() {
+    const res = await fetch(`${API_BASE}/assets/seed/sample-master-row`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to seed sample master row');
+    return data;
+  },
+
+  // Export 38-column CSV
+  getExportMasterCSVUrl() {
+    return `${API_BASE}/assets/export-master-csv`;
+  },
+
   // Create asset (Inward entry)
   async createAsset(assetData) {
     const res = await fetch(`${API_BASE}/assets`, {
@@ -104,6 +132,30 @@ export const api = {
     });
     const resData = await res.json();
     if (!res.ok) throw new Error(resData.message || 'Failed to transfer asset');
+    return resData;
+  },
+
+  // Return from Maintenance
+  async returnFromMaintenance(id, data) {
+    const res = await fetch(`${API_BASE}/assets/${id}/maintenance-return`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData.message || 'Failed to return asset from maintenance');
+    return resData;
+  },
+
+  // Retire / Decommission Asset
+  async retireAsset(id, data) {
+    const res = await fetch(`${API_BASE}/assets/${id}/retire`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData.message || 'Failed to retire asset');
     return resData;
   },
 

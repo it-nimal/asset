@@ -8,6 +8,12 @@ import {
   Phone,
   Search,
   Laptop,
+  Monitor,
+  Keyboard,
+  Headphones,
+  Printer,
+  Scan,
+  Zap,
   CheckCircle2,
   Layers,
   Plus,
@@ -25,11 +31,52 @@ import {
   RefreshCw,
   Briefcase,
   BadgeCheck,
+  Eye,
+  Undo2,
+  ArrowRightLeft,
+  ExternalLink,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useToast } from '../common/Toast';
 import { useAuth } from '../../context/AuthContext';
 import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from '../../constants/organization';
+import HardwareAllocationSelector from '../assets/HardwareAllocationSelector';
+
+// Robust helper to find all hardware assets currently assigned to an employee
+export function getEmployeeAssets(emp, allAssets = []) {
+  if (!emp) return [];
+  const empName = (emp.name || '').trim().toLowerCase();
+  const empId = (emp.employeeId || '').trim().toLowerCase();
+  const empEmail = (emp.email || '').trim().toLowerCase();
+
+  return allAssets.filter((a) => {
+    const aUser = (a.userName || '').trim().toLowerCase();
+    if (!aUser || aUser === 'unassigned') return false;
+
+    // 1. Match by Employee Code / ID
+    const aCode = (a.empCode || '').trim().toLowerCase();
+    if (empId && aCode && (aCode === empId || aCode.includes(empId) || empId.includes(aCode))) {
+      return true;
+    }
+
+    // 2. Match by Email
+    const aMail = (a.mailId || '').trim().toLowerCase();
+    if (empEmail && aMail && (empEmail === aMail || aMail.includes(empEmail) || empEmail.includes(aMail))) {
+      return true;
+    }
+
+    // 3. Match by Name (exact or compound separated by slash, comma, ampersand)
+    if (empName && aUser) {
+      if (aUser === empName) return true;
+      const parts = aUser.split(/[\/,;&]+/).map((p) => p.trim());
+      if (parts.some((p) => p === empName || (p.length > 2 && (p.includes(empName) || empName.includes(p))))) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+}
 
 export default function OrganizationView({
   type = 'employees',
@@ -40,6 +87,10 @@ export default function OrganizationView({
   assets = [],
   globalSearch = '',
   onSuccess,
+  onViewAsset,
+  onAssign,
+  onTransfer,
+  onReturn,
 }) {
   const [searchTerm, setSearchTerm] = useState(globalSearch || '');
   const [departmentFilter, setDepartmentFilter] = useState('All');
@@ -55,6 +106,7 @@ export default function OrganizationView({
   // Modals state
   const [selectedEmpForId, setSelectedEmpForId] = useState(null);
   const [selectedEmpForAsset, setSelectedEmpForAsset] = useState(null);
+  const [selectedEmpForAssetList, setSelectedEmpForAssetList] = useState(null);
   const [showAddEmpModal, setShowAddEmpModal] = useState(false);
   const [empToDelete, setEmpToDelete] = useState(null);
   const [showAddDeptModal, setShowAddDeptModal] = useState(false);
@@ -76,11 +128,7 @@ export default function OrganizationView({
       const matchesDept = departmentFilter === 'All' || e.department === departmentFilter;
       const matchesStatus = statusFilter === 'All' || (e.status || 'Active') === statusFilter;
 
-      const assignedCount = assets.filter(
-        (a) =>
-          (a.userName || '').toLowerCase() === (e.name || '').toLowerCase() ||
-          (a.empCode && e.employeeId && a.empCode.toLowerCase() === e.employeeId.toLowerCase())
-      ).length;
+      const assignedCount = getEmployeeAssets(e, assets).length;
 
       const matchesFleet =
         fleetFilter === 'All' ||
@@ -94,13 +142,7 @@ export default function OrganizationView({
   // Statistics
   const totalEmployees = employees.length;
   const withHardwareCount = useMemo(() => {
-    return employees.filter((e) =>
-      assets.some(
-        (a) =>
-          (a.userName || '').toLowerCase() === (e.name || '').toLowerCase() ||
-          (a.empCode && e.employeeId && a.empCode.toLowerCase() === e.employeeId.toLowerCase())
-      )
-    ).length;
+    return employees.filter((e) => getEmployeeAssets(e, assets).length > 0).length;
   }, [employees, assets]);
 
   const withIdCount = useMemo(() => {
@@ -396,11 +438,7 @@ export default function OrganizationView({
             }}
           >
             {filteredEmployees.map((emp) => {
-              const assignedAssets = assets.filter(
-                (a) =>
-                  (a.userName || '').toLowerCase() === (emp.name || '').toLowerCase() ||
-                  (a.empCode && emp.employeeId && a.empCode.toLowerCase() === emp.employeeId.toLowerCase())
-              );
+              const assignedAssets = getEmployeeAssets(emp, assets);
               const assignedCount = assignedAssets.length;
 
               const statusColor =
@@ -584,66 +622,140 @@ export default function OrganizationView({
                         marginTop: '0.9rem',
                         backgroundColor: 'rgba(9, 15, 26, 0.6)',
                         border: '1px solid var(--border-subtle)',
-                        padding: '0.65rem 0.75rem',
+                        padding: '0.75rem',
                         borderRadius: 'var(--radius-md)',
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: assignedCount > 0 ? '0.45rem' : 0 }}>
-                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                          Assigned Hardware:
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: assignedCount > 0 ? '0.5rem' : 0 }}>
+                        <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+                          Assigned Hardware ({assignedCount}):
                         </span>
-                        <span
-                          className="badge"
-                          style={{
-                            backgroundColor: assignedCount > 0 ? 'var(--status-assigned-bg)' : 'rgba(255,255,255,0.05)',
-                            color: assignedCount > 0 ? 'var(--status-assigned-text)' : 'var(--text-faint)',
-                            border: `1px solid ${assignedCount > 0 ? 'var(--status-assigned-border)' : 'transparent'}`,
-                            fontSize: '0.7rem',
-                          }}
-                        >
-                          {assignedCount} {assignedCount === 1 ? 'Device' : 'Devices'}
-                        </span>
+                        {assignedCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedEmpForAssetList(emp)}
+                            className="btn btn-ghost btn-xs"
+                            style={{
+                              fontSize: '0.7rem',
+                              padding: '2px 7px',
+                              height: '22px',
+                              color: 'var(--color-primary, #0284c7)',
+                              fontWeight: 700,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                              borderRadius: '4px',
+                            }}
+                          >
+                            <span>View All Details</span>
+                            <ArrowRight size={11} />
+                          </button>
+                        )}
                       </div>
 
                       {assignedCount > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.35rem' }}>
-                          {assignedAssets.slice(0, 3).map((a) => (
-                            <div
-                              key={a._id}
-                              style={{
-                                fontSize: '0.72rem',
-                                color: 'var(--text-secondary)',
-                                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                                padding: '0.25rem 0.45rem',
-                                borderRadius: 'var(--radius-sm)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: '0.5rem',
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
-                                <Laptop size={11} color="#38bdf8" style={{ flexShrink: 0 }} />
-                                <span style={{ fontFamily: 'monospace', color: '#38bdf8', fontWeight: 600 }}>
-                                  {a.assetNo || a.sr || 'Asset'}
-                                </span>
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {a.make} {a.model}
-                                </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                          {assignedAssets.map((a) => {
+                            const isLaptop = (a.deviceType || '').toLowerCase().includes('laptop');
+                            const isPrinter = (a.deviceType || '').toLowerCase().includes('printer');
+                            const isMonitor = (a.deviceType || '').toLowerCase().includes('monitor');
+                            const DevIcon = isLaptop ? Laptop : isPrinter ? Printer : isMonitor ? Monitor : Layers;
+
+                            // Extract peripheral chips
+                            const peripheralChips = [];
+                            if (a.monitorDetails) peripheralChips.push(a.monitorDetails);
+                            if (a.accessories) {
+                              a.accessories.split(',').forEach((acc) => {
+                                const trim = acc.trim();
+                                if (trim && !peripheralChips.includes(trim)) peripheralChips.push(trim);
+                              });
+                            }
+
+                            return (
+                              <div
+                                key={a._id}
+                                style={{
+                                  fontSize: '0.74rem',
+                                  color: 'var(--text-secondary)',
+                                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                                  padding: '0.45rem 0.6rem',
+                                  borderRadius: 'var(--radius-sm)',
+                                  border: '1px solid var(--border-subtle)',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '0.3rem',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                  <div
+                                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0, cursor: onViewAsset ? 'pointer' : 'default' }}
+                                    onClick={() => onViewAsset && onViewAsset(a)}
+                                    title="Click to view full master specifications and print profile"
+                                  >
+                                    <DevIcon size={13} color="#38bdf8" style={{ flexShrink: 0 }} />
+                                    <span style={{ fontFamily: 'monospace', color: '#38bdf8', fontWeight: 700 }}>
+                                      {a.assetNo ? `#${a.assetNo}` : a.sr}
+                                    </span>
+                                    <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {a.make} {a.model}
+                                    </span>
+                                  </div>
+
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    <span
+                                      style={{
+                                        fontSize: '0.68rem',
+                                        color: 'var(--text-muted)',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                                        padding: '0.1rem 0.4rem',
+                                        borderRadius: '3px',
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      {a.deviceType || 'Hardware'}
+                                    </span>
+                                    {onViewAsset && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onViewAsset(a)}
+                                        className="btn btn-ghost btn-icon btn-xs"
+                                        style={{ width: '20px', height: '20px', padding: 0 }}
+                                        title="View Asset Details"
+                                      >
+                                        <Eye size={12} color="var(--text-muted)" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Peripherals badges preview if any */}
+                                {peripheralChips.length > 0 && (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '1px' }}>
+                                    {peripheralChips.map((chip, cIdx) => (
+                                      <span
+                                        key={cIdx}
+                                        style={{
+                                          fontSize: '0.66rem',
+                                          color: 'var(--color-primary, #0284c7)',
+                                          backgroundColor: 'rgba(2, 132, 199, 0.08)',
+                                          border: '1px solid rgba(2, 132, 199, 0.18)',
+                                          padding: '0.1rem 0.35rem',
+                                          borderRadius: '3px',
+                                          fontWeight: 600,
+                                        }}
+                                      >
+                                        + {chip}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                              <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)', flexShrink: 0 }}>
-                                {a.deviceType}
-                              </span>
-                            </div>
-                          ))}
-                          {assignedCount > 3 && (
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textAlign: 'center', marginTop: '2px' }}>
-                              +{assignedCount - 3} more systems assigned
-                            </div>
-                          )}
+                            );
+                          })}
                         </div>
                       ) : (
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', marginTop: '0.2rem' }}>
+                        <div style={{ fontSize: '0.74rem', color: 'var(--text-faint)', marginTop: '0.2rem' }}>
                           No equipment currently checked out.
                         </div>
                       )}
@@ -653,33 +765,76 @@ export default function OrganizationView({
                   {/* Card Action Buttons (Enterprise Footer) */}
                   <div
                     style={{
-                      marginTop: '1.2rem',
+                      marginTop: '1rem',
                       borderTop: '1px solid var(--border-subtle)',
                       paddingTop: '0.75rem',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '0.5rem',
+                      gap: '0.45rem',
+                      flexWrap: 'wrap',
                     }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => setSelectedEmpForAsset(emp)}
-                      className="btn btn-primary btn-xs"
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.35rem',
-                        fontWeight: 600,
-                        fontSize: '0.74rem',
-                        height: '28px',
-                      }}
-                      title="Assign a hardware device to this employee"
-                    >
-                      <Laptop size={12} />
-                      Assign Hardware
-                    </button>
+                    {assignedCount > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEmpForAssetList(emp)}
+                        className="btn btn-primary btn-xs"
+                        style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.35rem',
+                          fontWeight: 700,
+                          fontSize: '0.74rem',
+                          height: '28px',
+                        }}
+                        title="View all assets and peripherals held by this employee"
+                      >
+                        <Laptop size={12} />
+                        <span>All Assets ({assignedCount})</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEmpForAsset(emp)}
+                        className="btn btn-primary btn-xs"
+                        style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.35rem',
+                          fontWeight: 700,
+                          fontSize: '0.74rem',
+                          height: '28px',
+                        }}
+                        title="Assign hardware asset to this employee"
+                      >
+                        <Laptop size={12} />
+                        <span>Assign Hardware</span>
+                      </button>
+                    )}
+
+                    {assignedCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEmpForAsset(emp)}
+                        className="btn btn-outline btn-xs"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          fontWeight: 600,
+                          fontSize: '0.72rem',
+                          height: '28px',
+                        }}
+                        title="Assign another hardware device"
+                      >
+                        <Plus size={11} />
+                        <span>Assign More</span>
+                      </button>
+                    )}
 
                     <button
                       type="button"
@@ -690,7 +845,7 @@ export default function OrganizationView({
                         alignItems: 'center',
                         gap: '0.3rem',
                         fontWeight: 600,
-                        fontSize: '0.74rem',
+                        fontSize: '0.72rem',
                         height: '28px',
                         borderColor: 'rgba(99, 102, 241, 0.4)',
                         color: '#a5b4fc',
@@ -698,7 +853,7 @@ export default function OrganizationView({
                       title="Assign or Edit Employee ID"
                     >
                       <IdCard size={12} />
-                      Edit ID
+                      <span>Edit ID</span>
                     </button>
 
                     <button
@@ -1058,17 +1213,41 @@ export default function OrganizationView({
         />
       )}
 
+      {/* MODAL 3B: VIEW ALL ASSETS HELD BY EMPLOYEE */}
+      {selectedEmpForAssetList && (
+        <EmployeeAssetsModal
+          employee={selectedEmpForAssetList}
+          assets={getEmployeeAssets(selectedEmpForAssetList, assets)}
+          onClose={() => setSelectedEmpForAssetList(null)}
+          onViewAsset={(asset) => {
+            setSelectedEmpForAssetList(null);
+            if (onViewAsset) onViewAsset(asset);
+          }}
+          onAssign={(asset) => {
+            setSelectedEmpForAssetList(null);
+            if (onAssign) onAssign(asset);
+          }}
+          onTransfer={(asset) => {
+            setSelectedEmpForAssetList(null);
+            if (onTransfer) onTransfer(asset);
+          }}
+          onReturn={(asset) => {
+            setSelectedEmpForAssetList(null);
+            if (onReturn) onReturn(asset);
+          }}
+          onAddNewAssign={() => {
+            const emp = selectedEmpForAssetList;
+            setSelectedEmpForAssetList(null);
+            setSelectedEmpForAsset(emp);
+          }}
+        />
+      )}
+
       {/* MODAL 4: DELETE CONFIRMATION */}
       {empToDelete && (
         <DeleteEmployeeModal
           employee={empToDelete}
-          assignedCount={
-            assets.filter(
-              (a) =>
-                (a.userName || '').toLowerCase() === (empToDelete.name || '').toLowerCase() ||
-                (a.empCode && empToDelete.employeeId && a.empCode.toLowerCase() === empToDelete.employeeId.toLowerCase())
-            ).length
-          }
+          assignedCount={getEmployeeAssets(empToDelete, assets).length}
           onClose={() => setEmpToDelete(null)}
           onSuccess={onSuccess}
         />
@@ -1634,6 +1813,492 @@ function AddEmployeeModal({ departments = [], locations = [], employees = [], on
   );
 }
 
+// ----------------- MODAL 3B: VIEW ALL ASSETS HELD BY EMPLOYEE -----------------
+function EmployeeAssetsModal({
+  employee,
+  assets = [],
+  onClose,
+  onViewAsset,
+  onAssign,
+  onTransfer,
+  onReturn,
+  onAddNewAssign,
+}) {
+  const parsePeripherals = (asset) => {
+    const badges = [];
+    if (asset.monitorDetails) {
+      badges.push({ name: `Monitor: ${asset.monitorDetails}`, icon: Monitor, color: '#818cf8' });
+    }
+    if (asset.accessories) {
+      const items = asset.accessories.split(',').map((s) => s.trim()).filter(Boolean);
+      items.forEach((item) => {
+        const lower = item.toLowerCase();
+        let icon = Layers;
+        let color = '#38bdf8';
+        if (lower.includes('keyboard') || lower.includes('mouse') || lower.includes('k/b')) {
+          icon = Keyboard;
+          color = '#38bdf8';
+        } else if (lower.includes('headphone') || lower.includes('headset')) {
+          icon = Headphones;
+          color = '#ec4899';
+        } else if (lower.includes('printer')) {
+          icon = Printer;
+          color = '#fbbf24';
+        } else if (lower.includes('scan')) {
+          icon = Scan;
+          color = '#34d399';
+        } else if (lower.includes('ups') || lower.includes('inverter')) {
+          icon = Zap;
+          color = '#f87171';
+        }
+        badges.push({ name: item, icon, color });
+      });
+    }
+    return badges;
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: '840px', width: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+      >
+        {/* Header */}
+        <div className="modal-header" style={{ padding: '1rem 1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: 'var(--radius-full)',
+                background: 'linear-gradient(135deg, #4f46e5, #06b6d4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: '1rem',
+                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
+                flexShrink: 0,
+              }}
+            >
+              {(employee.name || 'E').charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                  {employee.name}
+                </h3>
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    fontFamily: 'monospace',
+                    fontWeight: 700,
+                    padding: '0.15rem 0.55rem',
+                    borderRadius: '4px',
+                    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                    color: '#818cf8',
+                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                  }}
+                >
+                  ID: {employee.employeeId || 'N/A'}
+                </span>
+                <span
+                  className="badge"
+                  style={{
+                    fontSize: '0.72rem',
+                    backgroundColor: 'var(--status-assigned-bg)',
+                    color: 'var(--status-assigned-text)',
+                    border: '1px solid var(--status-assigned-border)',
+                  }}
+                >
+                  ● {assets.length} {assets.length === 1 ? 'Hardware Device' : 'Hardware Devices'} Held
+                </span>
+              </div>
+              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                {employee.department || 'General'} • {employee.location || 'Vitromed'} • {employee.email || 'No email'}
+              </div>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Modal Scrollable Body */}
+        <div
+          className="modal-body"
+          style={{
+            padding: '1.25rem 1.5rem',
+            overflowY: 'auto',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+          }}
+        >
+          {assets.length === 0 ? (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '3rem 1.5rem',
+                backgroundColor: 'var(--bg-surface-raised, rgba(255,255,255,0.03))',
+                borderRadius: '8px',
+                border: '1px dashed var(--border-default)',
+              }}
+            >
+              <Laptop size={36} color="var(--text-faint)" style={{ margin: '0 auto 0.75rem' }} />
+              <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 0.35rem' }}>
+                No Assets Assigned to this Employee
+              </h4>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>
+                {employee.name} does not currently have any laptops, desktops, or peripherals checked out.
+              </p>
+              {onAddNewAssign && (
+                <button
+                  type="button"
+                  onClick={onAddNewAssign}
+                  className="btn btn-primary btn-sm"
+                >
+                  <Plus size={14} />
+                  + Allocate Hardware Device
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Summary Metrics Bar */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                  gap: '0.65rem',
+                  padding: '0.75rem 1rem',
+                  backgroundColor: 'var(--bg-surface-raised, rgba(255,255,255,0.04))',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-default)',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                    Primary Computers
+                  </div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px' }}>
+                    {assets.filter((a) => ['Laptop', 'Desktop', 'Workstation', 'All in One Desktop'].includes(a.deviceType)).length}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                    Monitors & Displays
+                  </div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#818cf8', marginTop: '2px' }}>
+                    {assets.filter((a) => a.deviceType === 'Monitor' || Boolean(a.monitorDetails)).length}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                    Peripherals Assigned
+                  </div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#34d399', marginTop: '2px' }}>
+                    {assets.reduce((acc, a) => acc + (a.accessories ? a.accessories.split(',').length : 0), 0)}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                    Facility Plant
+                  </div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#38bdf8', marginTop: '2px' }}>
+                    {employee.location || 'Vitromed'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Complete Assets List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                {assets.map((asset, idx) => {
+                  const peripherals = parsePeripherals(asset);
+                  const isLaptop = (asset.deviceType || '').toLowerCase().includes('laptop');
+                  const isDesktop = (asset.deviceType || '').toLowerCase().includes('desktop');
+                  const isPrinter = (asset.deviceType || '').toLowerCase().includes('printer');
+                  const isMonitor = (asset.deviceType || '').toLowerCase().includes('monitor');
+                  const Icon = isLaptop ? Laptop : isDesktop ? Monitor : isPrinter ? Printer : isMonitor ? Monitor : Layers;
+
+                  return (
+                    <div
+                      key={asset._id || idx}
+                      style={{
+                        backgroundColor: 'var(--bg-surface, #ffffff)',
+                        border: '1px solid var(--border-default, #cbd5e1)',
+                        borderRadius: '8px',
+                        padding: '1rem 1.15rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        transition: 'all 0.15s ease',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                      }}
+                    >
+                      {/* Top Header Strip: Badges & Tags */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              padding: '0.2rem 0.6rem',
+                              borderRadius: '4px',
+                              backgroundColor: 'rgba(2, 132, 199, 0.12)',
+                              color: 'var(--color-primary, #0284c7)',
+                              border: '1px solid rgba(2, 132, 199, 0.25)',
+                            }}
+                          >
+                            <Icon size={13} />
+                            <span>{asset.deviceType || 'Hardware'}</span>
+                          </span>
+
+                          <span
+                            style={{
+                              fontFamily: 'monospace',
+                              fontWeight: 800,
+                              fontSize: '0.78rem',
+                              color: 'var(--text-primary)',
+                              backgroundColor: 'var(--bg-surface-raised, rgba(0,0,0,0.04))',
+                              padding: '0.2rem 0.55rem',
+                              borderRadius: '4px',
+                              border: '1px solid var(--border-subtle, #e2e8f0)',
+                            }}
+                          >
+                            Tag: #{asset.assetNo || 'N/A'}
+                          </span>
+
+                          <span
+                            style={{
+                              fontFamily: 'monospace',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              color: 'var(--text-muted)',
+                            }}
+                          >
+                            S/N: <strong>{asset.sr}</strong>
+                          </span>
+                        </div>
+
+                        <span
+                          className="badge"
+                          style={{
+                            fontSize: '0.7rem',
+                            backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                            color: '#059669',
+                            border: '1px solid rgba(16, 185, 129, 0.25)',
+                          }}
+                        >
+                          ● Active Custody
+                        </span>
+                      </div>
+
+                      {/* Main Asset Title & Specs */}
+                      <div>
+                        <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                          {asset.make} {asset.model}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '0.78rem',
+                            color: 'var(--text-muted)',
+                            marginTop: '0.25rem',
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '0.75rem',
+                          }}
+                        >
+                          {asset.processor && (
+                            <span>
+                              <strong>CPU:</strong> {asset.processor}
+                            </span>
+                          )}
+                          {asset.ramSize && (
+                            <span>
+                              <strong>RAM:</strong> {asset.ramSize}
+                            </span>
+                          )}
+                          {asset.storage && (
+                            <span>
+                              <strong>Storage:</strong> {asset.storage}
+                            </span>
+                          )}
+                          {asset.osVersion && (
+                            <span>
+                              <strong>OS:</strong> {asset.osVersion}
+                            </span>
+                          )}
+                          {asset.hostName && (
+                            <span style={{ fontFamily: 'monospace' }}>
+                              <strong>Host:</strong> {asset.hostName}
+                            </span>
+                          )}
+                          {asset.ipAddress && (
+                            <span style={{ fontFamily: 'monospace', color: '#059669' }}>
+                              <strong>IP:</strong> {asset.ipAddress}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Assigned Peripherals & Accessories Chips */}
+                      {peripherals.length > 0 && (
+                        <div
+                          style={{
+                            backgroundColor: 'var(--bg-surface-raised, rgba(0,0,0,0.02))',
+                            padding: '0.5rem 0.75rem',
+                            borderRadius: '6px',
+                            border: '1px solid var(--border-subtle, #e2e8f0)',
+                          }}
+                        >
+                          <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                            Peripherals & Equipment Assigned with this Machine:
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                            {peripherals.map((p, pIdx) => {
+                              const PIcon = p.icon;
+                              return (
+                                <span
+                                  key={pIdx}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.35rem',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 600,
+                                    backgroundColor: 'rgba(2, 132, 199, 0.08)',
+                                    color: 'var(--color-primary, #0284c7)',
+                                    border: '1px solid rgba(2, 132, 199, 0.2)',
+                                    padding: '0.18rem 0.5rem',
+                                    borderRadius: '4px',
+                                  }}
+                                >
+                                  <PIcon size={12} color={p.color} />
+                                  <span>{p.name}</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Bottom Details & Action Controls */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          borderTop: '1px solid var(--border-subtle, #e2e8f0)',
+                          paddingTop: '0.6rem',
+                          flexWrap: 'wrap',
+                          gap: '0.5rem',
+                        }}
+                      >
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>
+                          {asset.assignedDate ? (
+                            <span>
+                              Allocated on: <strong style={{ color: 'var(--text-secondary)' }}>{new Date(asset.assignedDate).toLocaleDateString('en-GB')}</strong>
+                            </span>
+                          ) : (
+                            <span>Allocated without specific timestamp</span>
+                          )}
+                          {asset.remarks && (
+                            <span style={{ marginLeft: '0.5rem', fontStyle: 'italic' }}>
+                              • "{asset.remarks}"
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          {onViewAsset && (
+                            <button
+                              type="button"
+                              onClick={() => onViewAsset(asset)}
+                              className="btn btn-primary btn-xs"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                              title="View full 38-column specifications sheet and print handover document"
+                            >
+                              <Eye size={12} />
+                              <span>View Profile / Print</span>
+                            </button>
+                          )}
+
+                          {onTransfer && (
+                            <button
+                              type="button"
+                              onClick={() => onTransfer(asset)}
+                              className="btn btn-outline btn-xs"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                              title="Transfer asset to another custodian"
+                            >
+                              <ArrowRightLeft size={12} />
+                              <span>Transfer</span>
+                            </button>
+                          )}
+
+                          {onReturn && (
+                            <button
+                              type="button"
+                              onClick={() => onReturn(asset)}
+                              className="btn btn-ghost btn-xs"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#f87171' }}
+                              title="Return asset back to central stock"
+                            >
+                              <Undo2 size={12} />
+                              <span>Return</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        <div
+          className="modal-footer"
+          style={{
+            padding: '0.85rem 1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          {onAddNewAssign ? (
+            <button
+              type="button"
+              onClick={onAddNewAssign}
+              className="btn btn-primary btn-sm"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              <Plus size={14} />
+              <span>+ Assign Another Asset to {employee.name}</span>
+            </button>
+          ) : (
+            <div />
+          )}
+
+          <button type="button" onClick={onClose} className="btn btn-secondary btn-sm">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ----------------- MODAL 3: ASSIGN HARDWARE TO EMPLOYEE -----------------
 function AssignAssetToEmployeeModal({ employee, assets = [], onClose, onSuccess }) {
   const { user } = useAuth();
@@ -1654,6 +2319,19 @@ function AssignAssetToEmployeeModal({ employee, assets = [], onClose, onSuccess 
     return assets.find((a) => a._id === selectedAssetId);
   }, [assets, selectedAssetId]);
 
+  // Peripherals Allocation Bundle
+  const [deviceType, setDeviceType] = useState('Laptop');
+  const [accessories, setAccessories] = useState('UPS, Wireless K/B & Mouse');
+  const [monitorDetails, setMonitorDetails] = useState('');
+
+  useEffect(() => {
+    if (selectedAsset) {
+      setDeviceType(selectedAsset.deviceType || 'Laptop');
+      setAccessories(selectedAsset.accessories || 'UPS, Wireless K/B & Mouse');
+      setMonitorDetails(selectedAsset.monitorDetails || '');
+    }
+  }, [selectedAsset]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -1671,6 +2349,9 @@ function AssignAssetToEmployeeModal({ employee, assets = [], onClose, onSuccess 
         plant: employee.location,
         floorCabin,
         expectedReturnDate,
+        deviceType,
+        accessories,
+        monitorDetails,
         remarks: remarks || `Assigned to ${employee.name} (ID: ${employee.employeeId}) via Employee Section`,
         actorName: user?.name || 'IT Admin',
       });
@@ -1690,7 +2371,7 @@ function AssignAssetToEmployeeModal({ employee, assets = [], onClose, onSuccess 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px', width: '95vw' }}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <div
@@ -1738,7 +2419,7 @@ function AssignAssetToEmployeeModal({ employee, assets = [], onClose, onSuccess 
                   No Available Assets in Stock
                 </div>
                 <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                  All 124 hardware systems are currently assigned or in maintenance. Inward a new asset or check in returned equipment first.
+                  All hardware systems are currently assigned or in maintenance. Inward a new asset or check in returned equipment first.
                 </div>
               </div>
             ) : (
@@ -1755,7 +2436,7 @@ function AssignAssetToEmployeeModal({ employee, assets = [], onClose, onSuccess 
                   >
                     {availableAssets.map((a) => (
                       <option key={a._id} value={a._id}>
-                        {a.assetNo || a.sr} • {a.make} {a.model} ({a.deviceType}) • {a.processor || 'CPU'} • {a.plant}
+                        {a.assetNo ? `#${a.assetNo} - ` : ''}{a.sr} • {a.make} {a.model} ({a.deviceType}) • {a.processor || 'CPU'} • {a.plant}
                       </option>
                     ))}
                   </select>
@@ -1818,6 +2499,18 @@ function AssignAssetToEmployeeModal({ employee, assets = [], onClose, onSuccess 
                     />
                   </div>
                 </div>
+
+                {/* Peripherals Allocation Bundle */}
+                <HardwareAllocationSelector
+                  deviceType={deviceType}
+                  onDeviceTypeChange={setDeviceType}
+                  accessories={accessories}
+                  onAccessoriesChange={setAccessories}
+                  monitorDetails={monitorDetails}
+                  onMonitorDetailsChange={setMonitorDetails}
+                  compact={false}
+                  title="Hardware & Peripherals Allocated to this Employee"
+                />
 
                 <div className="form-group">
                   <label className="form-label">Allocation Remarks</label>

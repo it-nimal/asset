@@ -28,11 +28,13 @@ import {
   HardDrive,
   Activity,
   Check,
+  Receipt,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useToast } from './common/Toast';
 import { useAuth } from '../context/AuthContext';
 import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from '../constants/organization';
+import HardwareAllocationSelector from './assets/HardwareAllocationSelector';
 
 // ASSET CATEGORIES CONFIGURATION
 const ASSET_CATEGORIES = [
@@ -158,9 +160,12 @@ export default function Addasset({
     workingCondition: 'Good',
     custodianMode: 'select', // select | manual
     selectedEmpId: '',
+    sn: '',
+    userStatus: 'Active',
     userName: 'Unassigned',
     empCode: '',
     mailId: '',
+    officialNumber: '',
     department: COMPANY_DEPARTMENTS[0] || 'Vitromed Baisgodam 3rd Floor',
 
     // Technical Specs - Computing
@@ -168,12 +173,22 @@ export default function Addasset({
     ramSize: '16 GB',
     storage: '512 GB SSD',
     osVersion: 'Windows 11 Pro',
+    windowsType: 'OPEN OS',
     windowsKey: '',
     officeSoftware: 'MS Office 2021',
     officeKey: '',
-    antivirus: 'QuickHeal Endpoint',
+    mailSoftware: 'Online WPA',
+    sapId: '',
+    loginUserName: 'Vitromed',
+    loginPassword: '',
+    antivirus: 'eScan',
+    escanPolicy: 'Profile',
+    otherSoftware: '',
     monitorDetails: '',
     monitorSerialNo: '',
+    dataBackup: 'Daily Backup',
+    accessories: 'UPS, Wireless K/B & Mouse',
+    billCopyDate: '',
 
     // Technical Specs - Server & Infrastructure
     serverCpu: '2x Intel Xeon Silver 4310 24-Core',
@@ -811,6 +826,20 @@ export default function Addasset({
                     </div>
                   </>
                 )}
+
+                {/* Peripherals & Hardware Bundle Allocation */}
+                <div style={{ gridColumn: '1 / -1', marginTop: '0.75rem' }}>
+                  <HardwareAllocationSelector
+                    deviceType={formData.deviceType}
+                    onDeviceTypeChange={(val) => setFormData((prev) => ({ ...prev, deviceType: val }))}
+                    accessories={formData.accessories}
+                    onAccessoriesChange={(val) => setFormData((prev) => ({ ...prev, accessories: val }))}
+                    monitorDetails={formData.monitorDetails}
+                    onMonitorDetailsChange={(val) => setFormData((prev) => ({ ...prev, monitorDetails: val }))}
+                    compact={false}
+                    title="Hardware & Peripherals Allocated Bundle (Laptop/Desktop, Monitor, Keyboard & Mouse, Headphone, Printer, Scanner, UPS)"
+                  />
+                </div>
               </div>
             )}
 
@@ -1265,6 +1294,20 @@ export default function Addasset({
                     </div>
                   </div>
                 )}
+
+                {/* Peripherals & Hardware Bundle Assigned to Custodian */}
+                <div style={{ marginTop: '0.85rem' }}>
+                  <HardwareAllocationSelector
+                    deviceType={formData.deviceType}
+                    onDeviceTypeChange={(val) => setFormData((prev) => ({ ...prev, deviceType: val }))}
+                    accessories={formData.accessories}
+                    onAccessoriesChange={(val) => setFormData((prev) => ({ ...prev, accessories: val }))}
+                    monitorDetails={formData.monitorDetails}
+                    onMonitorDetailsChange={(val) => setFormData((prev) => ({ ...prev, monitorDetails: val }))}
+                    compact={true}
+                    title="Hardware & Peripherals Handed Over with Asset"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -1351,19 +1394,27 @@ export default function Addasset({
                   style={{
                     border: '2px dashed var(--border-default)',
                     borderRadius: 'var(--radius-md)',
-                    padding: '1.5rem',
+                    padding: '1.75rem 1.5rem',
                     textAlign: 'center',
                     cursor: 'pointer',
-                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                    backgroundColor: 'var(--bg-surface-raised)',
                     transition: 'all 0.15s ease',
                   }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-focus)';
+                    e.currentTarget.style.backgroundColor = 'var(--primary-light)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-default)';
+                    e.currentTarget.style.backgroundColor = 'var(--bg-surface-raised)';
+                  }}
                 >
-                  <Upload size={24} color="#818cf8" style={{ margin: '0 auto 0.5rem' }} />
+                  <Upload size={24} color="var(--primary)" style={{ margin: '0 auto 0.5rem' }} />
                   <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
                     Click to browse or drop purchase bill scan
                   </div>
                   <div style={{ fontSize: '0.74rem', color: 'var(--text-faint)', marginTop: '0.2rem' }}>
-                    Supports JPG, PNG images (up to 5MB) and PDF documents (up to 10MB)
+                    Supports JPG, PNG, WebP images (up to 5MB) and PDF documents (up to 10MB)
                   </div>
                   <input
                     ref={fileInputRef}
@@ -1377,32 +1428,73 @@ export default function Addasset({
                 <div
                   style={{
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0.85rem 1rem',
-                    backgroundColor: 'rgba(99, 102, 241, 0.08)',
-                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                    padding: '1rem',
+                    backgroundColor: 'var(--bg-surface-raised)',
+                    border: '1px solid var(--border-default)',
                     borderRadius: 'var(--radius-md)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <FileText size={20} color="#818cf8" />
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.84rem', color: 'var(--text-primary)' }}>
-                        Invoice Document Attached
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <Receipt size={18} color="var(--primary)" />
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)' }}>
+                          Bill / Invoice Document Attached
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#059669' }}>
+                          Ready to be stored with new hardware asset
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.72rem', color: '#34d399' }}>Verified & ready for archive</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="btn btn-outline btn-xs"
+                      >
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="btn btn-ghost btn-xs"
+                        style={{ color: '#ef4444' }}
+                      >
+                        <Trash2 size={13} />
+                        Detach
+                      </button>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleRemoveImage}
-                    className="btn btn-ghost btn-xs"
-                    style={{ color: '#f87171' }}
+
+                  {/* Thumbnail display */}
+                  <div
+                    style={{
+                      maxHeight: '220px',
+                      overflow: 'hidden',
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor: 'var(--bg-surface)',
+                      border: '1px solid var(--border-default)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0.5rem',
+                    }}
                   >
-                    <Trash2 size={14} />
-                    Detach
-                  </button>
+                    {imagePreview.startsWith('data:application/pdf') ? (
+                      <div style={{ padding: '1.5rem', textAlign: 'center' }}>
+                        <FileText size={32} color="var(--primary)" style={{ margin: '0 auto 0.35rem' }} />
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>PDF Document Selected</span>
+                      </div>
+                    ) : (
+                      <img
+                        src={imagePreview}
+                        alt="Bill Preview"
+                        style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain', borderRadius: '4px' }}
+                      />
+                    )}
+                  </div>
                 </div>
               )}
             </div>
