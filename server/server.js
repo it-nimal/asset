@@ -79,17 +79,9 @@ const startServer = async () => {
     try {
       const { Asset } = await import('./models/Asset.js');
       const count = await Asset.countDocuments();
-
-      if (count === 0) {
-        const { feedRealUserData } = await import('./seed/feedUserData.js');
-        console.log('[Real Data Ingestion] Starting import of 124 hardware systems...');
-        await feedRealUserData();
-        console.log('[Express] Auto-populated 124 company systems into database.');
-      } else {
-        console.log(`[Express] Connected to existing database with ${count} assets.`);
-      }
+      console.log(`[Express] Connected to database with ${count} assets.`);
     } catch (e) {
-      console.warn('[Express] Auto-populate warning:', e.message);
+      console.warn('[Express] Database check warning:', e.message);
     }
 
     app.listen(PORT, '0.0.0.0', () => {
