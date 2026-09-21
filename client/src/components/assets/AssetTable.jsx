@@ -28,15 +28,15 @@ import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from '../../constants/organizatio
 import BulkImportExportModal from './BulkImportExportModal';
 
 export const STATUS_COLORS = {
-  Available: { text: '#34d399', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.28)' },
-  Assigned: { text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)', border: 'rgba(56, 189, 248, 0.28)' },
-  'In Stock': { text: '#34d399', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.28)' },
-  'Under Maintenance': { text: '#fbbf24', bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.28)' },
-  Reserved: { text: '#c084fc', bg: 'rgba(192, 132, 252, 0.12)', border: 'rgba(192, 132, 252, 0.28)' },
-  Lost: { text: '#f87171', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.28)' },
-  Stolen: { text: '#ef4444', bg: 'rgba(239, 68, 68, 0.2)', border: 'rgba(239, 68, 68, 0.4)' },
-  Retired: { text: '#94a3b8', bg: 'rgba(148, 163, 184, 0.12)', border: 'rgba(148, 163, 184, 0.28)' },
-  Disposed: { text: '#64748b', bg: 'rgba(100, 116, 139, 0.12)', border: 'rgba(100, 116, 139, 0.28)' },
+  Available: { text: '#166534', bg: '#f0fdf4', border: '#bbf7d0', accent: '#16a34a' },
+  Assigned: { text: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', accent: '#2563eb' },
+  'In Stock': { text: '#166534', bg: '#f0fdf4', border: '#bbf7d0', accent: '#16a34a' },
+  'Under Maintenance': { text: '#374151', bg: '#f3f4f6', border: '#e5e7eb', accent: '#6b7280' },
+  Reserved: { text: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', accent: '#2563eb' },
+  Lost: { text: '#991b1b', bg: '#fef2f2', border: '#fecaca', accent: '#dc2626' },
+  Stolen: { text: '#991b1b', bg: '#fef2f2', border: '#fecaca', accent: '#dc2626' },
+  Retired: { text: '#475569', bg: '#f1f5f9', border: '#cbd5e1', accent: '#64748b' },
+  Disposed: { text: '#475569', bg: '#f1f5f9', border: '#cbd5e1', accent: '#64748b' },
 };
 
 export default function AssetTable({

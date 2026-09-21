@@ -41,6 +41,8 @@ import {
   Receipt,
   Image as ImageIcon,
   Check,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { STATUS_COLORS } from './AssetTable';
 import { useToast } from '../common/Toast';
@@ -78,6 +80,16 @@ export default function AssetDetailsModal({
   const [viewMode, setViewMode] = useState('single-page'); // 'single-page' | 'tabs'
   const [tab, setTab] = useState(initialTab === 'overview' ? 'overview' : initialTab);
   const [includeBillInPrint, setIncludeBillInPrint] = useState(Boolean(asset?.invoiceImage));
+  const [revealedKeys, setRevealedKeys] = useState({
+    windowsKey: false,
+    officeKey: false,
+    loginPassword: false,
+    vncPassword: false,
+  });
+
+  const toggleReveal = (field) => {
+    setRevealedKeys((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
 
   useEffect(() => {
     if (currentAsset?.invoiceImage) {
@@ -197,6 +209,34 @@ export default function AssetDetailsModal({
     { id: 'warranty', label: 'Warranty & Inward', icon: FileText },
     { id: 'history', label: 'Audit Trail', icon: History },
   ];
+
+  const renderCredential = (val, fieldKey) => {
+    if (!val || val === 'N/A') return <span style={{ color: 'var(--text-muted)' }}>N/A</span>;
+    const isShown = revealedKeys[fieldKey];
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '2px' }}>
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 700,
+            color: isShown ? '#38bdf8' : 'var(--text-primary)',
+            letterSpacing: isShown ? 'normal' : '0.12em',
+          }}
+        >
+          {isShown ? val : '••••••••••••'}
+        </span>
+        <button
+          type="button"
+          onClick={() => toggleReveal(fieldKey)}
+          className="btn btn-ghost btn-xs no-print"
+          style={{ padding: '2px 5px', height: 'auto', color: 'var(--text-muted)' }}
+          title={isShown ? 'Hide' : 'Reveal'}
+        >
+          {isShown ? <EyeOff size={12} /> : <Eye size={12} />}
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="modal-overlay asset-details-modal-overlay" onClick={onClose}>
@@ -773,6 +813,52 @@ export default function AssetDetailsModal({
               </label>
             )}
 
+            {currentAsset?.status === 'Available' && onAssign && (
+              <button
+                type="button"
+                onClick={() => {
+                  onAssign(currentAsset);
+                  onClose();
+                }}
+                className="btn btn-primary btn-sm no-print"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  backgroundColor: '#0284c7',
+                  borderColor: '#0284c7',
+                }}
+              >
+                <UserCheck size={14} />
+                <span>Allocate to Employee</span>
+              </button>
+            )}
+
+            {currentAsset?.status === 'Assigned' && onTransfer && (
+              <button
+                type="button"
+                onClick={() => {
+                  onTransfer(currentAsset);
+                  onClose();
+                }}
+                className="btn btn-outline btn-sm no-print"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: '#38bdf8',
+                  borderColor: 'rgba(56, 189, 248, 0.4)',
+                }}
+              >
+                <ArrowRightLeft size={14} />
+                <span>Transfer Custody</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handlePrint}
@@ -1084,14 +1170,33 @@ export default function AssetDetailsModal({
                 </div>
               </div>
 
-              {/* SECTION 3: HARDWARE SPECIFICATIONS & DISPLAY (Cols 14, 15, 16, 17, 31, 32, 33, 34, 35, 36, 37) */}
+              {/* SECTION 3: HARDWARE SPECIFICATIONS & DISPLAY */}
               <div className="card" style={{ padding: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-                  <Cpu size={16} color="#fbbf24" />
-                  <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                    3. Hardware Specifications & Peripherals
-                  </h3>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Cpu size={16} color="#fbbf24" />
+                    <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                      3. Hardware Specifications & Peripherals
+                    </h3>
+                  </div>
+                  {asset.category && (
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: 'var(--radius-full)',
+                        backgroundColor: 'rgba(99, 102, 241, 0.12)',
+                        color: '#818cf8',
+                        border: '1px solid rgba(99, 102, 241, 0.25)',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {asset.category}
+                    </span>
+                  )}
                 </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.85rem', fontSize: '0.8rem' }}>
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>14. System Type:</span>
@@ -1117,47 +1222,182 @@ export default function AssetDetailsModal({
                       {asset.sr || 'CND744D8ZH'}
                     </div>
                   </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>31. Processor Full Detail's:</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.processor || '8th Gen Intel(R) Core(TM) i5-8250 CPU @ 1.60GHz 1.80 GHz'}
+
+                  {/* Category-Adaptive Specifications */}
+                  {asset.category === 'servers' ? (
+                    <>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Server CPU Configuration:</span>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                          {asset.specifications?.serverCpu || asset.processor}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>ECC Registered RAM:</span>
+                        <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
+                          {asset.specifications?.serverRam || asset.ramSize}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Hardware RAID Array:</span>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                          {asset.specifications?.serverRaid || asset.storage}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Management IP (iDRAC/iLO):</span>
+                        <div style={{ fontWeight: 700, color: '#34d399', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                          {asset.managementIp || asset.specifications?.managementIp || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Rack Location:</span>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                          {asset.specifications?.rackLocation || 'Server Room Rack-01'} {asset.specifications?.uPosition ? `(${asset.specifications.uPosition})` : ''}
+                        </div>
+                      </div>
+                    </>
+                  ) : asset.category === 'network' ? (
+                    <>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Port & Uplink Config:</span>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                          {asset.specifications?.portConfig || asset.storage}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Device Network Role:</span>
+                        <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
+                          {asset.specifications?.networkRole || asset.processor}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Firmware / OS:</span>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                          {asset.specifications?.firmwareVersion || asset.osVersion}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Rack Placement:</span>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                          {asset.specifications?.rackLocation || 'N/A'}
+                        </div>
+                      </div>
+                    </>
+                  ) : asset.category === 'power' ? (
+                    <>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>UPS VA / Rating:</span>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                          {asset.specifications?.upsCapacity || asset.processor}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Battery Configuration:</span>
+                        <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
+                          {asset.specifications?.batteryConfig || asset.storage}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Estimated Backup Runtime:</span>
+                        <div style={{ fontWeight: 700, color: '#34d399', marginTop: '2px' }}>
+                          {asset.specifications?.backupRuntime || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>PDU Outlets:</span>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                          {asset.specifications?.pduOutlets || 'N/A'}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>31. Processor Full Detail's:</span>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                          {asset.processor || 'Intel Core i5'}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>32. RAM:</span>
+                        <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
+                          {asset.ramSize || '8 GB'}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>33. HDD / Storage:</span>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                          {asset.storage || '512 GB SSD'}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>34. LCD Screen:</span>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                          {asset.monitorDetails || '22 inch'}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>35. LCD Sr. No:</span>
+                        <div style={{ fontWeight: 600, color: 'var(--text-muted)', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                          {asset.monitorSerialNo || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>36. Data Backup:</span>
+                        <div style={{ fontWeight: 700, color: '#34d399', marginTop: '2px' }}>
+                          {asset.dataBackup || 'Daily Backup'}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* ALLOCATED HARDWARE PERIPHERALS BUNDLE TABLE */}
+                  {asset.peripheralsList && asset.peripheralsList.length > 0 && (
+                    <div style={{ gridColumn: '1 / -1', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#38bdf8', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <Layers size={14} />
+                        <span>Allocated Hardware Peripherals Bundle ({asset.peripheralsList.length} items)</span>
+                      </div>
+                      <div style={{ overflowX: 'auto', border: '1px solid var(--border-default)', borderRadius: '6px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', textAlign: 'left' }}>
+                          <thead>
+                            <tr style={{ backgroundColor: 'var(--bg-surface-raised)', borderBottom: '1px solid var(--border-default)' }}>
+                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Item Type</th>
+                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Make & Model</th>
+                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Serial No (S/N)</th>
+                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Asset Tag</th>
+                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Warranty</th>
+                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Condition</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {asset.peripheralsList.map((p, idx) => (
+                              <tr key={idx} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                <td style={{ padding: '0.45rem 0.65rem', fontWeight: 600, color: 'var(--text-primary)' }}>{p.itemType}</td>
+                                <td style={{ padding: '0.45rem 0.65rem', color: 'var(--text-secondary)' }}>{p.make || '-'} {p.model || ''}</td>
+                                <td style={{ padding: '0.45rem 0.65rem', fontFamily: 'var(--font-mono)', color: '#fbbf24' }}>{p.serialNo || '-'}</td>
+                                <td style={{ padding: '0.45rem 0.65rem', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>{p.assetTag || '-'}</td>
+                                <td style={{ padding: '0.45rem 0.65rem', color: 'var(--text-muted)' }}>{p.warranty || '-'}</td>
+                                <td style={{ padding: '0.45rem 0.65rem' }}>
+                                  <span style={{ padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.68rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#34d399' }}>
+                                    {p.condition || 'Good'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>32. RAM:</span>
-                    <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
-                      {asset.ramSize || '8 GB'}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>33. HDD / Storage:</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.storage || '120 GB M.2 SSD + 1 TB HDD'}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>34. LCD Screen:</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.monitorDetails || '22 inch'}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>35. LCD Sr. No:</span>
-                    <div style={{ fontWeight: 600, color: 'var(--text-muted)', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-                      {asset.monitorSerialNo || 'N/A'}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>36. Data Backup:</span>
-                    <div style={{ fontWeight: 700, color: '#34d399', marginTop: '2px' }}>
-                      {asset.dataBackup || 'Daily Backup'}
-                    </div>
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>37. Mobiles, Accessories & Peripherals:</span>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '4px' }}>
-                      {asset.accessories ? (
-                        asset.accessories.split(',').map((acc, idx) => {
+                  )}
+
+                  {/* Text Accessories fallback */}
+                  {asset.accessories && (!asset.peripheralsList || asset.peripheralsList.length === 0) && (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>37. Accessories & Peripherals:</span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '4px' }}>
+                        {asset.accessories.split(',').map((acc, idx) => {
                           const item = acc.trim();
                           if (!item) return null;
                           return (
@@ -1179,16 +1419,14 @@ export default function AssetDetailsModal({
                               ✓ {item}
                             </span>
                           );
-                        })
-                      ) : (
-                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>None</div>
-                      )}
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
-              {/* SECTION 4: OPERATING SYSTEM & SOFTWARE LICENSES (Cols 20, 21, 22, 23, 24, 25, 26, 30) */}
+              {/* SECTION 4: OPERATING SYSTEM & SOFTWARE LICENSES */}
               <div className="card" style={{ padding: '1.25rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
                   <ShieldCheck size={16} color="#38bdf8" />
@@ -1211,9 +1449,7 @@ export default function AssetDetailsModal({
                   </div>
                   <div style={{ gridColumn: 'span 2' }}>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>22. Windows License Keys:</span>
-                    <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>
-                      {asset.windowsKey || '9QN27-QC4RM-YQ3TD-MV6RH-KHJXM'}
-                    </div>
+                    {renderCredential(asset.windowsKey, 'windowsKey')}
                   </div>
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>23. Office Software’s:</span>
@@ -1229,9 +1465,7 @@ export default function AssetDetailsModal({
                   </div>
                   <div style={{ gridColumn: 'span 2' }}>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>24. Office License Keys:</span>
-                    <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>
-                      {asset.officeKey || 'XWNTF-9DHKH-B48X3-PJ4C2-27GYG'}
-                    </div>
+                    {renderCredential(asset.officeKey, 'officeKey')}
                   </div>
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>26. SAP ID:</span>
@@ -1248,7 +1482,7 @@ export default function AssetDetailsModal({
                 </div>
               </div>
 
-              {/* SECTION 5: SYSTEM LOGIN & CREDENTIALS (Cols 27, 28) */}
+              {/* SECTION 5: SYSTEM LOGIN & CREDENTIALS */}
               <div className="card" style={{ padding: '1.25rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
                   <Key size={16} color="#f472b6" />
@@ -1265,15 +1499,11 @@ export default function AssetDetailsModal({
                   </div>
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>28. New ID/Login Password:</span>
-                    <div style={{ fontWeight: 800, color: '#fbbf24', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-                      {asset.loginPassword || 'Vitromed / CCTV@121'}
-                    </div>
+                    {renderCredential(asset.loginPassword, 'loginPassword')}
                   </div>
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>VNC Remote Password:</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-muted)', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-                      {asset.vncPassword || 'N/A'}
-                    </div>
+                    {renderCredential(asset.vncPassword, 'vncPassword')}
                   </div>
                 </div>
               </div>
@@ -1616,31 +1846,65 @@ export default function AssetDetailsModal({
               )}
 
               {tab === 'specs' && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-                  <div className="card" style={{ padding: '1rem' }}>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Processor Full Detail's</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>{asset.processor}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                    <div className="card" style={{ padding: '1rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Processor / CPU</span>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>{asset.processor}</div>
+                    </div>
+                    <div className="card" style={{ padding: '1rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>RAM Memory</span>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>{asset.ramSize}</div>
+                    </div>
+                    <div className="card" style={{ padding: '1rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Storage</span>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>{asset.storage}</div>
+                    </div>
+                    <div className="card" style={{ padding: '1rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Display</span>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>{asset.monitorDetails || 'N/A'}</div>
+                    </div>
+                    <div className="card" style={{ padding: '1rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Data Backup</span>
+                      <div style={{ fontWeight: 700, color: '#34d399', marginTop: '0.25rem' }}>{asset.dataBackup || 'Daily'}</div>
+                    </div>
                   </div>
-                  <div className="card" style={{ padding: '1rem' }}>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>RAM</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>{asset.ramSize}</div>
-                  </div>
-                  <div className="card" style={{ padding: '1rem' }}>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>HDD / Storage</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>{asset.storage}</div>
-                  </div>
-                  <div className="card" style={{ padding: '1rem' }}>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>LCD Screen</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>{asset.monitorDetails}</div>
-                  </div>
-                  <div className="card" style={{ padding: '1rem' }}>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Accessories & Other</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>{asset.accessories}</div>
-                  </div>
-                  <div className="card" style={{ padding: '1rem' }}>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Data Backup</span>
-                    <div style={{ fontWeight: 700, color: '#34d399', marginTop: '0.25rem' }}>{asset.dataBackup}</div>
-                  </div>
+
+                  {asset.peripheralsList && asset.peripheralsList.length > 0 && (
+                    <div className="card" style={{ padding: '1rem' }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#38bdf8', marginBottom: '0.65rem' }}>
+                        Allocated Peripherals Bundle ({asset.peripheralsList.length} items)
+                      </div>
+                      <div style={{ overflowX: 'auto', border: '1px solid var(--border-default)', borderRadius: '6px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', textAlign: 'left' }}>
+                          <thead>
+                            <tr style={{ backgroundColor: 'var(--bg-surface-raised)', borderBottom: '1px solid var(--border-default)' }}>
+                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Item Type</th>
+                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Make & Model</th>
+                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Serial No (S/N)</th>
+                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Asset Tag</th>
+                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Condition</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {asset.peripheralsList.map((p, idx) => (
+                              <tr key={idx} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                <td style={{ padding: '0.45rem 0.65rem', fontWeight: 600, color: 'var(--text-primary)' }}>{p.itemType}</td>
+                                <td style={{ padding: '0.45rem 0.65rem', color: 'var(--text-secondary)' }}>{p.make || '-'} {p.model || ''}</td>
+                                <td style={{ padding: '0.45rem 0.65rem', fontFamily: 'var(--font-mono)', color: '#fbbf24' }}>{p.serialNo || '-'}</td>
+                                <td style={{ padding: '0.45rem 0.65rem', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>{p.assetTag || '-'}</td>
+                                <td style={{ padding: '0.45rem 0.65rem' }}>
+                                  <span style={{ padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.68rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#34d399' }}>
+                                    {p.condition || 'Good'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1652,7 +1916,7 @@ export default function AssetDetailsModal({
                   </div>
                   <div className="card" style={{ padding: '1rem' }}>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Windows License Key</span>
-                    <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '0.25rem', fontFamily: 'var(--font-mono)' }}>{asset.windowsKey}</div>
+                    {renderCredential(asset.windowsKey, 'windowsKey')}
                   </div>
                   <div className="card" style={{ padding: '1rem' }}>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Office Software</span>
@@ -1660,11 +1924,11 @@ export default function AssetDetailsModal({
                   </div>
                   <div className="card" style={{ padding: '1rem' }}>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Office License Key</span>
-                    <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '0.25rem', fontFamily: 'var(--font-mono)' }}>{asset.officeKey}</div>
+                    {renderCredential(asset.officeKey, 'officeKey')}
                   </div>
                   <div className="card" style={{ padding: '1rem' }}>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Local Login ID/Password</span>
-                    <div style={{ fontWeight: 700, color: '#fbbf24', marginTop: '0.25rem', fontFamily: 'var(--font-mono)' }}>{asset.loginPassword}</div>
+                    {renderCredential(asset.loginPassword, 'loginPassword')}
                   </div>
                 </div>
               )}

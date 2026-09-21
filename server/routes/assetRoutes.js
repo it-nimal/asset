@@ -1,7 +1,11 @@
 import express from 'express';
 import {
+  // Asset controllers
   getAssets,
   getAssetById,
+  getAvailableAssets,
+  allocateAssets,
+  acknowledgeAsset,
   createAsset,
   updateAsset,
   deleteAsset,
@@ -14,623 +18,245 @@ import {
   bulkImportAssets,
   exportAssetsCSV,
   seedSampleMasterRow,
+  getWarrantySummary,
+  
+  // Employee controllers
+  getEmployees,
+  getEmployeeById,
+  createEmployee,
+  bulkImportEmployees,
+  updateEmployee,
+  deleteEmployee,
+  getEmployeeAssets,
+  getEmployeeHistory,
+  employeeExit,
+  
+  // Department controllers
+  getDepartments,
+  getDepartmentById,
+  createDepartment,
+  updateDepartment,
+  deleteDepartment,
+  
+  // Location controllers
+  getLocations,
+  getLocationById,
+  createLocation,
+  updateLocation,
+  deleteLocation,
+  
+  // Vendor controllers
+  getVendors,
+  getVendorById,
+  createVendor,
+  updateVendor,
+  deleteVendor,
+  
+  // Software controllers
+  getSoftware,
+  getSoftwareById,
+  createSoftware,
+  updateSoftware,
+  deleteSoftware,
+  
+  // Network device controllers
+  getNetworkDevices,
+  getNetworkDeviceById,
+  createNetworkDevice,
+  updateNetworkDevice,
+  deleteNetworkDevice,
+  
+  // Maintenance controllers
+  getMaintenance,
+  getMaintenanceById,
+  createMaintenance,
+  updateMaintenance,
+  diagnoseMaintenance,
+  startRepairMaintenance,
+  qcMaintenance,
+  completeMaintenance,
+  cancelMaintenance,
+  reportAssetIssue,
+  getAssetMaintenanceHistory,
+  getEmployeeMaintenanceHistory,
+  resolveMaintenance,
+  deleteMaintenance,
+  
+  // Inward controllers
+  getInwards,
+  getInwardById,
+  createInward,
+  updateInward,
+  verifyInward,
+  createAssetsFromInward,
+  deleteInward,
+
+  // Transfer controllers
+  getTransfers,
+  getTransferById,
+  createTransfer,
+  approveTransfer,
+  handoverTransfer,
+  acknowledgeTransfer,
+  cancelTransfer,
+  getAssetTransfers,
+  getEmployeeTransfers,
+  
+  // Purchase Order controllers
+  getPurchaseOrders,
+  getPurchaseOrderById,
+  createPurchaseOrder,
+  updatePurchaseOrder,
+  deletePurchaseOrder,
+  
+  // Invoice controllers
+  getInvoices,
+  getInvoiceById,
+  createInvoice,
+  updateInvoice,
+  deleteInvoice,
+  
+  // User & Auth controllers
+  loginUser,
+  getUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser,
+  
+  // Audit Log controllers
+  getAuditLogs,
+  createAuditLog,
+  clearAuditLogs,
+  
+  // Notification controllers
+  getNotifications,
+  createNotification,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification,
+  clearNotifications,
+  
+  // Settings controllers
+  getMasterSettings,
+  updateMasterSettings,
+  
+  // System controllers
+  clearAllData,
+  seedDemoData,
+  feedUserData,
 } from '../controllers/assetController.js';
-import {
-  User,
-  Employee,
-  Department,
-  Location,
-  Vendor,
-  Software,
-  NetworkDevice,
-  Maintenance,
-  AuditLog,
-  Notification,
-  Asset,
-} from '../models/Asset.js';
 
 const router = express.Router();
 
 // ----------------- SYSTEM SEEDING & PURGE ENDPOINTS -----------------
-router.delete('/system/clear-all', async (req, res) => {
-  try {
-    await Promise.all([
-      Asset.deleteMany({}),
-      Employee.deleteMany({}),
-      Department.deleteMany({}),
-      Location.deleteMany({}),
-      Vendor.deleteMany({}),
-      Software.deleteMany({}),
-      NetworkDevice.deleteMany({}),
-      Maintenance.deleteMany({}),
-      AuditLog.deleteMany({}),
-      Notification.deleteMany({}),
-    ]);
-    res.status(200).json({ success: true, message: 'All dummy data removed cleanly from the system.' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+router.delete('/system/clear-all', clearAllData);
+router.post('/seed/demo-data', seedDemoData);
+router.post('/system/feed-user-data', feedUserData);
 
-router.post('/seed/demo-data', async (req, res) => {
-  try {
-    const { seedComprehensiveITAMData } = await import('../seed/demoSeed.js');
-    const result = await seedComprehensiveITAMData();
-    res.status(200).json({ success: true, message: 'Demo data successfully populated', result });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-router.post('/system/feed-user-data', async (req, res) => {
-  try {
-    const { feedRealUserData } = await import('../seed/feedUserData.js');
-    const count = await feedRealUserData();
-    res.status(200).json({ success: true, message: `Successfully fed ${count} real user systems!`, count });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// ----------------- ASSET STATS & COLLECTION ROUTES -----------------
+// ----------------- ASSET STATS & MASTER DATA SUMMARY -----------------
 router.get('/stats/summary', getAssetStats);
+router.get('/warranty/summary', getWarrantySummary);
+router.route('/settings/master-data').get(getMasterSettings).put(updateMasterSettings);
 router.post('/bulk-import', bulkImportAssets);
 router.get('/export-master-csv', exportAssetsCSV);
 router.post('/seed/sample-master-row', seedSampleMasterRow);
-router.route('/').get(getAssets).post(createAsset);
 
-// ----------------- AUTHENTICATION -----------------
-router.post('/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    let user = await User.findOne({ email: email?.toLowerCase() });
-    if (!user && email?.toLowerCase() === 'admin@vitromed.com' && password === 'admin123') {
-      user = await User.create({
-        name: 'IT Administrator',
-        email: 'admin@vitromed.com',
-        password: 'admin123',
-        role: 'IT Admin',
-        department: 'IT',
-      });
-    }
-    if (!user || user.password !== password) {
-      return res.status(401).json({ success: false, message: 'Invalid email or password' });
-    }
-    // Token simulation / session object
-    const token = `jwt-${user._id}-${Date.now()}`;
-    await AuditLog.create({
-      user: user.name,
-      role: user.role,
-      action: 'User Login',
-      details: `${user.name} logged into ITAM dashboard`,
-      ipAddress: req.ip || '127.0.0.1',
-    });
-    res.status(200).json({
-      success: true,
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-      },
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+// ----------------- AUTHENTICATION & USER MANAGEMENT -----------------
+router.post('/auth/login', loginUser);
+router.route('/auth/users').get(getUsers).post(createUser);
+router.route('/auth/users/:id').get(getUserById).put(updateUser).delete(deleteUser);
 
-router.get('/auth/users', async (req, res) => {
-  try {
-    const users = await User.find().select('-password');
-    res.status(200).json({ success: true, data: users });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+// ----------------- EMPLOYEES & ORGANIZATION -----------------
+router.route('/employees').get(getEmployees).post(createEmployee);
+router.post('/employees/bulk', bulkImportEmployees);
+router.get('/employees/:id/assets', getEmployeeAssets);
+router.get('/employees/:id/history', getEmployeeHistory);
+router.post('/employees/:id/exit', employeeExit);
+router.route('/employees/:id').get(getEmployeeById).put(updateEmployee).delete(deleteEmployee);
 
-// ----------------- EMPLOYEES & ORG -----------------
-router.get('/employees', async (req, res) => {
-  try {
-    let employees = await Employee.find().sort({ name: 1 });
-    if (employees.length === 0) {
-      // Auto-populate employees from existing asset custodians if collection is empty
-      const assetsWithUsers = await Asset.find({ userName: { $nin: ['Unassigned', '', null] } });
-      const seen = new Set();
-      const newEmps = [];
-      let idx = 1001;
-      for (const a of assetsWithUsers) {
-        const u = a.userName?.trim();
-        if (u && !seen.has(u.toLowerCase())) {
-          seen.add(u.toLowerCase());
-          newEmps.push({
-            employeeId: a.empCode || `VIT-${idx++}`,
-            name: u.charAt(0).toUpperCase() + u.slice(1),
-            email: a.mailId || `${u.toLowerCase().replace(/[^a-z0-9]/g, '')}@vitromed.com`,
-            department: a.department || 'General',
-            location: a.plant || '22Godam',
-            designation: `${a.department || 'Operations'} Staff`,
-            phone: `+91-98765${String(idx).padStart(5, '0').slice(-5)}`,
-            status: 'Active',
-          });
-        }
-      }
-      if (newEmps.length > 0) {
-        try {
-          await Employee.insertMany(newEmps, { ordered: false });
-        } catch {
-          // ignore duplicate key errors if any
-        }
-        employees = await Employee.find().sort({ name: 1 });
-      }
-    }
-    res.status(200).json({ success: true, data: employees });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+// ----------------- DEPARTMENTS -----------------
+router.route('/departments').get(getDepartments).post(createDepartment);
+router.route('/departments/:id').get(getDepartmentById).put(updateDepartment).delete(deleteDepartment);
 
-router.post('/employees', async (req, res) => {
-  try {
-    let { employeeId, name, email, department, location, designation, phone, status, actorName } = req.body;
+// ----------------- LOCATIONS -----------------
+router.route('/locations').get(getLocations).post(createLocation);
+router.route('/locations/:id').get(getLocationById).put(updateLocation).delete(deleteLocation);
 
-    if (!name?.trim()) {
-      return res.status(400).json({ success: false, message: 'Employee name is required' });
-    }
-
-    // Auto-generate employeeId if not provided
-    if (!employeeId?.trim()) {
-      const highestEmp = await Employee.findOne({ employeeId: /^VIT-\d+$/ }).sort({ employeeId: -1 });
-      let nextNum = 1001;
-      if (highestEmp && highestEmp.employeeId) {
-        const num = parseInt(highestEmp.employeeId.replace('VIT-', ''), 10);
-        if (!isNaN(num)) nextNum = num + 1;
-      }
-      employeeId = `VIT-${nextNum}`;
-    }
-
-    // Check uniqueness of employeeId
-    const existingId = await Employee.findOne({ employeeId: employeeId.trim() });
-    if (existingId) {
-      return res.status(400).json({ success: false, message: `Employee ID "${employeeId}" is already assigned to ${existingId.name}` });
-    }
-
-    // Check email uniqueness or generate default
-    if (!email?.trim()) {
-      email = `${name.trim().toLowerCase().replace(/[^a-z0-9]/g, '')}@vitromed.com`;
-    }
-    const existingEmail = await Employee.findOne({ email: email.trim().toLowerCase() });
-    if (existingEmail) {
-      return res.status(400).json({ success: false, message: `Email "${email}" is already registered` });
-    }
-
-    const employee = await Employee.create({
-      employeeId: employeeId.trim(),
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      department: department?.trim() || 'General',
-      location: location?.trim() || '22Godam',
-      designation: designation?.trim() || 'Associate',
-      phone: phone?.trim() || '',
-      status: status || 'Active',
-    });
-
-    await AuditLog.create({
-      user: actorName || 'IT Admin',
-      role: 'IT Admin',
-      action: 'Employee Created',
-      details: `Registered new employee "${employee.name}" with ID "${employee.employeeId}"`,
-      ipAddress: req.ip || '127.0.0.1',
-    });
-
-    res.status(201).json({ success: true, data: employee, message: `Employee "${employee.name}" created with ID ${employee.employeeId}` });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-router.put('/employees/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const oldEmp = await Employee.findById(id);
-    if (!oldEmp) {
-      return res.status(404).json({ success: false, message: 'Employee record not found' });
-    }
-
-    const { employeeId, name, email, department, location, designation, phone, status, actorName } = req.body;
-
-    const previousId = oldEmp.employeeId;
-    const previousName = oldEmp.name;
-
-    // Check if new employeeId is already taken by someone else
-    if (employeeId && employeeId.trim() !== oldEmp.employeeId) {
-      const existing = await Employee.findOne({ employeeId: employeeId.trim(), _id: { $ne: id } });
-      if (existing) {
-        return res.status(400).json({ success: false, message: `Employee ID "${employeeId}" is already assigned to ${existing.name}` });
-      }
-    }
-
-    // Check if new email is already taken
-    if (email && email.trim().toLowerCase() !== oldEmp.email.toLowerCase()) {
-      const existingEmail = await Employee.findOne({ email: email.trim().toLowerCase(), _id: { $ne: id } });
-      if (existingEmail) {
-        return res.status(400).json({ success: false, message: `Email "${email}" is already registered to another staff member` });
-      }
-    }
-
-    const updated = await Employee.findByIdAndUpdate(
-      id,
-      {
-        employeeId: employeeId?.trim() || oldEmp.employeeId,
-        name: name?.trim() || oldEmp.name,
-        email: email ? email.trim().toLowerCase() : oldEmp.email,
-        department: department?.trim() || oldEmp.department,
-        location: location?.trim() || oldEmp.location,
-        designation: designation?.trim() || oldEmp.designation,
-        phone: phone?.trim() || oldEmp.phone,
-        status: status || oldEmp.status,
-      },
-      { new: true, runValidators: true }
-    );
-
-    // Sync assets assigned to this employee if employeeId or name changed
-    if ((employeeId && employeeId.trim() !== previousId) || (name && name.trim() !== previousName)) {
-      const escapedPrevName = previousName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const escapedPrevId = previousId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      await Asset.updateMany(
-        {
-          $or: [
-            { userName: { $regex: new RegExp(`^${escapedPrevName}$`, 'i') } },
-            { empCode: { $regex: new RegExp(`^${escapedPrevId}$`, 'i') } }
-          ]
-        },
-        {
-          $set: {
-            userName: updated.name,
-            empCode: updated.employeeId,
-            mailId: updated.email,
-            department: updated.department,
-            plant: updated.location,
-          }
-        }
-      );
-    }
-
-    // Record audit log
-    await AuditLog.create({
-      user: actorName || 'IT Admin',
-      role: 'IT Admin',
-      action: 'Employee Updated',
-      details: `Updated Employee "${updated.name}" (Assigned ID: "${updated.employeeId}", Dept: "${updated.department}")`,
-      ipAddress: req.ip || '127.0.0.1',
-    });
-
-    res.status(200).json({ success: true, data: updated, message: `Employee ID & profile for ${updated.name} updated successfully` });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-router.delete('/employees/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const emp = await Employee.findById(id);
-    if (!emp) {
-      return res.status(404).json({ success: false, message: 'Employee record not found' });
-    }
-
-    // Check if employee has assigned assets
-    const assignedCount = await Asset.countDocuments({
-      $or: [
-        { userName: emp.name },
-        { empCode: emp.employeeId }
-      ]
-    });
-
-    if (assignedCount > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot delete employee "${emp.name}" because they have ${assignedCount} active hardware asset(s) assigned. Please return or transfer the assets first.`
-      });
-    }
-
-    await Employee.findByIdAndDelete(id);
-
-    await AuditLog.create({
-      user: req.body?.actorName || 'IT Admin',
-      role: 'IT Admin',
-      action: 'Employee Deleted',
-      details: `Deleted employee record "${emp.name}" (ID: ${emp.employeeId})`,
-      ipAddress: req.ip || '127.0.0.1',
-    });
-
-    res.status(200).json({ success: true, message: `Employee "${emp.name}" deleted successfully` });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-export const COMPANY_DEPARTMENTS = [
-  'Vitromed Baisgodam 3rd Floor',
-  'Vitromed Baisgodam 2nd Floor',
-  'Accounts',
-  'Production',
-  'Vitromed Baisgodam 1st Floor',
-  'JPPL',
-  'Quality Lab',
-  'HRD',
-  'ETO & Dispatch',
-  'Tool Room',
-  'Maintenance',
-  'Purchase',
-  'Moulding',
-  'IT',
-  'Admin',
-  'Avacara',
-  'Audit',
-  'Store (Main Store)',
-  'OPEX',
-  'Tubing',
-  'Store (Component)',
-  'Store (Metal gate)',
-  'Trocar',
-  'Marketing',
-  'Store (Duplex & MFG)',
-];
-
-router.get('/departments', async (req, res) => {
-  try {
-    const existingCount = await Department.countDocuments();
-    if (existingCount < 25) {
-      for (let i = 0; i < COMPANY_DEPARTMENTS.length; i++) {
-        const name = COMPANY_DEPARTMENTS[i];
-        await Department.findOneAndUpdate(
-          { name },
-          { name, code: `DEPT-${String(i + 1).padStart(2, '0')}`, location: 'Vitromed' },
-          { upsert: true }
-        );
-      }
-    }
-    const departments = await Department.find().sort({ name: 1 });
-    res.status(200).json({ success: true, data: departments });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-router.post('/departments', async (req, res) => {
-  try {
-    const { name, manager, location, code } = req.body;
-    if (!name || !name.trim()) {
-      return res.status(400).json({ success: false, message: 'Department name is required' });
-    }
-    const cleanName = name.trim();
-    const cleanCode = code?.trim() || `DEPT-${Math.floor(100 + Math.random() * 900)}`;
-    const dept = await Department.findOneAndUpdate(
-      { name: cleanName },
-      { name: cleanName, manager: manager || 'Head of Department', location: location || 'Vitromed', code: cleanCode },
-      { upsert: true, new: true }
-    );
-    res.status(201).json({ success: true, data: dept, message: 'Department saved successfully' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-router.put('/departments/:id', async (req, res) => {
-  try {
-    const dept = await Department.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!dept) return res.status(404).json({ success: false, message: 'Department not found' });
-    res.status(200).json({ success: true, data: dept, message: 'Department updated successfully' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-router.delete('/departments/:id', async (req, res) => {
-  try {
-    const dept = await Department.findByIdAndDelete(req.params.id);
-    if (!dept) return res.status(404).json({ success: false, message: 'Department not found' });
-    res.status(200).json({ success: true, message: `Department "${dept.name}" deleted successfully` });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-router.get('/locations', async (req, res) => {
-  try {
-    // Ensure only 'Vitromed' is the plant location
-    await Location.deleteMany({ name: { $ne: 'Vitromed' } });
-    await Location.findOneAndUpdate(
-      { name: 'Vitromed' },
-      { name: 'Vitromed', address: 'Vitromed Manufacturing & Operations Facility, Jaipur', building: 'Main Facility' },
-      { upsert: true }
-    );
-    // Ensure all assets and employees have plant/location set to 'Vitromed'
-    await Asset.updateMany({ plant: { $ne: 'Vitromed' } }, { $set: { plant: 'Vitromed' } });
-    await Employee.updateMany({ location: { $ne: 'Vitromed' } }, { $set: { location: 'Vitromed' } });
-
-    const locations = await Location.find().sort({ name: 1 });
-    res.status(200).json({ success: true, data: locations });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-router.get('/vendors', async (req, res) => {
-  try {
-    const vendors = await Vendor.find().sort({ name: 1 });
-    res.status(200).json({ success: true, data: vendors });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+// ----------------- VENDORS -----------------
+router.route('/vendors').get(getVendors).post(createVendor);
+router.route('/vendors/:id').get(getVendorById).put(updateVendor).delete(deleteVendor);
 
 // ----------------- SOFTWARE ASSET MANAGEMENT (SAM) -----------------
-router.get('/software', async (req, res) => {
-  try {
-    const softwareList = await Software.find().sort({ softwareName: 1 });
-    res.status(200).json({ success: true, data: softwareList });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+router.route('/software').get(getSoftware).post(createSoftware);
+router.route('/software/:id').get(getSoftwareById).put(updateSoftware).delete(deleteSoftware);
 
-router.post('/software', async (req, res) => {
-  try {
-    const software = await Software.create(req.body);
-    res.status(201).json({ success: true, data: software });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+// ----------------- NETWORK INFRASTRUCTURE DEVICES -----------------
+router.route('/network-devices').get(getNetworkDevices).post(createNetworkDevice);
+router.route('/network-devices/:id').get(getNetworkDeviceById).put(updateNetworkDevice).delete(deleteNetworkDevice);
 
-// ----------------- NETWORK DEVICES -----------------
-router.get('/network-devices', async (req, res) => {
-  try {
-    const devices = await NetworkDevice.find().sort({ hostname: 1 });
-    res.status(200).json({ success: true, data: devices });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+// ----------------- MAINTENANCE TICKETS & REPAIRS -----------------
+router.route('/maintenance').get(getMaintenance).post(createMaintenance);
+router.post('/maintenance/:id/diagnose', diagnoseMaintenance);
+router.post('/maintenance/:id/start-repair', startRepairMaintenance);
+router.post('/maintenance/:id/qc', qcMaintenance);
+router.post('/maintenance/:id/complete', completeMaintenance);
+router.post('/maintenance/:id/return', completeMaintenance);
+router.post('/maintenance/:id/cancel', cancelMaintenance);
+router.put('/maintenance/:id/resolve', resolveMaintenance);
+router.route('/maintenance/:id').get(getMaintenanceById).put(updateMaintenance).delete(deleteMaintenance);
 
-router.post('/network-devices', async (req, res) => {
-  try {
-    const device = await NetworkDevice.create(req.body);
-    res.status(201).json({ success: true, data: device });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+// ----------------- PROCUREMENT: PURCHASE ORDERS -----------------
+router.route('/procurement/orders').get(getPurchaseOrders).post(createPurchaseOrder);
+router.route('/procurement/orders/:id').get(getPurchaseOrderById).put(updatePurchaseOrder).delete(deletePurchaseOrder);
 
-// ----------------- MAINTENANCE TICKETS -----------------
-router.get('/maintenance', async (req, res) => {
-  try {
-    const tickets = await Maintenance.find().sort({ createdAt: -1 });
-    res.status(200).json({ success: true, data: tickets });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+// ----------------- PROCUREMENT: INVOICES -----------------
+router.route('/procurement/invoices').get(getInvoices).post(createInvoice);
+router.route('/procurement/invoices/:id').get(getInvoiceById).put(updateInvoice).delete(deleteInvoice);
 
-router.post('/maintenance', async (req, res) => {
-  try {
-    const ticket = await Maintenance.create(req.body);
-    // If ticket is open/in progress, optionally flag asset as Under Maintenance
-    if (ticket.assetTag) {
-      await Asset.findOneAndUpdate(
-        { $or: [{ sr: ticket.assetTag }, { assetNo: ticket.assetTag }] },
-        { status: 'Under Maintenance' }
-      );
-    }
-    await AuditLog.create({
-      user: ticket.technician || 'IT Technician',
-      action: 'Maintenance Created',
-      assetTag: ticket.assetTag,
-      details: `Ticket ${ticket.ticketId}: ${ticket.issue}`,
-      ipAddress: req.ip || '127.0.0.1',
-    });
-    res.status(201).json({ success: true, data: ticket });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+// ----------------- INWARD PROCUREMENT & RECEIVING -----------------
+router.get('/inward', getInwards);
+router.get('/inwards', getInwards);
+router.post('/inward', createInward);
+router.post('/inward/:id/verify', verifyInward);
+router.post('/inward/:id/create-assets', createAssetsFromInward);
+router.route('/inward/:id').get(getInwardById).put(updateInward).delete(deleteInward);
 
-router.put('/maintenance/:id/resolve', async (req, res) => {
-  try {
-    const { resolution, cost } = req.body;
-    const ticket = await Maintenance.findById(req.params.id);
-    if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
+// ----------------- ASSET TRANSFERS & HANDOVERS -----------------
+router.route('/transfers').get(getTransfers).post(createTransfer);
+router.post('/transfers/:id/approve', approveTransfer);
+router.post('/transfers/:id/handover', handoverTransfer);
+router.post('/transfers/:id/acknowledge', acknowledgeTransfer);
+router.post('/transfers/:id/cancel', cancelTransfer);
+router.route('/transfers/:id').get(getTransferById);
+router.get('/employees/:id/transfers', getEmployeeTransfers);
 
-    ticket.status = 'Resolved';
-    ticket.resolution = resolution || 'Completed repairs';
-    if (cost) ticket.cost = cost;
-    ticket.endDate = new Date();
-    await ticket.save();
+// ----------------- AUDIT LOGS -----------------
+router.route('/audit-logs').get(getAuditLogs).post(createAuditLog);
+router.delete('/audit-logs/clear', clearAuditLogs);
 
-    if (ticket.assetTag) {
-      await Asset.findOneAndUpdate(
-        { $or: [{ sr: ticket.assetTag }, { assetNo: ticket.assetTag }] },
-        { status: 'Available' }
-      );
-    }
-    res.status(200).json({ success: true, data: ticket });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+// ----------------- NOTIFICATIONS -----------------
+router.route('/notifications').get(getNotifications).post(createNotification);
+router.put('/notifications/read-all', markAllNotificationsRead);
+router.delete('/notifications/clear-all', clearNotifications);
+router.put('/notifications/:id/read', markNotificationRead);
+router.delete('/notifications/:id', deleteNotification);
 
-// ----------------- AUDIT LOGS & NOTIFICATIONS -----------------
-router.get('/audit-logs', async (req, res) => {
-  try {
-    let logs = await AuditLog.find().sort({ createdAt: -1 }).limit(100);
-
-    // If no audit records exist yet, seed initial entries from existing assets
-    if (!logs || logs.length === 0) {
-      const existingAssets = await Asset.find().limit(35);
-      const seedAuditEntries = [];
-
-      for (const a of existingAssets) {
-        if (a.userName) {
-          seedAuditEntries.push({
-            user: 'IT Admin',
-            role: 'IT Admin',
-            action: 'Asset Assigned',
-            assetTag: a.assetNo || a.sr,
-            details: `Issued ${a.make} ${a.model} to ${a.userName} (${a.department || 'Vitromed'})`,
-            ipAddress: a.ipAddress || '192.168.1.100',
-            createdAt: a.updatedAt || new Date(),
-          });
-        }
-        seedAuditEntries.push({
-          user: 'System Admin',
-          role: 'IT Admin',
-          action: 'Asset Inwarded',
-          assetTag: a.assetNo || a.sr,
-          details: `Inwarded ${a.make} ${a.model} (${a.deviceType}) into Vitromed active inventory`,
-          ipAddress: '127.0.0.1',
-          createdAt: a.createdAt || new Date(Date.now() - 86400000 * 2),
-        });
-      }
-
-      if (seedAuditEntries.length > 0) {
-        await AuditLog.insertMany(seedAuditEntries.slice(0, 30));
-        logs = await AuditLog.find().sort({ createdAt: -1 }).limit(100);
-      }
-    }
-
-    res.status(200).json({ success: true, data: logs });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-router.get('/notifications', async (req, res) => {
-  try {
-    const notifications = await Notification.find().sort({ createdAt: -1 }).limit(20);
-    res.status(200).json({ success: true, data: notifications });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-router.put('/notifications/:id/read', async (req, res) => {
-  try {
-    await Notification.findByIdAndUpdate(req.params.id, { read: true });
-    res.status(200).json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// ----------------- PARAMETERIZED ASSET ID ROUTES (Catch-all for IDs) -----------------
-router.route('/:id').get(getAssetById).put(updateAsset).delete(deleteAsset);
+// ----------------- ASSETS ROOT COLLECTION & LIFECYCLE -----------------
+router.get('/available', getAvailableAssets);
+router.post('/allocate', allocateAssets);
+router.route('/').get(getAssets).post(createAsset);
+router.post('/:id/acknowledge', acknowledgeAsset);
+router.post('/:id/report-issue', reportAssetIssue);
+router.get('/:id/maintenance', getAssetMaintenanceHistory);
+router.get('/:id/transfers', getAssetTransfers);
 router.post('/:id/assign', assignAsset);
 router.post('/:id/return', returnAsset);
 router.post('/:id/transfer', transferAsset);
 router.post('/:id/maintenance-return', returnFromMaintenance);
 router.post('/:id/retire', retireAsset);
+router.route('/:id').get(getAssetById).put(updateAsset).delete(deleteAsset);
+
+export { COMPANY_DEPARTMENTS } from '../controllers/assetController.js';
 
 export default router;

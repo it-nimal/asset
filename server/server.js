@@ -22,9 +22,6 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// API Routes
-app.use('/api/assets', assetRoutes);
-
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({
@@ -39,6 +36,10 @@ app.get('/api/health', (req, res) => {
     service: 'Asset Management MERN API',
   });
 });
+
+// API Routes
+app.use('/api/assets', assetRoutes);
+app.use('/api', assetRoutes);
 
 // Serve frontend static build if available
 const clientDistPath = path.join(__dirname, '../client/dist');
@@ -80,6 +81,11 @@ const startServer = async () => {
       const { Asset } = await import('./models/Asset.js');
       const count = await Asset.countDocuments();
       console.log(`[Express] Connected to database with ${count} assets.`);
+      if (count === 0) {
+        console.log('[Express] Initializing database with company asset roster...');
+        const { feedRealUserData } = await import('./seed/feedUserData.js');
+        await feedRealUserData();
+      }
     } catch (e) {
       console.warn('[Express] Database check warning:', e.message);
     }

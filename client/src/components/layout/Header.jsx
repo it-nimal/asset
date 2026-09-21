@@ -53,24 +53,24 @@ export default function Header({
   const themeOptions = [
     {
       id: 'light',
-      name: 'White & Black (Sky Blue)',
-      badge: 'Active Default',
-      desc: 'Crisp White background, high-contrast Black words & Sky Blue accents',
-      colors: ['#ffffff', '#000000', '#0284c7'],
+      name: 'Enterprise Slate & Blue',
+      badge: 'Default',
+      desc: 'Crisp White background, Slate 900 typography & Deep Blue actions',
+      colors: ['#ffffff', '#0f172a', '#1d4ed8'],
     },
     {
       id: 'bw-sky',
-      name: 'Black & White Dark Mode',
+      name: 'Dark Slate Enterprise',
       badge: 'Dark Mode',
-      desc: 'Pitch Black canvas, crisp white typography & sky blue accents',
-      colors: ['#050505', '#ffffff', '#38bdf8'],
+      desc: 'Deep slate canvas, high-contrast typography & blue highlights',
+      colors: ['#090d16', '#f8fafc', '#3b82f6'],
     },
     {
       id: 'midnight',
-      name: 'Midnight Obsidian',
-      badge: 'Dark Slate',
-      desc: 'Deep navy-slate background with vibrant sky blue highlights',
-      colors: ['#090d16', '#334155', '#38bdf8'],
+      name: 'Midnight Navy',
+      badge: 'Navy Slate',
+      desc: 'Deep navy background with crisp white typography',
+      colors: ['#0f172a', '#334155', '#3b82f6'],
     },
   ];
 

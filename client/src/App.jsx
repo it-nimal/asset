@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider, useToast } from './components/common/Toast';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import AppLayout from './components/layout/AppLayout';
@@ -17,13 +18,22 @@ import {
   MaintenanceReturnModal,
   RetireAssetModal,
 } from './components/assets/AssetActionModals';
+import AssetAllocationModal from './components/allocation/AssetAllocationModal';
 import Addasset from './components/addasset';
-import MaintenanceTracker from './components/MaintenanceTracker';
+import MaintenanceRegister from './components/maintenance/MaintenanceRegister';
+import TransferRegister from './components/transfers/TransferRegister';
+import TransferForm from './components/transfers/TransferForm';
 import OrganizationView from './components/organization/OrganizationView';
+import EmployeeSelfService from './components/employee/EmployeeSelfService';
 import SoftwareManagement from './components/software/SoftwareManagement';
 import NetworkManagement from './components/network/NetworkManagement';
 import ReportsView from './components/reports/ReportsView';
 import AuditLogView from './components/audit/AuditLogView';
+import InventoryView from './components/inventory/InventoryView';
+import ProcurementView from './components/procurement/ProcurementView';
+import InwardRegister from './components/inward/InwardRegister';
+import WarrantyView from './components/warranty/WarrantyView';
+import SettingsView from './components/settings/SettingsView';
 import { api } from './services/api';
 
 function ITAMApp() {
@@ -161,7 +171,10 @@ function ITAMApp() {
 
   // Immediate state update when any asset is modified, assigned, transferred, or returned
   const handleAssetUpdated = (updatedAsset) => {
-    if (updatedAsset && updatedAsset._id) {
+    if (Array.isArray(updatedAsset)) {
+      const idMap = new Map(updatedAsset.map((a) => [a._id, a]));
+      setAssets((prev) => prev.map((a) => idMap.get(a._id) || a));
+    } else if (updatedAsset && updatedAsset._id) {
       setAssets((prev) =>
         prev.map((a) => (a._id === updatedAsset._id ? { ...a, ...updatedAsset } : a))
       );
@@ -207,6 +220,7 @@ function ITAMApp() {
       setActivePage={setActivePage}
       stats={stats}
       countsByCategory={countsByCategory}
+      employeesCount={employees.length}
       onCloseMobile={() => setMobileNavOpen(false)}
     />
   );
@@ -237,6 +251,7 @@ function ITAMApp() {
         <Dashboard
           stats={stats}
           assets={assets}
+          employees={employees}
           globalSearch={globalSearch}
           onNavigate={(page) => setActivePage(page)}
           onViewDetails={(asset, tab = 'overview') => {
@@ -251,6 +266,36 @@ function ITAMApp() {
           onEdit={(asset) => setSelectedAssetForEdit(asset)}
           onRetire={(asset) => setSelectedAssetForRetire(asset)}
           onDelete={(asset) => handleDeleteAsset(asset)}
+        />
+      )}
+
+      {/* CENTRAL INVENTORY */}
+      {activePage === 'inventory-all' && (
+        <InventoryView
+          assets={assets}
+          departments={departments}
+          locations={locations}
+          onViewDetails={(asset, tab = 'overview') => {
+            setSelectedAssetForDetails(asset);
+            setDetailsInitialTab(tab);
+          }}
+          onAssign={(asset) => setSelectedAssetForAssign(asset)}
+          onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
+          onReturn={(asset) => setSelectedAssetForReturn(asset)}
+          onMaintenance={(asset) => setSelectedAssetForMaintenance(asset)}
+          onMaintenanceReturn={(asset) => setSelectedAssetForMaintenanceReturn(asset)}
+          onRetire={(asset) => setSelectedAssetForRetire(asset)}
+          onInwardNew={() => setActivePage('asset-add')}
+          onRefresh={loadData}
+        />
+      )}
+
+      {/* INWARD & PROCUREMENT REGISTER */}
+      {(activePage === 'inward-register' || activePage === 'procurement-all') && (
+        <InwardRegister
+          onNavigateToInventory={() => setActivePage('inventory-all')}
+          onAssetCreated={() => loadData()}
+          onRefresh={loadData}
         />
       )}
 
@@ -355,36 +400,9 @@ function ITAMApp() {
         </div>
       )}
 
-      {/* TRANSFER ASSET */}
+      {/* TRANSFER ASSET REGISTER */}
       {activePage === 'asset-transfer' && (
-        <div className="page-container">
-          <div style={{ marginBottom: '1.5rem' }}>
-            <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-              Inter-Departmental Custody Transfer
-            </h1>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-              Transfer equipment between departments, facilities, or users with automatic audit trail recording.
-            </p>
-          </div>
-
-          <AssetTable
-            assets={assets}
-            categoryFilter="All"
-            globalSearch={globalSearch}
-            onViewDetails={(asset) => {
-              setSelectedAssetForDetails(asset);
-              setDetailsInitialTab('history');
-            }}
-            onAssign={(asset) => setSelectedAssetForAssign(asset)}
-            onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
-            onReturn={(asset) => setSelectedAssetForReturn(asset)}
-            onMaintenanceReturn={(asset) => setSelectedAssetForMaintenanceReturn(asset)}
-            onMaintenance={(asset) => setSelectedAssetForMaintenance(asset)}
-            onEdit={(asset) => setSelectedAssetForEdit(asset)}
-            onRetire={(asset) => setSelectedAssetForRetire(asset)}
-            onDelete={(asset) => handleDeleteAsset(asset)}
-          />
-        </div>
+        <TransferRegister onRefresh={loadData} />
       )}
 
       {/* RETURN ASSET */}
@@ -421,43 +439,19 @@ function ITAMApp() {
 
       {/* MAINTENANCE & REPAIRS */}
       {activePage === 'asset-maintenance' && (
-        <MaintenanceTracker
-          assets={assets}
-          onRefresh={loadData}
-          loading={loading}
-        />
+        <MaintenanceRegister />
       )}
 
       {/* WARRANTY TRACKER */}
       {activePage === 'asset-warranty' && (
-        <div className="page-container">
-          <div style={{ marginBottom: '1.5rem' }}>
-            <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-              OEM Hardware Warranty Expiration Monitor
-            </h1>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-              Track machines with active, nearing-expiry (30/60 days), and expired manufacturer warranties.
-            </p>
-          </div>
-
-          <AssetTable
-            assets={assets}
-            categoryFilter="All"
-            globalSearch={globalSearch}
-            onViewDetails={(asset) => {
-              setSelectedAssetForDetails(asset);
-              setDetailsInitialTab('warranty');
-            }}
-            onAssign={(asset) => setSelectedAssetForAssign(asset)}
-            onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
-            onReturn={(asset) => setSelectedAssetForReturn(asset)}
-            onMaintenance={(asset) => setSelectedAssetForMaintenance(asset)}
-            onMaintenanceReturn={(asset) => setSelectedAssetForMaintenanceReturn(asset)}
-            onRetire={(asset) => setSelectedAssetForRetire(asset)}
-            onEdit={(asset) => setSelectedAssetForEdit(asset)}
-            onDelete={(asset) => handleDeleteAsset(asset)}
-          />
-        </div>
+        <WarrantyView
+          assets={assets}
+          onViewDetails={(asset, tab = 'warranty') => {
+            setSelectedAssetForDetails(asset);
+            setDetailsInitialTab(tab);
+          }}
+          onEditAsset={(asset) => setSelectedAssetForEdit(asset)}
+        />
       )}
 
       {/* ORGANIZATION DIRECTORIES */}
@@ -476,6 +470,30 @@ function ITAMApp() {
           onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
           onReturn={(asset) => setSelectedAssetForReturn(asset)}
         />
+      )}
+
+      {/* BULK IMPORT USERS DIRECTORY */}
+      {activePage === 'users-bulk' && (
+        <OrganizationView
+          type="employees"
+          initialOpenBulkModal={true}
+          employees={employees}
+          departments={departments}
+          locations={locations}
+          vendors={vendors}
+          assets={assets}
+          globalSearch={globalSearch}
+          onSuccess={loadData}
+          onViewAsset={(asset) => setSelectedAssetForDetails(asset)}
+          onAssign={(asset) => setSelectedAssetForAssign(asset)}
+          onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
+          onReturn={(asset) => setSelectedAssetForReturn(asset)}
+        />
+      )}
+
+      {/* EMPLOYEE SELF SERVICE DESK */}
+      {activePage === 'employee-self-service' && (
+        <EmployeeSelfService />
       )}
 
       {activePage === 'org-departments' && (
@@ -541,6 +559,11 @@ function ITAMApp() {
       {activePage === 'audit-logs' && (
         <AuditLogView />
       )}
+
+      {/* MASTER SETTINGS */}
+      {activePage === 'settings-master' && (
+        <SettingsView onRefreshMaster={loadData} />
+      )}
     </>
   );
 
@@ -574,19 +597,25 @@ function ITAMApp() {
       )}
 
       {selectedAssetForAssign && (
-        <AssignModal
-          asset={selectedAssetForAssign}
+        <AssetAllocationModal
+          initialAsset={selectedAssetForAssign?._id ? selectedAssetForAssign : null}
+          initialAssets={Array.isArray(selectedAssetForAssign) ? selectedAssetForAssign : (selectedAssetForAssign?._id ? [selectedAssetForAssign] : [])}
           employees={employees}
+          assets={assets}
           departments={departments}
           locations={locations}
           onClose={() => setSelectedAssetForAssign(null)}
-          onSuccess={handleAssetUpdated}
+          onSuccess={(allocated) => {
+            setSelectedAssetForAssign(null);
+            handleAssetUpdated(allocated);
+          }}
         />
       )}
 
       {selectedAssetForTransfer && (
-        <TransferModal
-          asset={selectedAssetForTransfer}
+        <TransferForm
+          initialAsset={selectedAssetForTransfer}
+          assets={assets}
           employees={employees}
           departments={departments}
           locations={locations}
@@ -688,10 +717,12 @@ function ITAMApp() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <ITAMApp />
-      </ToastProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ToastProvider>
+          <ITAMApp />
+        </ToastProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

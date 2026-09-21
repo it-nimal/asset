@@ -29,11 +29,15 @@ import {
   Activity,
   Check,
   Receipt,
+  EyeOff,
+  Search,
+  ArrowRight,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useToast } from './common/Toast';
 import { useAuth } from '../context/AuthContext';
 import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from '../constants/organization';
+import { isNetworkDevice } from '../constants/specifications';
 import HardwareAllocationSelector from './assets/HardwareAllocationSelector';
 
 // ASSET CATEGORIES CONFIGURATION
@@ -226,6 +230,7 @@ export default function Addasset({
     vncPassword: '',
 
     // Procurement & Billing
+    poNumber: '',
     billNo: '',
     vendorName: vendors[0]?.name || 'Authorized OEM Distributor',
     purchasePrice: '',
@@ -237,11 +242,65 @@ export default function Addasset({
     warrantyEndDate: new Date(Date.now() + 3 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     invoiceImage: '',
     remarks: '',
+
+    // Power & Infrastructure Specifics
+    upsCapacity: '1000 VA / 600W Pure Sine Wave',
+    batteryConfig: '2x 12V 7.2Ah Sealed Lead-Acid',
+    backupRuntime: '25-30 Minutes @ 50% Load',
+    pduOutlets: '6x IEC C13 Sockets',
+    biometricSensor: 'Optical Fingerprint + Face Recognition',
+
+    // Other Hardware Specifics
+    deviceSpecs: '',
+    connectivityPorts: '',
+    peripheralsList: [],
   });
 
   const [imagePreview, setImagePreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [createdSuccessAsset, setCreatedSuccessAsset] = useState(null);
+  const [empSearchQuery, setEmpSearchQuery] = useState('');
+  const [showPassword, setShowPassword] = useState({
+    loginPassword: false,
+    vncPassword: false,
+    windowsKey: false,
+    officeKey: false,
+  });
   const fileInputRef = useRef(null);
+
+  // Real-time duplicate Serial Number detection
+  const duplicateAsset = useMemo(() => {
+    if (!formData.sr || !formData.sr.trim()) return null;
+    const cleanSr = formData.sr.trim().toLowerCase();
+    return assets.find((a) => a.sr && a.sr.trim().toLowerCase() === cleanSr);
+  }, [formData.sr, assets]);
+
+  // Real-time duplicate Asset Tag detection
+  const duplicateTag = useMemo(() => {
+    if (!formData.assetNo || !formData.assetNo.trim()) return null;
+    const cleanTag = formData.assetNo.trim().toLowerCase();
+    return assets.find((a) => a.assetNo && a.assetNo.trim().toLowerCase() === cleanTag);
+  }, [formData.assetNo, assets]);
+
+  // Warranty Date validation
+  const warrantyDateError = useMemo(() => {
+    if (!formData.warrantyStartDate || !formData.warrantyEndDate) return false;
+    return formData.warrantyEndDate < formData.warrantyStartDate;
+  }, [formData.warrantyStartDate, formData.warrantyEndDate]);
+
+  // Searchable employees list
+  const filteredEmployees = useMemo(() => {
+    if (!empSearchQuery.trim()) return employees;
+    const q = empSearchQuery.toLowerCase();
+    return employees.filter(
+      (e) =>
+        (e.name && e.name.toLowerCase().includes(q)) ||
+        (e.employeeId && e.employeeId.toLowerCase().includes(q)) ||
+        (e.department && e.department.toLowerCase().includes(q)) ||
+        (e.email && e.email.toLowerCase().includes(q))
+    );
+  }, [employees, empSearchQuery]);
 
   // Switch category
   const handleCategorySelect = (category) => {
@@ -333,13 +392,16 @@ export default function Addasset({
 
   // Form Submit Handler
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
 
     if (!formData.sr.trim()) {
       return toast.error('Serial Number (S/N) is required', 'Missing Serial Number');
     }
     if (!formData.model.trim()) {
       return toast.error('Model Name / Series is required', 'Missing Model');
+    }
+    if (warrantyDateError) {
+      return toast.error('Warranty expiration date cannot precede warranty start date', 'Invalid Dates');
     }
 
     setSubmitting(true);
@@ -348,9 +410,11 @@ export default function Addasset({
     // Build payload according to selected asset type
     const payload = {
       ...formData,
+      category: activeCategory,
       make: finalMake || 'Generic',
       purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : 0,
       currentValue: formData.currentValue ? Number(formData.currentValue) : Number(formData.purchasePrice || 0),
+      peripheralsList: formData.peripheralsList || [],
       actorName: user?.name || 'IT Admin',
     };
 
@@ -379,7 +443,48 @@ export default function Addasset({
       payload.processor = formData.mobileOs;
       payload.storage = formData.screenSize;
       payload.remarks = `[Mobile] IMEI: ${formData.imeiNumber}. ${formData.remarks}`;
+    } else if (activeCategory === 'power') {
+      payload.processor = formData.upsCapacity || 'UPS Power Unit';
+      payload.storage = formData.batteryConfig || 'Internal Batteries';
+      payload.remarks = `[Power/Infrastructure] Runtime: ${formData.backupRuntime || 'N/A'}. Outlets: ${formData.pduOutlets || 'N/A'}. ${formData.remarks}`;
+    } else if (activeCategory === 'other') {
+      payload.processor = formData.deviceSpecs || 'Custom Peripheral';
+      payload.storage = formData.connectivityPorts || 'Standard I/O';
     }
+
+    payload.specifications = {
+      activeCategory,
+      processor: payload.processor,
+      ramSize: payload.ramSize,
+      storage: payload.storage,
+      osVersion: payload.osVersion,
+      screenSize: formData.screenSize,
+      resolution: formData.resolution,
+      panelType: formData.panelType,
+      videoPorts: formData.videoPorts,
+      serverCpu: formData.serverCpu,
+      serverRam: formData.serverRam,
+      serverRaid: formData.serverRaid,
+      serverOs: formData.serverOs,
+      managementIp: formData.managementIp,
+      rackLocation: formData.rackLocation,
+      uPosition: formData.uPosition,
+      portConfig: formData.portConfig,
+      networkRole: formData.networkRole,
+      firmwareVersion: formData.firmwareVersion,
+      printTechnology: formData.printTechnology,
+      tonerCartridge: formData.tonerCartridge,
+      connectivity: formData.connectivity,
+      imeiNumber: formData.imeiNumber,
+      mobileOs: formData.mobileOs,
+      upsCapacity: formData.upsCapacity,
+      batteryConfig: formData.batteryConfig,
+      backupRuntime: formData.backupRuntime,
+      pduOutlets: formData.pduOutlets,
+      biometricSensor: formData.biometricSensor,
+      deviceSpecs: formData.deviceSpecs,
+      connectivityPorts: formData.connectivityPorts,
+    };
 
     try {
       const result = await api.createAsset(payload);
@@ -389,6 +494,8 @@ export default function Addasset({
           `Asset "${finalMake} ${formData.model}" (Tag: ${payload.assetNo || payload.sr}) inwarded successfully!`,
           'Asset Inwarded'
         );
+        setCreatedSuccessAsset(result.data || payload);
+        setShowReviewModal(false);
 
         if (onAssetCreated) onAssetCreated();
       }
@@ -397,6 +504,27 @@ export default function Addasset({
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleInwardNext = () => {
+    setCreatedSuccessAsset(null);
+    setShowReviewModal(false);
+    setFormData((prev) => ({
+      ...prev,
+      assetNo: calculateNextAssetTag(),
+      model: '',
+      sr: '',
+      status: 'Available',
+      userName: 'Unassigned',
+      selectedEmpId: '',
+      empCode: '',
+      mailId: '',
+      peripheralsList: [],
+      invoiceImage: '',
+      remarks: '',
+    }));
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -425,6 +553,112 @@ export default function Addasset({
           Select asset type to activate tailored hardware specifications, OEM warranty verification, and stock provisioning.
         </p>
       </div>
+
+      {/* SUCCESS CONFIRMATION RECEIPT CARD */}
+      {createdSuccessAsset && (
+        <div
+          className="card"
+          style={{
+            padding: '1.75rem',
+            backgroundColor: 'var(--bg-surface-raised)',
+            border: '1.5px solid #10b981',
+            borderRadius: 'var(--radius-lg)',
+            marginBottom: '1.75rem',
+            boxShadow: '0 8px 32px rgba(16, 185, 129, 0.15)',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '1rem',
+              borderBottom: '1px solid var(--border-subtle)',
+              paddingBottom: '1rem',
+              marginBottom: '1.25rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <div
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                  color: '#34d399',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <CheckCircle2 size={24} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  Hardware Asset Inwarded Successfully!
+                </h2>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0.15rem 0 0 0' }}>
+                  The device record and serial number have been verified and posted to master inventory.
+                </p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={handleInwardNext}
+                className="btn btn-primary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}
+              >
+                <Plus size={14} />
+                Inward Next Asset
+              </button>
+              {onAssetCreated && (
+                <button
+                  type="button"
+                  onClick={onAssetCreated}
+                  className="btn btn-outline btn-sm"
+                >
+                  View in Master Asset List
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+              gap: '0.75rem',
+            }}
+          >
+            <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--bg-surface)', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Asset Tag</div>
+              <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#38bdf8', fontFamily: 'monospace', marginTop: '0.15rem' }}>
+                {createdSuccessAsset.assetNo}
+              </div>
+            </div>
+            <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--bg-surface)', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Serial Number (S/N)</div>
+              <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace', marginTop: '0.15rem' }}>
+                {createdSuccessAsset.sr}
+              </div>
+            </div>
+            <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--bg-surface)', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Make & Model</div>
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.15rem' }}>
+                {createdSuccessAsset.make} {createdSuccessAsset.model}
+              </div>
+            </div>
+            <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--bg-surface)', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Status & Custody</div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: createdSuccessAsset.status === 'Assigned' ? '#38bdf8' : '#34d399', marginTop: '0.15rem' }}>
+                {createdSuccessAsset.status} • {createdSuccessAsset.userName || 'Unassigned'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 1. ASSET CATEGORY SELECTOR CARDS (CORE USER REQUEST) */}
       <div style={{ marginBottom: '1.75rem' }}>
@@ -640,7 +874,7 @@ export default function Addasset({
                 />
               </div>
 
-              {/* Serial Number */}
+              {/* Serial Number with Duplicate Warning */}
               <div className="form-group">
                 <label className="form-label">
                   Serial Number (S/N) <span style={{ color: '#f87171' }}>*</span>
@@ -652,9 +886,34 @@ export default function Addasset({
                   value={formData.sr}
                   onChange={handleChange}
                   className="form-control"
-                  style={{ fontFamily: 'monospace', fontWeight: 600 }}
+                  style={{
+                    fontFamily: 'monospace',
+                    fontWeight: 600,
+                    borderColor: duplicateAsset ? '#f87171' : undefined,
+                  }}
                   required
                 />
+                {duplicateAsset && (
+                  <div
+                    style={{
+                      marginTop: '0.35rem',
+                      padding: '0.4rem 0.65rem',
+                      borderRadius: '4px',
+                      backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid rgba(239, 68, 68, 0.35)',
+                      color: '#f87171',
+                      fontSize: '0.72rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                    }}
+                  >
+                    <AlertCircle size={13} style={{ flexShrink: 0 }} />
+                    <span>
+                      Duplicate S/N detected! Already registered as <strong>{duplicateAsset.assetNo}</strong> ({duplicateAsset.make} {duplicateAsset.model} • {duplicateAsset.status}).
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Plant / Facility */}
@@ -666,7 +925,14 @@ export default function Addasset({
                   onChange={handleChange}
                   className="form-select"
                 >
-                  <option value="Vitromed">Vitromed</option>
+                  {(locations && locations.length > 0
+                    ? locations.map((l) => (typeof l === 'object' ? l.name || l.plantName : l))
+                    : COMPANY_PLANTS
+                  ).map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -679,7 +945,10 @@ export default function Addasset({
                   onChange={handleChange}
                   className="form-select"
                 >
-                  {COMPANY_DEPARTMENTS.map((dept) => (
+                  {(departments && departments.length > 0
+                    ? departments.map((d) => (typeof d === 'object' ? d.name || d.departmentName : d))
+                    : COMPANY_DEPARTMENTS
+                  ).map((dept) => (
                     <option key={dept} value={dept}>
                       {dept}
                     </option>
@@ -836,8 +1105,12 @@ export default function Addasset({
                     onAccessoriesChange={(val) => setFormData((prev) => ({ ...prev, accessories: val }))}
                     monitorDetails={formData.monitorDetails}
                     onMonitorDetailsChange={(val) => setFormData((prev) => ({ ...prev, monitorDetails: val }))}
+                    monitorSerialNo={formData.monitorSerialNo}
+                    onMonitorSerialNoChange={(val) => setFormData((prev) => ({ ...prev, monitorSerialNo: val }))}
+                    peripheralsList={formData.peripheralsList}
+                    onPeripheralsListChange={(list) => setFormData((prev) => ({ ...prev, peripheralsList: list }))}
                     compact={false}
-                    title="Hardware & Peripherals Allocated Bundle (Laptop/Desktop, Monitor, Keyboard & Mouse, Headphone, Printer, Scanner, UPS)"
+                    title="Workstation Peripherals & Equipment Bundle"
                   />
                 </div>
               </div>
@@ -1114,49 +1387,213 @@ export default function Addasset({
               </div>
             )}
 
-            {/* Network Identity (Applicable to all types) */}
-            <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '0.75rem', textTransform: 'uppercase' }}>
-                Network Identity & IP Allocation (Optional)
+            {/* DYNAMIC FIELDS FOR POWER & INFRASTRUCTURE */}
+            {activeCategory === 'power' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">UPS Capacity / VA Rating</label>
+                  <input
+                    type="text"
+                    name="upsCapacity"
+                    placeholder="e.g. 1000 VA / 600W Pure Sine Wave, 3KVA Online"
+                    value={formData.upsCapacity}
+                    onChange={handleChange}
+                    className="form-control"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Battery Configuration</label>
+                  <input
+                    type="text"
+                    name="batteryConfig"
+                    placeholder="e.g. 2x 12V 7.2Ah Sealed Lead-Acid (Internal)"
+                    value={formData.batteryConfig}
+                    onChange={handleChange}
+                    className="form-control"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Estimated Backup Runtime</label>
+                  <input
+                    type="text"
+                    name="backupRuntime"
+                    placeholder="e.g. 25-30 Minutes @ 50% Load"
+                    value={formData.backupRuntime}
+                    onChange={handleChange}
+                    className="form-control"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">PDU / Output Sockets</label>
+                  <input
+                    type="text"
+                    name="pduOutlets"
+                    placeholder="e.g. 4x India 3-Pin + 2x IEC C13 Sockets"
+                    value={formData.pduOutlets}
+                    onChange={handleChange}
+                    className="form-control"
+                  />
+                </div>
+
+                {formData.deviceType?.includes('Biometric') && (
+                  <div className="form-group">
+                    <label className="form-label">Biometric Sensor Technology</label>
+                    <input
+                      type="text"
+                      name="biometricSensor"
+                      placeholder="e.g. Optical Fingerprint + AI Face Recognition + RFID"
+                      value={formData.biometricSensor}
+                      onChange={handleChange}
+                      className="form-control"
+                    />
+                  </div>
+                )}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.85rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Hostname</label>
-                  <input
-                    type="text"
-                    name="hostName"
-                    placeholder="e.g. ACC-DELL-14"
-                    value={formData.hostName}
+            )}
+
+            {/* DYNAMIC FIELDS FOR OTHER HARDWARE */}
+            {activeCategory === 'other' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">Hardware Specifications & Key Features</label>
+                  <textarea
+                    name="deviceSpecs"
+                    rows={2}
+                    placeholder="Describe technical specs, resolution, audio/mic array, interface standards..."
+                    value={formData.deviceSpecs}
                     onChange={handleChange}
                     className="form-control"
                   />
                 </div>
+
                 <div className="form-group">
-                  <label className="form-label">Assigned IP Address</label>
+                  <label className="form-label">Connectivity & Ports</label>
                   <input
                     type="text"
-                    name="ipAddress"
-                    placeholder="e.g. 192.168.8.150"
-                    value={formData.ipAddress}
+                    name="connectivityPorts"
+                    placeholder="e.g. USB-C 3.2, HDMI 2.0, Bluetooth 5.2"
+                    value={formData.connectivityPorts}
                     onChange={handleChange}
                     className="form-control"
-                    style={{ fontFamily: 'monospace' }}
                   />
                 </div>
+
                 <div className="form-group">
-                  <label className="form-label">Hardware MAC Address</label>
+                  <label className="form-label">Included Accessories</label>
                   <input
                     type="text"
-                    name="macAddress"
-                    placeholder="e.g. 00:1A:2B:3C:4D:5E"
-                    value={formData.macAddress}
+                    name="accessories"
+                    placeholder="e.g. Power adapter, USB cables, Remote control"
+                    value={formData.accessories}
                     onChange={handleChange}
                     className="form-control"
-                    style={{ fontFamily: 'monospace' }}
                   />
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Network Identity & Access Credentials - ONLY for network-capable devices */}
+            {isNetworkDevice(formData.deviceType, {
+              category: activeCategory,
+              connectivity: formData.connectivity || formData.connectivityPorts,
+            }) && (
+              <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+                    Network Identity & System Credentials {formData.status !== 'Assigned' ? '(Optional — Typically Configured upon Handover)' : '(Assigned Configuration)'}
+                  </div>
+                  {formData.status !== 'Assigned' && (
+                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                      Leave blank if storing in stock depot; assign IP when handing over to staff
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.85rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Hostname (Optional)</label>
+                    <input
+                      type="text"
+                      name="hostName"
+                      placeholder="e.g. ACC-DELL-14"
+                      value={formData.hostName}
+                      onChange={handleChange}
+                      className="form-control"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Assigned IP Address (Optional)</label>
+                    <input
+                      type="text"
+                      name="ipAddress"
+                      placeholder="e.g. 192.168.8.150"
+                      value={formData.ipAddress}
+                      onChange={handleChange}
+                      className="form-control"
+                      style={{ fontFamily: 'monospace' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Hardware MAC Address (Optional)</label>
+                    <input
+                      type="text"
+                      name="macAddress"
+                      placeholder="e.g. 00:1A:2B:3C:4D:5E"
+                      value={formData.macAddress}
+                      onChange={handleChange}
+                      className="form-control"
+                      style={{ fontFamily: 'monospace' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>System Login Password</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((p) => ({ ...p, loginPassword: !p.loginPassword }))}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.72rem', padding: 0 }}
+                      >
+                        {showPassword.loginPassword ? <EyeOff size={12} /> : <Eye size={12} />}
+                        <span>{showPassword.loginPassword ? 'Hide' : 'Reveal'}</span>
+                      </button>
+                    </label>
+                    <input
+                      type={showPassword.loginPassword ? 'text' : 'password'}
+                      name="loginPassword"
+                      placeholder="Admin password"
+                      value={formData.loginPassword}
+                      onChange={handleChange}
+                      className="form-control"
+                      style={{ fontFamily: 'monospace' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Remote / VNC Password</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((p) => ({ ...p, vncPassword: !p.vncPassword }))}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.72rem', padding: 0 }}
+                      >
+                        {showPassword.vncPassword ? <EyeOff size={12} /> : <Eye size={12} />}
+                        <span>{showPassword.vncPassword ? 'Hide' : 'Reveal'}</span>
+                      </button>
+                    </label>
+                    <input
+                      type={showPassword.vncPassword ? 'text' : 'password'}
+                      name="vncPassword"
+                      placeholder="VNC / Remote access key"
+                      value={formData.vncPassword}
+                      onChange={handleChange}
+                      className="form-control"
+                      style={{ fontFamily: 'monospace' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* SECTION 3: INITIAL STATUS & CUSTODIAN PROVISIONING */}
@@ -1177,7 +1614,10 @@ export default function Addasset({
                 >
                   <option value="Available">Available in Central Stock Depot</option>
                   <option value="Assigned">Directly Assign to Staff Member</option>
-                  <option value="Under Maintenance">Under Maintenance / QC Testing</option>
+                  <option value="Reserved">Reserved for Upcoming Onboarding</option>
+                  <option value="Under QC">Under QC Testing / Burn-in</option>
+                  <option value="Under Maintenance">Under Maintenance / Warranty Repair</option>
+                  <option value="Damaged">Damaged / Needs Inspection</option>
                 </select>
               </div>
 
@@ -1231,20 +1671,78 @@ export default function Addasset({
                 </div>
 
                 {formData.custodianMode === 'select' ? (
-                  <div className="form-group">
-                    <label className="form-label">Select Registered Employee</label>
-                    <select
-                      value={formData.selectedEmpId}
-                      onChange={(e) => handleEmployeeSelect(e.target.value)}
-                      className="form-select"
-                    >
-                      <option value="">-- Choose Custodian ({employees.length} available) --</option>
-                      {employees.map((emp) => (
-                        <option key={emp._id || emp.employeeId} value={emp.employeeId}>
-                          {emp.name} ({emp.employeeId}) • {emp.department} • {emp.location}
-                        </option>
-                      ))}
-                    </select>
+                  <div>
+                    {formData.selectedEmpId && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '0.5rem 0.75rem',
+                          borderRadius: 'var(--radius-sm)',
+                          backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                          border: '1px solid rgba(16, 185, 129, 0.3)',
+                          marginBottom: '0.65rem',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <CheckCircle2 size={14} color="#10b981" />
+                          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#34d399' }}>
+                            Selected Custodian: {formData.userName} ({formData.empCode}) • {formData.department}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleEmployeeSelect('')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#f87171',
+                            fontSize: '0.72rem',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                          }}
+                        >
+                          Clear Selection
+                        </button>
+                      </div>
+                    )}
+
+                    <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
+                      <Search
+                        size={13}
+                        style={{
+                          position: 'absolute',
+                          left: '10px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          color: 'var(--text-faint)',
+                        }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Search employee by name, ID badge, or department..."
+                        value={empSearchQuery}
+                        onChange={(e) => setEmpSearchQuery(e.target.value)}
+                        className="form-control"
+                        style={{ paddingLeft: '2rem', fontSize: '0.78rem' }}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <select
+                        value={formData.selectedEmpId}
+                        onChange={(e) => handleEmployeeSelect(e.target.value)}
+                        className="form-select"
+                      >
+                        <option value="">-- Choose Custodian ({filteredEmployees.length} found) --</option>
+                        {filteredEmployees.map((emp) => (
+                          <option key={emp._id || emp.employeeId} value={emp.employeeId}>
+                            {emp.name} ({emp.employeeId}) • {emp.department} • {emp.location}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
@@ -1304,6 +1802,10 @@ export default function Addasset({
                     onAccessoriesChange={(val) => setFormData((prev) => ({ ...prev, accessories: val }))}
                     monitorDetails={formData.monitorDetails}
                     onMonitorDetailsChange={(val) => setFormData((prev) => ({ ...prev, monitorDetails: val }))}
+                    monitorSerialNo={formData.monitorSerialNo}
+                    onMonitorSerialNoChange={(val) => setFormData((prev) => ({ ...prev, monitorSerialNo: val }))}
+                    peripheralsList={formData.peripheralsList}
+                    onPeripheralsListChange={(val) => setFormData((prev) => ({ ...prev, peripheralsList: val }))}
                     compact={true}
                     title="Hardware & Peripherals Handed Over with Asset"
                   />
@@ -1320,6 +1822,19 @@ export default function Addasset({
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Purchase Order (PO Number)</label>
+                <input
+                  type="text"
+                  name="poNumber"
+                  placeholder="e.g. PO-2024-0042"
+                  value={formData.poNumber}
+                  onChange={handleChange}
+                  className="form-control"
+                  style={{ fontFamily: 'monospace' }}
+                />
+              </div>
+
               <div className="form-group">
                 <label className="form-label">Invoice / Bill Number</label>
                 <input
@@ -1351,6 +1866,19 @@ export default function Addasset({
               </div>
 
               <div className="form-group">
+                <label className="form-label">Procurement Cost (₹ INR)</label>
+                <input
+                  type="number"
+                  name="purchasePrice"
+                  placeholder="e.g. 54990"
+                  value={formData.purchasePrice}
+                  onChange={handleChange}
+                  className="form-control"
+                  min="0"
+                />
+              </div>
+
+              <div className="form-group">
                 <label className="form-label">Purchase Date</label>
                 <input
                   type="date"
@@ -1362,12 +1890,11 @@ export default function Addasset({
               </div>
 
               <div className="form-group">
-                <label className="form-label">Warranty Terms</label>
+                <label className="form-label">Warranty Start Date</label>
                 <input
-                  type="text"
-                  name="warrantyDetails"
-                  placeholder="e.g. 3 Years Comprehensive On-Site OEM"
-                  value={formData.warrantyDetails}
+                  type="date"
+                  name="warrantyStartDate"
+                  value={formData.warrantyStartDate}
                   onChange={handleChange}
                   className="form-control"
                 />
@@ -1379,6 +1906,25 @@ export default function Addasset({
                   type="date"
                   name="warrantyEndDate"
                   value={formData.warrantyEndDate}
+                  onChange={handleChange}
+                  className="form-control"
+                  style={{ borderColor: warrantyDateError ? '#f87171' : undefined }}
+                />
+                {warrantyDateError && (
+                  <div style={{ marginTop: '0.25rem', color: '#f87171', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <AlertCircle size={12} />
+                    <span>Expiration date cannot precede start date.</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Warranty Terms / Coverage</label>
+                <input
+                  type="text"
+                  name="warrantyDetails"
+                  placeholder="e.g. 3 Years Comprehensive On-Site OEM"
+                  value={formData.warrantyDetails}
                   onChange={handleChange}
                   className="form-control"
                 />
@@ -1502,6 +2048,23 @@ export default function Addasset({
 
           {/* Form Actions */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setShowReviewModal(true)}
+              className="btn btn-outline"
+              disabled={submitting}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.7rem 1.25rem',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+              }}
+            >
+              <Eye size={15} />
+              Review Summary
+            </button>
             <button
               type="submit"
               className="btn btn-primary"
@@ -1651,6 +2214,16 @@ export default function Addasset({
                     {formData.mobileOs}
                   </span>
                 )}
+                {activeCategory === 'power' && (
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    {formData.upsCapacity} • {formData.backupRuntime}
+                  </span>
+                )}
+                {activeCategory === 'other' && (
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    {formData.deviceSpecs || 'Custom Peripheral'}
+                  </span>
+                )}
               </div>
 
               <div>
@@ -1668,6 +2241,119 @@ export default function Addasset({
           </div>
         </div>
       </div>
+
+      {/* REVIEW & CONFIRMATION MODAL */}
+      {showReviewModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '1rem',
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              maxWidth: '650px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '1.5rem',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-default)',
+              backgroundColor: 'var(--bg-surface)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ShieldCheck size={18} color="var(--primary)" />
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>Review Asset Inward Details</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReviewModal(false)}
+                className="btn btn-ghost btn-icon btn-sm"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.82rem' }}>
+              <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-surface-raised)', borderRadius: '6px' }}>
+                <strong style={{ color: '#818cf8', display: 'block', marginBottom: '0.25rem' }}>1. Hardware Identification</strong>
+                <div><strong>Asset Tag:</strong> {formData.assetNo}</div>
+                <div><strong>Make & Model:</strong> {(formData.make === 'Other' ? formData.customMake : formData.make) || 'Generic'} {formData.model}</div>
+                <div><strong>Serial (S/N):</strong> {formData.sr}</div>
+                <div><strong>Facility & Department:</strong> {formData.plant} • {formData.department}</div>
+              </div>
+
+              <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-surface-raised)', borderRadius: '6px' }}>
+                <strong style={{ color: '#38bdf8', display: 'block', marginBottom: '0.25rem' }}>2. Technical Specifications ({currentCategory.name})</strong>
+                <div><strong>Device Sub-Type:</strong> {formData.deviceType}</div>
+                {activeCategory === 'computing' && (
+                  <div><strong>Specs:</strong> {formData.processor} • {formData.ramSize} RAM • {formData.storage} • {formData.osVersion}</div>
+                )}
+                {activeCategory === 'servers' && (
+                  <div><strong>Specs:</strong> {formData.serverCpu} • {formData.serverRam} • {formData.serverRaid}</div>
+                )}
+                {activeCategory === 'network' && (
+                  <div><strong>Config:</strong> {formData.portConfig} • {formData.networkRole}</div>
+                )}
+                {activeCategory === 'power' && (
+                  <div><strong>Capacity:</strong> {formData.upsCapacity} • {formData.backupRuntime}</div>
+                )}
+                {formData.peripheralsList && formData.peripheralsList.length > 0 && (
+                  <div style={{ marginTop: '0.35rem', color: '#a5b4fc' }}>
+                    <strong>Allocated Bundle ({formData.peripheralsList.length} items):</strong>{' '}
+                    {formData.peripheralsList.map((p) => `${p.itemType} (${p.make || ''} ${p.model || ''})`).join(', ')}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-surface-raised)', borderRadius: '6px' }}>
+                <strong style={{ color: '#10b981', display: 'block', marginBottom: '0.25rem' }}>3. Custody & Status</strong>
+                <div><strong>Status:</strong> {formData.status} ({formData.workingCondition})</div>
+                <div><strong>Assigned Custodian:</strong> {formData.userName} {formData.empCode ? `(${formData.empCode})` : ''}</div>
+              </div>
+
+              <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-surface-raised)', borderRadius: '6px' }}>
+                <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '0.25rem' }}>4. Procurement & Warranty</strong>
+                <div><strong>PO / Invoice:</strong> {formData.poNumber || 'N/A'} / {formData.billNo || 'N/A'}</div>
+                <div><strong>Vendor:</strong> {formData.vendorName}</div>
+                {formData.purchasePrice && <div><strong>Cost:</strong> ₹{Number(formData.purchasePrice).toLocaleString()}</div>}
+                <div><strong>Warranty Coverage:</strong> {formData.warrantyDetails} (Valid: {formData.warrantyStartDate} to {formData.warrantyEndDate})</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)' }}>
+              <button
+                type="button"
+                onClick={() => setShowReviewModal(false)}
+                className="btn btn-outline btn-sm"
+              >
+                Back to Edit
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="btn btn-primary btn-sm"
+                disabled={submitting}
+                style={{ fontWeight: 700 }}
+              >
+                {submitting ? 'Recording...' : 'Confirm & Inward Asset'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

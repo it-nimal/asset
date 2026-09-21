@@ -37,12 +37,15 @@ import {
   ExternalLink,
   LayoutGrid,
   List,
+  Upload,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useToast } from '../common/Toast';
 import { useAuth } from '../../context/AuthContext';
 import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from '../../constants/organization';
 import HardwareAllocationSelector from '../assets/HardwareAllocationSelector';
+import BulkAddEmployeesModal from './BulkAddEmployeesModal';
+import EmployeeProfileModal from './EmployeeProfileModal';
 
 // Robust helper to find all hardware assets currently assigned to an employee
 export function getEmployeeAssets(emp, allAssets = []) {
@@ -117,6 +120,7 @@ export default function OrganizationView({
   onAssign,
   onTransfer,
   onReturn,
+  initialOpenBulkModal = false,
 }) {
   const [searchTerm, setSearchTerm] = useState(globalSearch || '');
   const [departmentFilter, setDepartmentFilter] = useState('All');
@@ -135,6 +139,13 @@ export default function OrganizationView({
   const [selectedEmpForAsset, setSelectedEmpForAsset] = useState(null);
   const [selectedEmpForAssetList, setSelectedEmpForAssetList] = useState(null);
   const [showAddEmpModal, setShowAddEmpModal] = useState(false);
+  const [showBulkAddModal, setShowBulkAddModal] = useState(Boolean(initialOpenBulkModal));
+
+  useEffect(() => {
+    if (initialOpenBulkModal) {
+      setShowBulkAddModal(true);
+    }
+  }, [initialOpenBulkModal]);
   const [empToDelete, setEmpToDelete] = useState(null);
   const [showAddDeptModal, setShowAddDeptModal] = useState(false);
   const [deptToEdit, setDeptToEdit] = useState(null);
@@ -237,7 +248,25 @@ export default function OrganizationView({
             </div>
 
             {/* Quick Actions & Add Button */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setShowBulkAddModal(true)}
+                className="btn btn-outline btn-sm"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  padding: '0.5rem 0.95rem',
+                  fontWeight: 700,
+                  borderColor: 'rgba(56, 189, 248, 0.4)',
+                  color: '#38bdf8',
+                }}
+              >
+                <Upload size={15} />
+                <span>+ Bulk Add Users</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setShowAddEmpModal(true)}
@@ -252,7 +281,7 @@ export default function OrganizationView({
                 }}
               >
                 <Plus size={16} />
-                + Add Employee & Assign ID
+                <span>+ Add Single Employee</span>
               </button>
             </div>
           </div>
@@ -1592,6 +1621,17 @@ export default function OrganizationView({
         />
       )}
 
+      {/* MODAL 2B: BULK ADD & IMPORT EMPLOYEES */}
+      {showBulkAddModal && (
+        <BulkAddEmployeesModal
+          departments={departments}
+          locations={locations}
+          employees={employees}
+          onClose={() => setShowBulkAddModal(false)}
+          onSuccess={onSuccess}
+        />
+      )}
+
       {/* MODAL 3: ASSIGN HARDWARE ASSET TO EMPLOYEE */}
       {selectedEmpForAsset && (
         <AssignAssetToEmployeeModal
@@ -1602,33 +1642,23 @@ export default function OrganizationView({
         />
       )}
 
-      {/* MODAL 3B: VIEW ALL ASSETS HELD BY EMPLOYEE */}
+      {/* MODAL 3B: COMPREHENSIVE EMPLOYEE PROFILE (OVERVIEW, ASSETS, HISTORY, OFFBOARDING, UNDERTAKING) */}
       {selectedEmpForAssetList && (
-        <EmployeeAssetsModal
+        <EmployeeProfileModal
           employee={selectedEmpForAssetList}
-          assets={getEmployeeAssets(selectedEmpForAssetList, assets)}
+          assets={assets}
+          allEmployees={employees}
           onClose={() => setSelectedEmpForAssetList(null)}
           onViewAsset={(asset) => {
             setSelectedEmpForAssetList(null);
             if (onViewAsset) onViewAsset(asset);
-          }}
-          onAssign={(asset) => {
-            setSelectedEmpForAssetList(null);
-            if (onAssign) onAssign(asset);
-          }}
-          onTransfer={(asset) => {
-            setSelectedEmpForAssetList(null);
-            if (onTransfer) onTransfer(asset);
-          }}
-          onReturn={(asset) => {
-            setSelectedEmpForAssetList(null);
-            if (onReturn) onReturn(asset);
           }}
           onAddNewAssign={() => {
             const emp = selectedEmpForAssetList;
             setSelectedEmpForAssetList(null);
             setSelectedEmpForAsset(emp);
           }}
+          onSuccess={onSuccess}
         />
       )}
 
@@ -2203,7 +2233,7 @@ function AddEmployeeModal({ departments = [], locations = [], employees = [], on
 }
 
 // ----------------- MODAL 3B: VIEW ALL ASSETS HELD BY EMPLOYEE -----------------
-function EmployeeAssetsModal({
+export function EmployeeAssetsModal({
   employee,
   assets = [],
   onClose,
@@ -2246,12 +2276,14 @@ function EmployeeAssetsModal({
     return badges;
   };
 
+  const [modalTab, setModalTab] = useState('hardware');
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '840px', width: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+        style={{ maxWidth: '880px', width: '95vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
       >
         {/* Header */}
         <div className="modal-header" style={{ padding: '1rem 1.5rem' }}>
@@ -2261,22 +2293,22 @@ function EmployeeAssetsModal({
                 width: '42px',
                 height: '42px',
                 borderRadius: 'var(--radius-full)',
-                background: 'linear-gradient(135deg, #4f46e5, #06b6d4)',
+                background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#ffffff',
                 fontWeight: 800,
                 fontSize: '1rem',
-                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
+                boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)',
                 flexShrink: 0,
               }}
             >
               {(employee.name || 'E').charAt(0).toUpperCase()}
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   {employee.name}
                 </h3>
                 <span
@@ -2286,9 +2318,9 @@ function EmployeeAssetsModal({
                     fontWeight: 700,
                     padding: '0.15rem 0.55rem',
                     borderRadius: '4px',
-                    backgroundColor: 'rgba(99, 102, 241, 0.15)',
-                    color: '#818cf8',
-                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                    backgroundColor: 'rgba(2, 132, 199, 0.12)',
+                    color: '#0284c7',
+                    border: '1px solid rgba(2, 132, 199, 0.25)',
                   }}
                 >
                   ID: {employee.employeeId || 'N/A'}
@@ -2306,12 +2338,79 @@ function EmployeeAssetsModal({
                 </span>
               </div>
               <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                {employee.department || 'General'} • {employee.location || 'Vitromed'} • {employee.email || 'No email'}
+                {employee.designation ? `${employee.designation} • ` : ''}{employee.department || 'General'} • {employee.location || 'Vitromed'} • {employee.email || 'No email'}
               </div>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
-            <X size={18} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setModalTab('undertaking');
+                setTimeout(() => window.print(), 100);
+              }}
+              className="btn btn-outline btn-xs"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+              title="Print official Employee IT Hardware Handover Undertaking"
+            >
+              <Printer size={13} />
+              <span>Print Handover Sheet</span>
+            </button>
+            <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* User Profile Sub-Tabs */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-default)', padding: '0 1.5rem', gap: '0.5rem', backgroundColor: 'var(--bg-surface-raised)' }}>
+          <button
+            type="button"
+            onClick={() => setModalTab('hardware')}
+            style={{
+              padding: '0.65rem 1rem',
+              border: 'none',
+              background: 'none',
+              fontSize: '0.82rem',
+              fontWeight: modalTab === 'hardware' ? 700 : 500,
+              color: modalTab === 'hardware' ? '#0284c7' : 'var(--text-muted)',
+              borderBottom: modalTab === 'hardware' ? '2px solid #0284c7' : '2px solid transparent',
+              cursor: 'pointer',
+            }}
+          >
+            Assigned Hardware ({assets.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalTab('software')}
+            style={{
+              padding: '0.65rem 1rem',
+              border: 'none',
+              background: 'none',
+              fontSize: '0.82rem',
+              fontWeight: modalTab === 'software' ? 700 : 500,
+              color: modalTab === 'software' ? '#0284c7' : 'var(--text-muted)',
+              borderBottom: modalTab === 'software' ? '2px solid #0284c7' : '2px solid transparent',
+              cursor: 'pointer',
+            }}
+          >
+            Software & Licenses
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalTab('undertaking')}
+            style={{
+              padding: '0.65rem 1rem',
+              border: 'none',
+              background: 'none',
+              fontSize: '0.82rem',
+              fontWeight: modalTab === 'undertaking' ? 700 : 500,
+              color: modalTab === 'undertaking' ? '#0284c7' : 'var(--text-muted)',
+              borderBottom: modalTab === 'undertaking' ? '2px solid #0284c7' : '2px solid transparent',
+              cursor: 'pointer',
+            }}
+          >
+            Official Handover Undertaking
           </button>
         </div>
 
@@ -2327,7 +2426,8 @@ function EmployeeAssetsModal({
             gap: '1rem',
           }}
         >
-          {assets.length === 0 ? (
+          {modalTab === 'hardware' && (
+            assets.length === 0 ? (
             <div
               style={{
                 textAlign: 'center',
@@ -2652,6 +2752,215 @@ function EmployeeAssetsModal({
                 })}
               </div>
             </>
+          ))}
+
+          {/* TAB 2: SOFTWARE & LICENSES */}
+          {modalTab === 'software' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.75rem 1rem',
+                  backgroundColor: 'var(--bg-surface-raised, rgba(0,0,0,0.02))',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-default, #e2e8f0)',
+                }}
+              >
+                <div>
+                  <h4 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                    Software & Digital Entitlements
+                  </h4>
+                  <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                    Operating systems, productivity licenses, and enterprise access tied to {employee.name}'s hardware.
+                  </p>
+                </div>
+              </div>
+
+              {assets.filter((a) => a.osVersion || a.officeSoftware || a.sapId || a.mailSoftware).length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-faint)' }}>
+                  No software license keys registered on the assigned machines.
+                </div>
+              ) : (
+                <div className="table-container">
+                  <table className="table-modern">
+                    <thead>
+                      <tr>
+                        <th>Machine Tag</th>
+                        <th>Operating System</th>
+                        <th>OS Key / License</th>
+                        <th>Office Software</th>
+                        <th>Office Key</th>
+                        <th>SAP / ERP ID</th>
+                        <th>Mail Software</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {assets.map((a, idx) => (
+                        <tr key={idx}>
+                          <td style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: '#0284c7' }}>
+                            #{a.assetNo || 'AST'}
+                          </td>
+                          <td style={{ fontSize: '0.8rem', fontWeight: 600 }}>{a.osVersion || '—'}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.74rem' }}>
+                            {a.windowsKey ? '••••-••••-••••' : (a.windowsType || 'OEM')}
+                          </td>
+                          <td style={{ fontSize: '0.8rem' }}>{a.officeSoftware || '—'}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.74rem' }}>
+                            {a.officeKey ? '••••-••••-••••' : '—'}
+                          </td>
+                          <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: '#8b5cf6' }}>
+                            {a.sapId || '—'}
+                          </td>
+                          <td style={{ fontSize: '0.78rem' }}>{a.mailSoftware || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: OFFICIAL HANDOVER UNDERTAKING (A4 PRINTABLE) */}
+          {modalTab === 'undertaking' && (
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                color: '#0f172a',
+                padding: '2rem 2.25rem',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                fontFamily: 'Inter, system-ui, sans-serif',
+              }}
+            >
+              {/* Official Letterhead Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #0f172a', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.02em', textTransform: 'uppercase' }}>
+                    Vitromed Healthcare
+                  </h2>
+                  <div style={{ fontSize: '0.74rem', color: '#475569', fontWeight: 600, marginTop: '2px' }}>
+                    IT Infrastructure & Asset Management Division
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '1px' }}>
+                    Facility: {employee.location || 'Vitromed Corporate Plant'} • Document Code: VTR/IT/REC/{employee.employeeId || 'GEN'}/{new Date().getFullYear()}
+                  </div>
+                </div>
+
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#0284c7', textTransform: 'uppercase' }}>
+                    Hardware Handover Undertaking
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#475569', marginTop: '2px' }}>
+                    Date: <strong>{new Date().toLocaleDateString('en-GB')}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Employee Details Box */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', backgroundColor: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '1.25rem', fontSize: '0.78rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Employee Name</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0f172a' }}>{employee.name}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Employee Code / ID</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0284c7', fontFamily: 'monospace' }}>{employee.employeeId || 'N/A'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Designation</div>
+                  <div style={{ fontWeight: 600, color: '#0f172a' }}>{employee.designation || 'Staff'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Department</div>
+                  <div style={{ fontWeight: 600, color: '#0f172a' }}>{employee.department || 'General'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Official Email</div>
+                  <div style={{ color: '#0f172a' }}>{employee.email || '—'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Mobile Contact</div>
+                  <div style={{ color: '#0f172a' }}>{employee.phone || '—'}</div>
+                </div>
+              </div>
+
+              {/* Hardware Schedule Table */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.04em' }}>
+                  1. Schedule of Issued IT Assets & Peripherals
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.76rem' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                      <th style={{ padding: '6px 8px', textAlign: 'left', color: '#334155' }}>#</th>
+                      <th style={{ padding: '6px 8px', textAlign: 'left', color: '#334155' }}>Asset Tag</th>
+                      <th style={{ padding: '6px 8px', textAlign: 'left', color: '#334155' }}>Serial Number</th>
+                      <th style={{ padding: '6px 8px', textAlign: 'left', color: '#334155' }}>Machine / Model</th>
+                      <th style={{ padding: '6px 8px', textAlign: 'left', color: '#334155' }}>Type</th>
+                      <th style={{ padding: '6px 8px', textAlign: 'left', color: '#334155' }}>Accessories & Peripherals</th>
+                      <th style={{ padding: '6px 8px', textAlign: 'left', color: '#334155' }}>Condition</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assets.map((a, aIdx) => (
+                      <tr key={aIdx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '6px 8px', color: '#64748b' }}>{aIdx + 1}</td>
+                        <td style={{ padding: '6px 8px', fontWeight: 800, fontFamily: 'monospace', color: '#0284c7' }}>#{a.assetNo || 'AST'}</td>
+                        <td style={{ padding: '6px 8px', fontFamily: 'monospace', color: '#334155' }}>{a.sr || 'N/A'}</td>
+                        <td style={{ padding: '6px 8px', fontWeight: 600, color: '#0f172a' }}>{a.make} {a.model}</td>
+                        <td style={{ padding: '6px 8px', color: '#475569' }}>{a.deviceType || 'Hardware'}</td>
+                        <td style={{ padding: '6px 8px', color: '#475569' }}>{a.accessories || a.monitorDetails || 'Standard peripherals bundle'}</td>
+                        <td style={{ padding: '6px 8px', color: '#059669', fontWeight: 600 }}>{a.condition || 'Good / Working'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Terms & Undertaking */}
+              <div style={{ backgroundColor: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '1.75rem', fontSize: '0.72rem', color: '#334155', lineHeight: 1.5 }}>
+                <div style={{ fontWeight: 800, color: '#0f172a', marginBottom: '4px', textTransform: 'uppercase' }}>
+                  2. Custodian Declaration & Policy Terms
+                </div>
+                <p style={{ margin: '0 0 4px' }}>
+                  1. I acknowledge receipt of the IT equipment and bundled accessories listed above in good working condition.
+                </p>
+                <p style={{ margin: '0 0 4px' }}>
+                  2. I undertake to utilize this equipment strictly for official company work and adhere to IT security policies.
+                </p>
+                <p style={{ margin: '0 0 4px' }}>
+                  3. I understand that I am responsible for the physical care and reasonable custody of these assets, and will immediately report any loss, damage, or malfunction to the IT department.
+                </p>
+                <p style={{ margin: 0 }}>
+                  4. I agree to return all listed hardware and peripherals in good condition upon reassignment, project conclusion, or separation from employment.
+                </p>
+              </div>
+
+              {/* Signatures */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #cbd5e1' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ height: '40px', borderBottom: '1px dashed #94a3b8', marginBottom: '6px' }} />
+                  <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#0f172a' }}>{employee.name}</div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Employee / Custodian Signature</div>
+                </div>
+
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ height: '40px', borderBottom: '1px dashed #94a3b8', marginBottom: '6px' }} />
+                  <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#0f172a' }}>IT Infrastructure Engineer</div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Issued & Verified By</div>
+                </div>
+
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ height: '40px', borderBottom: '1px dashed #94a3b8', marginBottom: '6px' }} />
+                  <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#0f172a' }}>IT Admin / Manager</div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Authorized Approval & Stamp</div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -2709,15 +3018,19 @@ function AssignAssetToEmployeeModal({ employee, assets = [], onClose, onSuccess 
   }, [assets, selectedAssetId]);
 
   // Peripherals Allocation Bundle
-  const [deviceType, setDeviceType] = useState('Laptop');
-  const [accessories, setAccessories] = useState('UPS, Wireless K/B & Mouse');
+  const [deviceType, setDeviceType] = useState('Desktop PC');
+  const [accessories, setAccessories] = useState('');
   const [monitorDetails, setMonitorDetails] = useState('');
+  const [monitorSerialNo, setMonitorSerialNo] = useState('');
+  const [peripheralsList, setPeripheralsList] = useState([]);
 
   useEffect(() => {
     if (selectedAsset) {
-      setDeviceType(selectedAsset.deviceType || 'Laptop');
-      setAccessories(selectedAsset.accessories || 'UPS, Wireless K/B & Mouse');
+      setDeviceType(selectedAsset.deviceType || 'Desktop PC');
+      setAccessories(selectedAsset.accessories || '');
       setMonitorDetails(selectedAsset.monitorDetails || '');
+      setMonitorSerialNo(selectedAsset.monitorSerialNo || '');
+      setPeripheralsList(selectedAsset.peripheralsList || []);
     }
   }, [selectedAsset]);
 
@@ -2741,6 +3054,8 @@ function AssignAssetToEmployeeModal({ employee, assets = [], onClose, onSuccess 
         deviceType,
         accessories,
         monitorDetails,
+        monitorSerialNo,
+        peripheralsList,
         remarks: remarks || `Assigned to ${employee.name} (ID: ${employee.employeeId}) via Employee Section`,
         actorName: user?.name || 'IT Admin',
       });
@@ -2897,8 +3212,12 @@ function AssignAssetToEmployeeModal({ employee, assets = [], onClose, onSuccess 
                   onAccessoriesChange={setAccessories}
                   monitorDetails={monitorDetails}
                   onMonitorDetailsChange={setMonitorDetails}
+                  monitorSerialNo={monitorSerialNo}
+                  onMonitorSerialNoChange={setMonitorSerialNo}
+                  peripheralsList={peripheralsList}
+                  onPeripheralsListChange={setPeripheralsList}
                   compact={false}
-                  title="Hardware & Peripherals Allocated to this Employee"
+                  title="Workstation Peripherals & Equipment Allocated to this Employee"
                 />
 
                 <div className="form-group">

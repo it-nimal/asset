@@ -24,6 +24,10 @@ import {
   Activity,
   X,
   Sparkles,
+  Boxes,
+  Receipt,
+  Settings,
+  Upload,
 } from 'lucide-react';
 import logo from '../photos/VitromedLogo.png';
 import { useAuth } from '../../context/AuthContext';
@@ -33,6 +37,7 @@ export default function Sidebar({
   setActivePage,
   stats,
   countsByCategory,
+  employeesCount,
   onCloseMobile,
 }) {
   const { user } = useAuth();
@@ -44,15 +49,25 @@ export default function Sidebar({
 
   const navSections = [
     {
-      title: 'Overview',
+      title: 'User & Employee Workspaces',
       items: [
-        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, count: stats?.total },
+        { id: 'dashboard', label: 'User Operations Dashboard', icon: LayoutDashboard },
+        { id: 'org-employees', label: 'All Users & Workstations', icon: Users, count: employeesCount || stats?.totalEmployees },
+        { id: 'employee-self-service', label: 'My Assigned Assets (Staff)', icon: Laptop },
+        { id: 'users-bulk', label: 'Bulk Import Users', icon: Upload },
+        { id: 'asset-assign', label: 'Allocate Workstation Bundle', icon: UserCheck, isAction: true },
+        { id: 'asset-transfer', label: 'User-to-User Transfer', icon: ArrowRightLeft },
+        { id: 'asset-return', label: 'Offboarding & Return', icon: Undo2 },
+        { id: 'org-departments', label: 'Department User Rosters', icon: Building2 },
+        { id: 'org-locations', label: 'Plant & Site Workspaces', icon: MapPin },
       ],
     },
     {
-      title: 'Assets',
+      title: 'Hardware Depot & Stock',
       items: [
-        { id: 'assets-all', label: 'All Assets', icon: FolderTree, count: stats?.total },
+        { id: 'inventory-all', label: 'Central Inventory Depot', icon: Boxes, count: stats?.total },
+        { id: 'inward-register', label: 'Inward / Receiving Gate', icon: Truck, isAction: true },
+        { id: 'assets-all', label: 'Hardware Master Fleet', icon: FolderTree, count: stats?.total },
         { id: 'assets-laptops', label: 'Laptops', icon: Laptop, count: countsByCategory?.Laptop },
         { id: 'assets-desktops', label: 'Desktops', icon: Monitor, count: (countsByCategory?.Desktop || 0) + (countsByCategory?.['All in One Desktop'] || 0) },
         { id: 'assets-servers', label: 'Servers', icon: Server, count: countsByCategory?.Server },
@@ -60,46 +75,30 @@ export default function Sidebar({
         { id: 'assets-network', label: 'Network', icon: Radio, count: countsByCategory?.['Network Switch'] },
         { id: 'assets-printers', label: 'Printers', icon: Printer, count: countsByCategory?.Printer },
         { id: 'assets-tablets', label: 'Mobiles / Tablets', icon: Tablet, count: countsByCategory?.Tablet },
+        { id: 'asset-maintenance', label: 'Repairs & Maintenance', icon: Wrench, count: stats?.maintenance, badgeColor: '#fbbf24' },
+        { id: 'asset-warranty', label: 'OEM Warranty Monitor', icon: ShieldCheck, count: stats?.warrantyExpiringSoon, badgeColor: '#f87171' },
       ],
     },
     {
-      title: 'Operations',
+      title: 'Procurement & Vendors',
       items: [
-        { id: 'asset-add', label: 'Inward Asset', icon: PlusCircle, isAction: true },
-        { id: 'asset-assign', label: 'Allocation', icon: UserCheck },
-        { id: 'asset-transfer', label: 'Transfer', icon: ArrowRightLeft },
-        { id: 'asset-return', label: 'Return / Handover', icon: Undo2 },
-        { id: 'asset-maintenance', label: 'Maintenance', icon: Wrench, count: stats?.maintenance, badgeColor: '#fbbf24' },
-        { id: 'asset-warranty', label: 'Warranty Monitor', icon: ShieldCheck, count: stats?.warrantyExpiringSoon, badgeColor: '#f87171' },
+        { id: 'inward-register', label: 'Inward / Receiving Register', icon: Receipt },
+        { id: 'org-vendors', label: 'Vendors & OEM Suppliers', icon: Truck },
       ],
     },
     {
-      title: 'Organization',
-      items: [
-        { id: 'org-employees', label: 'Employees', icon: Users },
-        { id: 'org-departments', label: 'Departments', icon: Building2 },
-        { id: 'org-locations', label: 'Locations & Plants', icon: MapPin },
-        { id: 'org-vendors', label: 'Vendors & Suppliers', icon: Truck },
-      ],
-    },
-    {
-      title: 'Software & Cloud',
+      title: 'Software & Digital Licenses',
       items: [
         { id: 'software-inventory', label: 'Software Portfolio', icon: Layers },
-        { id: 'software-licenses', label: 'SAM Licenses', icon: KeyRound },
+        { id: 'software-licenses', label: 'SAM License Keys', icon: KeyRound },
       ],
     },
     {
-      title: 'Infrastructure',
+      title: 'Compliance & Audit',
       items: [
-        { id: 'network-devices', label: 'Network & Racks', icon: Radio },
-      ],
-    },
-    {
-      title: 'Auditing',
-      items: [
-        { id: 'reports', label: 'Compliance Reports', icon: FileText },
-        { id: 'audit-logs', label: 'Audit Trail', icon: Activity },
+        { id: 'reports', label: 'User Allocation Reports', icon: FileText },
+        { id: 'audit-logs', label: 'Audit Trail & Custody Log', icon: Activity },
+        { id: 'settings-master', label: 'System Master Settings', icon: Settings },
       ],
     },
   ];
@@ -198,34 +197,34 @@ export default function Sidebar({
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       width: '100%',
-                      padding: '0.52rem 0.7rem',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid',
-                      borderColor: isActive ? 'rgba(56, 189, 248, 0.4)' : 'transparent',
+                      padding: '0.48rem 0.65rem',
+                      borderRadius: 'var(--radius-sm)',
+                      borderLeft: isActive ? '3px solid var(--primary)' : '3px solid transparent',
+                      borderTop: 'none',
+                      borderRight: 'none',
+                      borderBottom: 'none',
                       backgroundColor: isActive
-                        ? 'var(--bg-surface-active)'
+                        ? 'var(--primary-light)'
                         : 'transparent',
                       color: isActive
-                        ? '#ffffff'
-                        : item.isAction
-                        ? '#38bdf8'
+                        ? 'var(--primary)'
                         : 'var(--text-secondary)',
                       cursor: 'pointer',
                       fontSize: '0.8rem',
                       fontWeight: isActive ? 600 : 500,
                       textAlign: 'left',
-                      transition: 'all 0.15s ease',
+                      transition: 'all 0.12s ease',
                     }}
                     onMouseEnter={(e) => {
                       if (!isActive) {
-                        e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)';
+                        e.currentTarget.style.backgroundColor = 'var(--bg-surface-raised)';
                         e.currentTarget.style.color = 'var(--text-primary)';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!isActive) {
                         e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = item.isAction ? '#38bdf8' : 'var(--text-secondary)';
+                        e.currentTarget.style.color = 'var(--text-secondary)';
                       }
                     }}
                   >
@@ -234,9 +233,9 @@ export default function Sidebar({
                         size={15}
                         color={
                           isActive
-                            ? '#38bdf8'
+                            ? 'var(--primary)'
                             : item.isAction
-                            ? '#38bdf8'
+                            ? 'var(--primary)'
                             : 'var(--text-muted)'
                         }
                       />
@@ -247,15 +246,14 @@ export default function Sidebar({
                       <span
                         style={{
                           fontSize: '0.68rem',
-                          fontWeight: 700,
+                          fontWeight: 600,
                           padding: '0.08rem 0.42rem',
                           borderRadius: 'var(--radius-full)',
-                          backgroundColor: item.badgeColor
-                            ? `rgba(${item.badgeColor === '#fbbf24' ? '245, 158, 11' : '239, 68, 68'}, 0.14)`
-                            : isActive
-                            ? 'rgba(99, 102, 241, 0.28)'
-                            : 'rgba(255, 255, 255, 0.05)',
-                          color: item.badgeColor || (isActive ? '#c7d2fe' : 'var(--text-muted)'),
+                          backgroundColor: isActive
+                            ? 'var(--bg-surface)'
+                            : 'var(--bg-surface-elevated)',
+                          color: isActive ? 'var(--primary)' : 'var(--text-muted)',
+                          border: '1px solid var(--border-default)',
                           fontVariantNumeric: 'tabular-nums',
                         }}
                       >
@@ -288,7 +286,7 @@ export default function Sidebar({
               width: '30px',
               height: '30px',
               borderRadius: 'var(--radius-full)',
-              background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
+              backgroundColor: 'var(--primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

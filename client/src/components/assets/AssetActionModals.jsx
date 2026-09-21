@@ -27,6 +27,7 @@ import { api } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../common/Toast";
 import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from "../../constants/organization";
+import { isNetworkDevice } from "../../constants/specifications";
 import HardwareAllocationSelector from "./HardwareAllocationSelector";
 
 const formatDateInput = (d) => {
@@ -67,9 +68,15 @@ export function AssignModal({
   const [loading, setLoading] = useState(false);
 
   // Peripherals & Hardware Allocation Options
-  const [deviceType, setDeviceType] = useState(asset.deviceType || "Laptop");
-  const [accessories, setAccessories] = useState(asset.accessories || "UPS, Wireless K/B & Mouse");
+  const [deviceType, setDeviceType] = useState(asset.deviceType || "Desktop PC");
+  const [accessories, setAccessories] = useState(asset.accessories || "");
   const [monitorDetails, setMonitorDetails] = useState(asset.monitorDetails || "");
+  const [monitorSerialNo, setMonitorSerialNo] = useState(asset.monitorSerialNo || "");
+  const [peripheralsList, setPeripheralsList] = useState(asset.peripheralsList || []);
+
+  // Network Configuration (Optional, for network-capable equipment assigned to staff)
+  const [ipAddress, setIpAddress] = useState(asset.ipAddress || "");
+  const [hostName, setHostName] = useState(asset.hostName || "");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -88,16 +95,18 @@ export function AssignModal({
       targetName = emp.name;
       targetCode = emp.employeeId;
       targetEmail = emp.email || "";
-      targetDept = emp.department || asset.department;
-      targetPlant = emp.location || asset.plant;
+      targetDept = emp.department || manualDept;
+      targetPlant = emp.location || manualPlant;
     } else {
       if (!manualName.trim()) {
-        return toast.error("Please enter the custodian full name");
+        return toast.error("Employee Name is required");
       }
       targetName = manualName.trim();
-      targetCode = manualEmpCode.trim() || ("VIT-" + Math.floor(1000 + Math.random() * 9000));
-      targetEmail = manualEmail.trim() || (targetName.toLowerCase().replace(/[^a-z0-9]/g, "") + "@vitromed.com");
+      targetCode = manualEmpCode.trim();
+      targetEmail = manualEmail.trim();
     }
+
+    const isNetwork = isNetworkDevice(deviceType || asset.deviceType);
 
     setLoading(true);
     try {
@@ -113,6 +122,10 @@ export function AssignModal({
         deviceType,
         accessories,
         monitorDetails,
+        monitorSerialNo,
+        peripheralsList,
+        ipAddress: isNetwork ? ipAddress.trim() : "",
+        hostName: isNetwork ? hostName.trim() : "",
         remarks: remarks || ("Assigned to " + targetName + " by " + (user?.name || "IT Admin")),
         actorName: user?.name || "IT Admin",
       });
@@ -345,9 +358,61 @@ export function AssignModal({
               onAccessoriesChange={setAccessories}
               monitorDetails={monitorDetails}
               onMonitorDetailsChange={setMonitorDetails}
+              monitorSerialNo={monitorSerialNo}
+              onMonitorSerialNoChange={setMonitorSerialNo}
+              peripheralsList={peripheralsList}
+              onPeripheralsListChange={setPeripheralsList}
               compact={false}
-              title="Hardware & Peripherals Handed Over to User"
+              title="Workstation Peripherals & Equipment Handed Over to User"
             />
+
+            {/* Optional Network IP & Hostname Setup (ONLY for Network-Capable Devices: Desktops, Laptops, Servers, Switches) */}
+            {isNetworkDevice(deviceType || asset.deviceType) && (
+              <div
+                style={{
+                  padding: "0.85rem 1rem",
+                  backgroundColor: "rgba(56, 189, 248, 0.05)",
+                  border: "1px solid rgba(56, 189, 248, 0.2)",
+                  borderRadius: "var(--radius-md)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.65rem",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", color: "#38bdf8", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase" }}>
+                    <Globe size={14} />
+                    <span>Assigned Network Configuration (Optional)</span>
+                  </div>
+                  <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontStyle: "italic" }}>
+                    Leave blank if DHCP / dynamic IP
+                  </span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: "0.74rem" }}>Assigned Local IP Address</label>
+                    <input
+                      type="text"
+                      value={ipAddress}
+                      onChange={(e) => setIpAddress(e.target.value)}
+                      className="form-control form-control-sm"
+                      placeholder="e.g. 192.168.8.45"
+                      style={{ fontFamily: "monospace" }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: "0.74rem" }}>System Hostname</label>
+                    <input
+                      type="text"
+                      value={hostName}
+                      onChange={(e) => setHostName(e.target.value)}
+                      className="form-control form-control-sm"
+                      placeholder="e.g. DESK-VIT-102"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">Handover Checklist & Allocation Remarks</label>
@@ -886,10 +951,13 @@ export function EditAssetModal({
     }
   };
 
+  const isNetwork = isNetworkDevice(formData.deviceType);
+  const currentTab = !isNetwork && activeTab === "network" ? "hardware" : activeTab;
+
   const tabs = [
     { id: "custodian", label: "Custodian & User", icon: User },
     { id: "hardware", label: "Hardware & Specs", icon: Cpu },
-    { id: "network", label: "Network & Access", icon: Globe },
+    ...(isNetwork ? [{ id: "network", label: "Network & Access", icon: Globe }] : []),
     { id: "software", label: "Software & Keys", icon: Key },
     { id: "procurement", label: "Procurement & AMC", icon: FileText },
     { id: "notes", label: "Remarks & Notes", icon: FileText },
@@ -946,7 +1014,7 @@ export function EditAssetModal({
         >
           {tabs.map((t) => {
             const Icon = t.icon;
-            const isAct = activeTab === t.id;
+            const isAct = currentTab === t.id;
             return (
               <button
                 key={t.id}
@@ -988,7 +1056,7 @@ export function EditAssetModal({
             }}
           >
             {/* TAB 1: CUSTODIAN & ASSIGNMENT */}
-            {activeTab === "custodian" && (
+            {currentTab === "custodian" && (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 {/* Staff Quick Picker */}
                 {employees.length > 0 && (
@@ -1178,14 +1246,18 @@ export function EditAssetModal({
                   onAccessoriesChange={(val) => setFormData((prev) => ({ ...prev, accessories: val }))}
                   monitorDetails={formData.monitorDetails}
                   onMonitorDetailsChange={(val) => setFormData((prev) => ({ ...prev, monitorDetails: val }))}
+                  monitorSerialNo={formData.monitorSerialNo}
+                  onMonitorSerialNoChange={(val) => setFormData((prev) => ({ ...prev, monitorSerialNo: val }))}
+                  peripheralsList={formData.peripheralsList}
+                  onPeripheralsListChange={(list) => setFormData((prev) => ({ ...prev, peripheralsList: list }))}
                   compact={true}
-                  title="Hardware & Peripherals Allocated with Machine"
+                  title="Workstation Peripherals & Equipment Allocated"
                 />
               </div>
             )}
 
             {/* TAB 2: HARDWARE & SPECS */}
-            {activeTab === "hardware" && (
+            {currentTab === "hardware" && (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
                   <div className="form-group">
@@ -1341,14 +1413,18 @@ export function EditAssetModal({
                   onAccessoriesChange={(val) => setFormData((prev) => ({ ...prev, accessories: val }))}
                   monitorDetails={formData.monitorDetails}
                   onMonitorDetailsChange={(val) => setFormData((prev) => ({ ...prev, monitorDetails: val }))}
+                  monitorSerialNo={formData.monitorSerialNo}
+                  onMonitorSerialNoChange={(val) => setFormData((prev) => ({ ...prev, monitorSerialNo: val }))}
+                  peripheralsList={formData.peripheralsList}
+                  onPeripheralsListChange={(list) => setFormData((prev) => ({ ...prev, peripheralsList: list }))}
                   compact={false}
-                  title="Hardware & Peripherals Allocation Checklist"
+                  title="Workstation Peripherals & Equipment Checklist"
                 />
               </div>
             )}
 
             {/* TAB 3: NETWORK & REMOTE ACCESS */}
-            {activeTab === "network" && (
+            {currentTab === "network" && (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                   <div className="form-group">
