@@ -11,6 +11,7 @@ import {
   Wrench,
   PlusCircle,
   AlertTriangle,
+  X,
 } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -100,8 +101,30 @@ export default function AuditLogView({ logs: initialLogs = [] }) {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="form-control"
-            style={{ paddingLeft: '2rem', height: '34px', fontSize: '0.8rem' }}
+            style={{ paddingLeft: '2rem', paddingRight: searchTerm ? '2rem' : '0.65rem', height: '34px', fontSize: '0.8rem', width: '100%' }}
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              style={{
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-faint)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                padding: 0,
+              }}
+              title="Clear search"
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

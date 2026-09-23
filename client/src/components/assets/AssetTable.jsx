@@ -25,19 +25,10 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from '../../constants/organization';
+import { STATUS_COLORS, getStatusStyle } from '../../constants/statusConstants';
 import BulkImportExportModal from './BulkImportExportModal';
 
-export const STATUS_COLORS = {
-  Available: { text: '#166534', bg: '#f0fdf4', border: '#bbf7d0', accent: '#16a34a' },
-  Assigned: { text: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', accent: '#2563eb' },
-  'In Stock': { text: '#166534', bg: '#f0fdf4', border: '#bbf7d0', accent: '#16a34a' },
-  'Under Maintenance': { text: '#374151', bg: '#f3f4f6', border: '#e5e7eb', accent: '#6b7280' },
-  Reserved: { text: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', accent: '#2563eb' },
-  Lost: { text: '#991b1b', bg: '#fef2f2', border: '#fecaca', accent: '#dc2626' },
-  Stolen: { text: '#991b1b', bg: '#fef2f2', border: '#fecaca', accent: '#dc2626' },
-  Retired: { text: '#475569', bg: '#f1f5f9', border: '#cbd5e1', accent: '#64748b' },
-  Disposed: { text: '#475569', bg: '#f1f5f9', border: '#cbd5e1', accent: '#64748b' },
-};
+export { STATUS_COLORS, getStatusStyle };
 
 export default function AssetTable({
   assets = [],

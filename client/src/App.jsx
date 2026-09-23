@@ -10,8 +10,6 @@ import { X } from 'lucide-react';
 import AssetTable from './components/assets/AssetTable';
 import AssetDetailsModal from './components/assets/AssetDetailsModal';
 import {
-  AssignModal,
-  TransferModal,
   ReturnModal,
   EditAssetModal,
   QuickMaintenanceModal,
@@ -30,18 +28,62 @@ import NetworkManagement from './components/network/NetworkManagement';
 import ReportsView from './components/reports/ReportsView';
 import AuditLogView from './components/audit/AuditLogView';
 import InventoryView from './components/inventory/InventoryView';
-import ProcurementView from './components/procurement/ProcurementView';
 import InwardRegister from './components/inward/InwardRegister';
 import WarrantyView from './components/warranty/WarrantyView';
 import SettingsView from './components/settings/SettingsView';
+import LoginPage from './components/auth/LoginPage';
 import { api } from './services/api';
+
+// Helper to determine initial active page from URL hash or localStorage
+const getInitialActivePage = () => {
+  if (typeof window !== 'undefined') {
+    const hash = window.location.hash.replace('#', '').trim();
+    if (hash) return hash;
+    const stored = localStorage.getItem('itam_active_page');
+    if (stored) return stored;
+  }
+  return 'dashboard';
+};
 
 function ITAMApp() {
   const { user } = useAuth();
   const toast = useToast();
-  const [activePage, setActivePage] = useState('dashboard');
+  const [activePage, setActivePageState] = useState(getInitialActivePage);
   const [globalSearch, setGlobalSearch] = useState('');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const setActivePage = useCallback((page) => {
+    setActivePageState(page);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('itam_active_page', page);
+      if (window.location.hash !== `#${page}`) {
+        window.location.hash = page;
+      }
+    }
+  }, []);
+
+  // Sync state if user navigates using browser back/forward buttons
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '').trim();
+      if (hash && hash !== activePage) {
+        setActivePageState(hash);
+        localStorage.setItem('itam_active_page', hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [activePage]);
+
+  // Keep URL hash and localStorage in sync with activePage on initial render
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (window.location.hash !== `#${activePage}`) {
+        window.location.hash = activePage;
+      }
+      localStorage.setItem('itam_active_page', activePage);
+    }
+  }, [activePage]);
 
   // Primary datasets
   const [assets, setAssets] = useState([]);
@@ -715,12 +757,20 @@ function ITAMApp() {
   );
 }
 
+function AppContent() {
+  const { user } = useAuth();
+  if (!user) {
+    return <LoginPage />;
+  }
+  return <ITAMApp />;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
         <ToastProvider>
-          <ITAMApp />
+          <AppContent />
         </ToastProvider>
       </AuthProvider>
     </ErrorBoundary>

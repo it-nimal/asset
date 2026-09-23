@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { connectDB } from '../config/db.js';
 import { Asset, Department, Location, AuditLog } from '../models/Asset.js';
-import { COMPANY_DEPARTMENTS } from '../controllers/assetController.js';
+import { COMPANY_DEPARTMENTS } from '../controllers/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

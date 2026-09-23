@@ -19,6 +19,7 @@ import {
   Activity,
   Users,
   Search,
+  X,
   IdCard,
   Laptop,
   Monitor,
@@ -413,8 +414,32 @@ export default function Dashboard({
                   value={empSearchQuery}
                   onChange={(e) => setEmpSearchQuery(e.target.value)}
                   className="input-field"
-                  style={{ paddingLeft: '28px', height: '32px', fontSize: '0.78rem' }}
+                  style={{ paddingLeft: '28px', paddingRight: empSearchQuery ? '26px' : '8px', height: '32px', fontSize: '0.78rem' }}
                 />
+                {empSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setEmpSearchQuery('')}
+                    style={{
+                      position: 'absolute',
+                      right: '6px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--text-faint)',
+                      padding: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '4px',
+                    }}
+                    title="Clear search"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
               </div>
 
               <button
@@ -929,8 +954,32 @@ export default function Dashboard({
                     value={empSearchQuery}
                     onChange={(e) => setEmpSearchQuery(e.target.value)}
                     className="input-field"
-                    style={{ paddingLeft: '32px', height: '34px', fontSize: '0.8rem' }}
+                    style={{ paddingLeft: '32px', paddingRight: empSearchQuery ? '28px' : '8px', height: '34px', fontSize: '0.8rem' }}
                   />
+                  {empSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setEmpSearchQuery('')}
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--text-faint)',
+                        padding: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '4px',
+                      }}
+                      title="Clear search"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Department Filter */}

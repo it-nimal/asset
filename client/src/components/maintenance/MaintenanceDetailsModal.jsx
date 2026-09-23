@@ -1,18 +1,15 @@
 import React, { useState } from 'react';
-import { 
-  Wrench, 
-  X, 
-  User, 
-  Laptop, 
-  Clock, 
-  ShieldCheck, 
-  DollarSign, 
-  Truck, 
-  Calendar, 
-  FileText, 
+import {
+  Wrench,
+  X,
+  User,
+  Laptop,
+  Clock,
+  ShieldCheck,
+  Truck,
   Activity,
-  CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ArrowLeftRight,
 } from 'lucide-react';
 import MaintenanceStatusBadge from './MaintenanceStatusBadge';
 import MaintenanceQCModal from './MaintenanceQCModal';
@@ -54,154 +51,355 @@ export default function MaintenanceDetailsModal({ isOpen, onClose, ticket, onUpd
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-        <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden my-6">
+      <div className="modal-overlay" onClick={onClose} style={{ zIndex: 100 }}>
+        <div
+          className="modal-content"
+          onClick={(e) => e.stopPropagation()}
+          style={{ maxWidth: '780px', width: '95vw' }}
+        >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                <Wrench className="w-5 h-5" />
+          <div className="modal-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                  color: '#f59e0b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Wrench size={20} />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold text-white">{ticket.maintenanceId}</h3>
-                  <MaintenanceStatusBadge status={ticket.status} />
-                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${
-                    ticket.priority === 'High' ? 'bg-rose-500/20 text-rose-300' : 'bg-slate-700 text-slate-300'
-                  }`}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, fontFamily: 'var(--font-mono)' }}>
+                    {ticket.maintenanceId}
+                  </h3>
+                  <MaintenanceStatusBadge status={ticket.status} size="sm" />
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: 'var(--radius-sm)',
+                      fontWeight: 700,
+                      backgroundColor:
+                        ticket.priority === 'High'
+                          ? 'rgba(239, 68, 68, 0.12)'
+                          : 'rgba(245, 158, 11, 0.12)',
+                      color: ticket.priority === 'High' ? '#ef4444' : '#f59e0b',
+                      border: `1px solid ${
+                        ticket.priority === 'High'
+                          ? 'rgba(239, 68, 68, 0.25)'
+                          : 'rgba(245, 158, 11, 0.25)'
+                      }`,
+                    }}
+                  >
                     {ticket.priority} Priority
                   </span>
                 </div>
-                <p className="text-xs text-slate-400">Reported on {new Date(ticket.reportedDate || ticket.createdAt).toLocaleDateString('en-GB')}</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.15rem 0 0 0' }}>
+                  Reported on {new Date(ticket.reportedDate || ticket.createdAt).toLocaleDateString('en-GB')}
+                </p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition-colors"
-            >
-              <X className="w-5 h-5" />
+
+            <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
+              <X size={16} />
             </button>
           </div>
 
-          <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
-            {/* Quick Action Bar */}
-            <div className="flex flex-wrap items-center gap-2.5 p-3 rounded-xl bg-slate-800/40 border border-slate-700/60">
-              <span className="text-xs text-slate-400 font-medium mr-2">Workflow Actions:</span>
+          {/* Modal Body */}
+          <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+            {/* Action Ribbon */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.75rem 1rem',
+                backgroundColor: 'var(--bg-canvas)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--border-default)',
+                flexWrap: 'wrap',
+                gap: '0.65rem',
+              }}
+            >
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                Workflow Actions:
+              </span>
 
-              {ticket.status === 'Reported' && (
-                <button
-                  onClick={() => setIsDiagnosing(true)}
-                  className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors"
-                >
-                  Start Diagnosis
-                </button>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {ticket.status === 'Reported' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsDiagnosing(true)}
+                    className="btn btn-sm"
+                    style={{
+                      backgroundColor: '#6366f1',
+                      color: '#ffffff',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Start Diagnosis
+                  </button>
+                )}
 
-              {(ticket.status === 'Reported' || ticket.status === 'Under Diagnosis') && (
-                <button
-                  onClick={() => handleStartRepair('Internal IT Repair')}
-                  className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 font-medium text-xs transition-colors"
-                >
-                  Send to Repair
-                </button>
-              )}
+                {(ticket.status === 'Reported' || ticket.status === 'Under Diagnosis') && (
+                  <button
+                    type="button"
+                    onClick={() => handleStartRepair('Internal IT Repair')}
+                    className="btn btn-sm"
+                    style={{
+                      backgroundColor: '#f59e0b',
+                      color: '#ffffff',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Send to Repair
+                  </button>
+                )}
 
-              {['Reported', 'Under Diagnosis', 'In Repair', 'Awaiting Vendor', 'Awaiting Parts', 'QC Pending'].includes(ticket.status) && (
-                <button
-                  onClick={() => setShowQCModal(true)}
-                  className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium transition-colors"
-                >
-                  Perform QC Inspection
-                </button>
-              )}
+                {['Reported', 'Under Diagnosis', 'In Repair', 'Awaiting Vendor', 'Awaiting Parts', 'QC Pending'].includes(
+                  ticket.status
+                )}
+                {['Reported', 'Under Diagnosis', 'In Repair', 'Awaiting Vendor', 'Awaiting Parts', 'QC Pending'].includes(
+                  ticket.status
+                ) && (
+                  <button
+                    type="button"
+                    onClick={() => setShowQCModal(true)}
+                    className="btn btn-sm"
+                    style={{
+                      backgroundColor: 'rgba(168, 85, 247, 0.12)',
+                      color: '#a855f7',
+                      border: '1px solid rgba(168, 85, 247, 0.3)',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    <ShieldCheck size={14} />
+                    Perform QC Inspection
+                  </button>
+                )}
 
-              {ticket.status === 'Ready' && (
-                <button
-                  onClick={() => setShowReturnModal(true)}
-                  className="px-3.5 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold transition-all shadow-md shadow-teal-500/20"
-                >
-                  Return / Complete Disposition
-                </button>
-              )}
+                {ticket.status === 'Ready' && (
+                  <button
+                    type="button"
+                    onClick={() => setShowReturnModal(true)}
+                    className="btn btn-primary btn-sm"
+                    style={{
+                      backgroundColor: '#0d9488',
+                      borderColor: '#0d9488',
+                      color: '#ffffff',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      boxShadow: '0 2px 8px rgba(13, 148, 136, 0.25)',
+                    }}
+                  >
+                    <ArrowLeftRight size={14} />
+                    Return / Complete Disposition
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Grid Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
               {/* Asset Details */}
-              <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/60">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">
-                  <Laptop className="w-4 h-4 text-amber-400" />
+              <div
+                style={{
+                  padding: '1rem',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-surface-raised)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    color: 'var(--text-primary)',
+                    textTransform: 'uppercase',
+                    marginBottom: '0.75rem',
+                  }}
+                >
+                  <Laptop size={15} color="#f59e0b" />
                   Equipment Details
                 </div>
-                <div className="text-xs space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Make & Model:</span>
-                    <strong className="text-white">{ticket.assetMake} {ticket.assetModel}</strong>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.78rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Make & Model:</span>
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                      {ticket.assetMake} {ticket.assetModel}
+                    </strong>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Asset Tag / ID:</span>
-                    <span className="font-mono text-slate-200">{ticket.assetTag || 'N/A'}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Asset Tag / ID:</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                      {ticket.assetTag || 'N/A'}
+                    </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Serial Number (SR):</span>
-                    <span className="font-mono text-slate-200">{ticket.assetSerial || 'N/A'}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Serial (SR):</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                      {ticket.assetSerial || 'N/A'}
+                    </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Category:</span>
-                    <span className="text-slate-300">{ticket.assetCategory || 'Computing'}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Category:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      {ticket.assetCategory || 'Computing'}
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* Custodian Details */}
-              <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/60">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">
-                  <User className="w-4 h-4 text-blue-400" />
+              <div
+                style={{
+                  padding: '1rem',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-surface-raised)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    color: 'var(--text-primary)',
+                    textTransform: 'uppercase',
+                    marginBottom: '0.75rem',
+                  }}
+                >
+                  <User size={15} color="#3b82f6" />
                   Custodian & Report Info
                 </div>
-                <div className="text-xs space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Custodian:</span>
-                    <strong className="text-white">{ticket.employeeName || 'Unassigned / Central Stock'}</strong>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.78rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Custodian:</span>
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                      {ticket.employeeName || 'Unassigned / Central Stock'}
+                    </strong>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Employee Code:</span>
-                    <span className="text-slate-200">{ticket.empCode || 'N/A'}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Employee Code:</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{ticket.empCode || 'N/A'}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Department:</span>
-                    <span className="text-slate-300">{ticket.department || 'Vitromed'}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Department:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{ticket.department || 'Vitromed'}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Reported By:</span>
-                    <span className="text-slate-300">{ticket.reportedBy || 'IT Staff'}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Reported By:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{ticket.reportedBy || 'IT Staff'}</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Issue Description */}
-            <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/60">
-              <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-400" />
-                Issue Description & Fault
+            <div
+              style={{
+                padding: '1rem',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--border-default)',
+                backgroundColor: 'var(--bg-surface-raised)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  textTransform: 'uppercase',
+                  marginBottom: '0.5rem',
+                }}
+              >
+                <AlertCircle size={15} color="#f59e0b" />
+                Issue Description & Symptoms
               </div>
-              <p className="text-sm text-slate-200 leading-relaxed bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+              <p
+                style={{
+                  fontSize: '0.82rem',
+                  color: 'var(--text-secondary)',
+                  lineHeight: 1.5,
+                  padding: '0.75rem',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-default)',
+                  margin: 0,
+                }}
+              >
                 {ticket.issueDescription}
               </p>
             </div>
 
             {/* Diagnosis Section */}
-            <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/60">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-indigo-400" />
+            <div
+              style={{
+                padding: '1rem',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--border-default)',
+                backgroundColor: 'var(--bg-surface-raised)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '0.75rem',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    color: 'var(--text-primary)',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  <Activity size={15} color="#6366f1" />
                   Technical Diagnosis
                 </div>
                 {!isDiagnosing && (
                   <button
+                    type="button"
                     onClick={() => setIsDiagnosing(true)}
-                    className="text-xs text-indigo-400 hover:text-indigo-300 underline"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      fontSize: '0.75rem',
+                      color: '#6366f1',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                    }}
                   >
                     Edit Diagnosis
                   </button>
@@ -209,135 +407,281 @@ export default function MaintenanceDetailsModal({ isOpen, onClose, ticket, onUpd
               </div>
 
               {isDiagnosing ? (
-                <div className="space-y-3">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Diagnosis Findings</label>
+                    <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>
+                      Diagnosis Findings
+                    </label>
                     <input
                       type="text"
                       value={diagnosisData.diagnosis}
                       onChange={(e) => setDiagnosisData({ ...diagnosisData, diagnosis: e.target.value })}
-                      placeholder="e.g. Defective cooling fan causing overheating"
-                      className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                      placeholder="e.g. Defective cooling fan causing thermal throttling"
+                      className="form-input"
+                      style={{ fontSize: '0.8rem' }}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
                     <div>
-                      <label className="block text-xs text-slate-400 mb-1">Root Cause</label>
+                      <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>
+                        Root Cause
+                      </label>
                       <input
                         type="text"
                         value={diagnosisData.rootCause}
                         onChange={(e) => setDiagnosisData({ ...diagnosisData, rootCause: e.target.value })}
                         placeholder="e.g. Dust clogging / bearing failure"
-                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                        className="form-input"
+                        style={{ fontSize: '0.8rem' }}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-400 mb-1">Recommended Action</label>
+                      <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>
+                        Recommended Action
+                      </label>
                       <input
                         type="text"
                         value={diagnosisData.recommendedAction}
                         onChange={(e) => setDiagnosisData({ ...diagnosisData, recommendedAction: e.target.value })}
-                        placeholder="e.g. Fan replacement and thermal repasting"
-                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                        placeholder="e.g. Fan replacement and thermal paste refresh"
+                        className="form-input"
+                        style={{ fontSize: '0.8rem' }}
                       />
                     </div>
                   </div>
-                  <div className="flex justify-end gap-2 pt-2">
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.25rem' }}>
                     <button
+                      type="button"
                       onClick={() => setIsDiagnosing(false)}
-                      className="px-3 py-1 rounded text-xs text-slate-400 hover:text-white"
+                      className="btn btn-outline btn-xs"
                     >
                       Cancel
                     </button>
                     <button
+                      type="button"
                       onClick={handleSaveDiagnosis}
-                      className="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold"
+                      className="btn btn-primary btn-xs"
+                      style={{ backgroundColor: '#6366f1', borderColor: '#6366f1' }}
                     >
                       Save Diagnosis
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                  <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
-                    <span className="text-slate-400 block mb-1">Finding:</span>
-                    <strong className="text-slate-200">{ticket.diagnosis || 'Pending inspection'}</strong>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', fontSize: '0.78rem' }}>
+                  <div
+                    style={{
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'var(--bg-canvas)',
+                      border: '1px solid var(--border-default)',
+                    }}
+                  >
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem', marginBottom: '0.2rem' }}>
+                      Finding:
+                    </span>
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                      {ticket.diagnosis || 'Pending technical inspection'}
+                    </strong>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
-                    <span className="text-slate-400 block mb-1">Root Cause:</span>
-                    <span className="text-slate-300">{ticket.rootCause || 'N/A'}</span>
+                  <div
+                    style={{
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'var(--bg-canvas)',
+                      border: '1px solid var(--border-default)',
+                    }}
+                  >
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem', marginBottom: '0.2rem' }}>
+                      Root Cause:
+                    </span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{ticket.rootCause || 'N/A'}</span>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
-                    <span className="text-slate-400 block mb-1">Action:</span>
-                    <span className="text-slate-300">{ticket.recommendedAction || 'N/A'}</span>
+                  <div
+                    style={{
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'var(--bg-canvas)',
+                      border: '1px solid var(--border-default)',
+                    }}
+                  >
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem', marginBottom: '0.2rem' }}>
+                      Action:
+                    </span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{ticket.recommendedAction || 'N/A'}</span>
                   </div>
                 </div>
               )}
             </div>
 
             {/* Repair & QC Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/60 text-xs space-y-2">
-                <div className="flex items-center gap-2 font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                  <Truck className="w-4 h-4 text-sky-400" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
+              <div
+                style={{
+                  padding: '1rem',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-surface-raised)',
+                  fontSize: '0.78rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.45rem',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    color: 'var(--text-primary)',
+                    textTransform: 'uppercase',
+                    marginBottom: '0.25rem',
+                  }}
+                >
+                  <Truck size={15} color="#0284c7" />
                   Service & Vendor Details
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Repair Type:</span>
-                  <span className="text-slate-200">{ticket.repairType || 'Internal IT'}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Repair Type:</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{ticket.repairType || 'Internal IT'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Vendor:</span>
-                  <span className="text-slate-200">{ticket.vendor || ticket.serviceVendor || 'None (Internal)'}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Vendor:</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{ticket.vendor || ticket.serviceVendor || 'Internal IT'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Repair Cost:</span>
-                  <strong className="text-teal-400">₹{ticket.repairCost || ticket.cost || 0}</strong>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Repair Cost:</span>
+                  <strong style={{ color: '#0d9488' }}>₹{ticket.repairCost || ticket.cost || 0}</strong>
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/60 text-xs space-y-2">
-                <div className="flex items-center gap-2 font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                  <ShieldCheck className="w-4 h-4 text-purple-400" />
+              <div
+                style={{
+                  padding: '1rem',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-surface-raised)',
+                  fontSize: '0.78rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.45rem',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    color: 'var(--text-primary)',
+                    textTransform: 'uppercase',
+                    marginBottom: '0.25rem',
+                  }}
+                >
+                  <ShieldCheck size={15} color="#a855f7" />
                   QC & Inspection Results
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">QC Status:</span>
-                  <span className={`font-semibold px-2 py-0.5 rounded ${
-                    ticket.qcResult === 'Passed' ? 'bg-teal-500/20 text-teal-300' : 
-                    ticket.qcResult === 'Failed' ? 'bg-rose-500/20 text-rose-300' : 'bg-slate-700 text-slate-400'
-                  }`}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>QC Status:</span>
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor:
+                        ticket.qcResult === 'Passed'
+                          ? 'rgba(13, 148, 136, 0.12)'
+                          : ticket.qcResult === 'Failed'
+                          ? 'rgba(239, 68, 68, 0.12)'
+                          : 'var(--bg-canvas)',
+                      color:
+                        ticket.qcResult === 'Passed'
+                          ? '#0d9488'
+                          : ticket.qcResult === 'Failed'
+                          ? '#ef4444'
+                          : 'var(--text-muted)',
+                      border: `1px solid ${
+                        ticket.qcResult === 'Passed'
+                          ? 'rgba(13, 148, 136, 0.25)'
+                          : ticket.qcResult === 'Failed'
+                          ? 'rgba(239, 68, 68, 0.25)'
+                          : 'var(--border-default)'
+                      }`,
+                    }}
+                  >
                     {ticket.qcResult || 'Not Tested'}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">QC Notes:</span>
-                  <span className="text-slate-300 truncate max-w-[180px]">{ticket.qcNotes || 'N/A'}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>QC Notes:</span>
+                  <span style={{ color: 'var(--text-secondary)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {ticket.qcNotes || 'N/A'}
+                  </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Inspector:</span>
-                  <span className="text-slate-300">{ticket.qcBy || 'N/A'}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Inspector:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{ticket.qcBy || 'N/A'}</span>
                 </div>
               </div>
             </div>
 
             {/* Timeline History */}
             {ticket.history && ticket.history.length > 0 && (
-              <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/60">
-                <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-slate-400" />
+              <div
+                style={{
+                  padding: '1rem',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-surface-raised)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    color: 'var(--text-primary)',
+                    textTransform: 'uppercase',
+                    marginBottom: '0.75rem',
+                  }}
+                >
+                  <Clock size={15} color="var(--text-muted)" />
                   Activity History & Audit Trail
                 </div>
-                <div className="space-y-3">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                   {ticket.history.map((h, idx) => (
-                    <div key={idx} className="flex items-start gap-3 text-xs border-l-2 border-slate-700 pl-3 py-0.5">
-                      <div className="min-w-[120px] text-slate-500">
-                        {new Date(h.date).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.75rem',
+                        fontSize: '0.75rem',
+                        borderLeft: '2px solid var(--border-strong)',
+                        paddingLeft: '0.65rem',
+                      }}
+                    >
+                      <div style={{ minWidth: '110px', color: 'var(--text-muted)' }}>
+                        {new Date(h.date).toLocaleString('en-GB', {
+                          dateStyle: 'short',
+                          timeStyle: 'short',
+                        })}
                       </div>
                       <div>
-                        <span className="font-semibold text-white mr-2">{h.action}</span>
-                        <span className="text-slate-400">{h.details}</span>
-                        {h.performedBy && <span className="text-slate-500 ml-2">by {h.performedBy}</span>}
+                        <strong style={{ color: 'var(--text-primary)', marginRight: '0.4rem' }}>
+                          {h.action}
+                        </strong>
+                        <span style={{ color: 'var(--text-secondary)' }}>{h.details}</span>
+                        {h.performedBy && (
+                          <span style={{ color: 'var(--text-muted)', marginLeft: '0.4rem' }}>
+                            by {h.performedBy}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}

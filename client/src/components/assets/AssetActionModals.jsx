@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   X,
   UserCheck,
@@ -10,127 +10,73 @@ import {
   Wrench,
   CheckCircle2,
   Plus,
-  User,
-  Cpu,
-  Globe,
-  Key,
-  FileText,
   Shield,
-  Layers,
-  HardDrive,
-  Calendar,
-  Tag,
-  Building2,
-  MapPin,
+  Trash2,
 } from "lucide-react";
 import { api } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../common/Toast";
 import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from "../../constants/organization";
-import { isNetworkDevice } from "../../constants/specifications";
-import HardwareAllocationSelector from "./HardwareAllocationSelector";
 
-const formatDateInput = (d) => {
-  if (!d) return "";
-  try {
-    return new Date(d).toISOString().split("T")[0];
-  } catch {
-    return "";
-  }
-};
+// Modal Wrapper Component
+function ModalContainer({ title, icon: Icon, iconColor = "#38bdf8", onClose, children, maxWidth = "540px" }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth }}>
+        <div className="modal-header">
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            {Icon && <Icon size={18} color={iconColor} />}
+            <h3 style={{ fontSize: "1.05rem", fontWeight: 700, margin: 0 }}>{title}</h3>
+          </div>
+          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
+            <X size={16} />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
-// ----------------- ASSIGN MODAL -----------------
-export function AssignModal({
-  asset,
-  employees = [],
-  departments = [],
-  locations = [],
-  onClose,
-  onSuccess,
-}) {
+// 1. ASSIGN MODAL
+export function AssignModal({ asset, employees = [], departments = [], locations = [], onClose, onSuccess }) {
   const { user } = useAuth();
   const toast = useToast();
-
-  const [mode, setMode] = useState("select"); // "select" | "manual"
+  const [mode, setMode] = useState("select");
   const [selectedEmpId, setSelectedEmpId] = useState("");
-  
-  // Manual entry fields
-  const [manualName, setManualName] = useState("");
-  const [manualEmpCode, setManualEmpCode] = useState("");
-  const [manualEmail, setManualEmail] = useState("");
-  const [manualDept, setManualDept] = useState(asset.department || COMPANY_DEPARTMENTS[0]);
-  const [manualPlant, setManualPlant] = useState("Vitromed");
-  const [floorCabin, setFloorCabin] = useState(asset.floorCabin || "Main Floor");
-
+  const [manual, setManual] = useState({
+    name: "",
+    empCode: "",
+    email: "",
+    dept: asset.department || COMPANY_DEPARTMENTS[0],
+    plant: "Vitromed",
+  });
   const [assignedDate, setAssignedDate] = useState(new Date().toISOString().split("T")[0]);
-  const [expectedReturnDate, setExpectedReturnDate] = useState("");
   const [remarks, setRemarks] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Peripherals & Hardware Allocation Options
-  const [deviceType, setDeviceType] = useState(asset.deviceType || "Desktop PC");
-  const [accessories, setAccessories] = useState(asset.accessories || "");
-  const [monitorDetails, setMonitorDetails] = useState(asset.monitorDetails || "");
-  const [monitorSerialNo, setMonitorSerialNo] = useState(asset.monitorSerialNo || "");
-  const [peripheralsList, setPeripheralsList] = useState(asset.peripheralsList || []);
-
-  // Network Configuration (Optional, for network-capable equipment assigned to staff)
-  const [ipAddress, setIpAddress] = useState(asset.ipAddress || "");
-  const [hostName, setHostName] = useState(asset.hostName || "");
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    let targetName = "";
-    let targetCode = "";
-    let targetEmail = "";
-    let targetDept = manualDept;
-    let targetPlant = manualPlant;
-
+    let target = { ...manual };
     if (mode === "select") {
       const emp = employees.find((e) => e.employeeId === selectedEmpId || e._id === selectedEmpId);
-      if (!emp) {
-        return toast.error("Please select an employee or switch to Enter Manually");
-      }
-      targetName = emp.name;
-      targetCode = emp.employeeId;
-      targetEmail = emp.email || "";
-      targetDept = emp.department || manualDept;
-      targetPlant = emp.location || manualPlant;
-    } else {
-      if (!manualName.trim()) {
-        return toast.error("Employee Name is required");
-      }
-      targetName = manualName.trim();
-      targetCode = manualEmpCode.trim();
-      targetEmail = manualEmail.trim();
+      if (!emp) return toast.error("Please select an employee");
+      target = { name: emp.name, empCode: emp.employeeId, email: emp.email, dept: emp.department, plant: emp.location || "Vitromed" };
     }
-
-    const isNetwork = isNetworkDevice(deviceType || asset.deviceType);
 
     setLoading(true);
     try {
       const res = await api.assignAsset(asset._id, {
-        userName: targetName,
-        empCode: targetCode,
-        mailId: targetEmail,
-        department: targetDept,
-        plant: targetPlant,
-        floorCabin,
+        userName: target.name,
+        empCode: target.empCode,
+        mailId: target.email,
+        department: target.dept,
+        plant: target.plant,
         assignedDate,
-        expectedReturnDate,
-        deviceType,
-        accessories,
-        monitorDetails,
-        monitorSerialNo,
-        peripheralsList,
-        ipAddress: isNetwork ? ipAddress.trim() : "",
-        hostName: isNetwork ? hostName.trim() : "",
-        remarks: remarks || ("Assigned to " + targetName + " by " + (user?.name || "IT Admin")),
+        remarks,
         actorName: user?.name || "IT Admin",
       });
-
-      toast.success("Asset successfully allocated to " + targetName + "!", "Asset Assigned");
+      toast.success(`Allocated to ${target.name}!`, "Asset Assigned");
       if (onSuccess) onSuccess(res.data);
       onClose();
     } catch (err) {
@@ -141,373 +87,96 @@ export function AssignModal({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "680px", width: "95vw" }}>
-        <div className="modal-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <UserCheck size={18} color="#34d399" />
-            <h3 style={{ fontSize: "1.05rem", fontWeight: 700 }}>Allocate Hardware to Custodian</h3>
+    <ModalContainer title="Assign Hardware Custodian" icon={UserCheck} iconColor="#34d399" onClose={onClose}>
+      <form onSubmit={handleSubmit}>
+        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div style={{ padding: "0.65rem 0.85rem", backgroundColor: "var(--bg-surface-raised)", borderRadius: "6px", fontSize: "0.82rem" }}>
+            <strong>{asset.make} {asset.model}</strong> • Tag: <span style={{ fontFamily: "monospace", color: "#0284c7" }}>#{asset.assetNo || asset.sr}</span>
           </div>
-          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
-            <X size={16} />
-          </button>
-        </div>
 
-        {/* Selected Asset Header Preview */}
-        <div
-          style={{
-            padding: "0.75rem 1.5rem",
-            backgroundColor: "rgba(9, 15, 26, 0.5)",
-            borderBottom: "1px solid var(--border-default)",
-          }}
-        >
-          <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-            {asset.make} {asset.model}
+          <div style={{ display: "flex", backgroundColor: "var(--bg-surface-raised)", padding: "2px", borderRadius: "6px" }}>
+            <button type="button" onClick={() => setMode("select")} className={`btn btn-sm ${mode === "select" ? "btn-primary" : "btn-ghost"}`} style={{ flex: 1 }}>
+              Select Staff Member
+            </button>
+            <button type="button" onClick={() => setMode("manual")} className={`btn btn-sm ${mode === "manual" ? "btn-primary" : "btn-ghost"}`} style={{ flex: 1 }}>
+              Enter Manually
+            </button>
           </div>
-          <div style={{ fontSize: "0.75rem", color: "#38bdf8", fontFamily: "var(--font-mono)" }}>
-            Tag: {asset.assetNo || "AST-N/A"} • S/N: {asset.sr} • Current Plant: {asset.plant || "Vitromed"}
-          </div>
-        </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {/* Toggle Mode: Directory vs Manual */}
-            <div
-              style={{
-                display: "flex",
-                backgroundColor: "rgba(0, 0, 0, 0.3)",
-                padding: "3px",
-                borderRadius: "var(--radius-md)",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setMode("select")}
-                style={{
-                  flex: 1,
-                  padding: "0.35rem 0.5rem",
-                  fontSize: "0.8rem",
-                  fontWeight: mode === "select" ? 700 : 500,
-                  backgroundColor: mode === "select" ? "var(--color-primary)" : "transparent",
-                  color: mode === "select" ? "#fff" : "var(--text-muted)",
-                  border: "none",
-                  borderRadius: "var(--radius-sm)",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                Choose from Staff Directory ({employees.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("manual")}
-                style={{
-                  flex: 1,
-                  padding: "0.35rem 0.5rem",
-                  fontSize: "0.8rem",
-                  fontWeight: mode === "manual" ? 700 : 500,
-                  backgroundColor: mode === "manual" ? "var(--color-primary)" : "transparent",
-                  color: mode === "manual" ? "#fff" : "var(--text-muted)",
-                  border: "none",
-                  borderRadius: "var(--radius-sm)",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                + Enter Custodian Manually
-              </button>
+          {mode === "select" ? (
+            <div className="form-group">
+              <label className="form-label">Select Employee *</label>
+              <select value={selectedEmpId} onChange={(e) => setSelectedEmpId(e.target.value)} required className="form-select">
+                <option value="">-- Choose Employee ({employees.length}) --</option>
+                {employees.map((emp) => (
+                  <option key={emp._id || emp.employeeId} value={emp.employeeId}>
+                    {emp.name} ({emp.employeeId || "No ID"}) - {emp.department}
+                  </option>
+                ))}
+              </select>
             </div>
-
-            {mode === "select" ? (
-              <div className="form-group">
-                <label className="form-label">
-                  Select Employee Custodian <span style={{ color: "#f87171" }}>*</span>
-                </label>
-                <select
-                  required
-                  value={selectedEmpId}
-                  onChange={(e) => setSelectedEmpId(e.target.value)}
-                  className="form-select"
-                >
-                  <option value="">-- Choose Employee ({employees.length} available) --</option>
-                  {employees.map((emp) => (
-                    <option key={emp._id || emp.employeeId} value={emp.employeeId}>
-                      {emp.name} ({emp.employeeId}) • {emp.department} • {emp.location}
-                    </option>
-                  ))}
-                </select>
-                {employees.length === 0 && (
-                  <div style={{ fontSize: "0.75rem", color: "#fbbf24", marginTop: "0.35rem" }}>
-                    Staff directory is currently empty. Click "Enter Custodian Manually" above to assign.
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">
-                      Full Name <span style={{ color: "#f87171" }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Ramesh Sharma"
-                      value={manualName}
-                      onChange={(e) => setManualName(e.target.value)}
-                      className="form-control"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Employee Code / ID</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. VIT-1045"
-                      value={manualEmpCode}
-                      onChange={(e) => setManualEmpCode(e.target.value)}
-                      className="form-control"
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">Work Email</label>
-                    <input
-                      type="email"
-                      placeholder="e.g. ramesh@vitromed.com"
-                      value={manualEmail}
-                      onChange={(e) => setManualEmail(e.target.value)}
-                      className="form-control"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Cabin / Desk / Floor</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 1st Floor, Bay B"
-                      value={floorCabin}
-                      onChange={(e) => setFloorCabin(e.target.value)}
-                      className="form-control"
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">Department</label>
-                    <select
-                      value={manualDept}
-                      onChange={(e) => setManualDept(e.target.value)}
-                      className="form-select"
-                    >
-                      {COMPANY_DEPARTMENTS.map((dept) => (
-                        <option key={dept} value={dept}>
-                          {dept}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Plant / Facility</label>
-                    <select
-                      value={manualPlant}
-                      onChange={(e) => setManualPlant(e.target.value)}
-                      className="form-select"
-                    >
-                      <option value="Vitromed">Vitromed</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
+          ) : (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
               <div className="form-group">
-                <label className="form-label">
-                  Date Given / Handover Date <span style={{ color: "#f87171" }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={assignedDate}
-                  onChange={(e) => setAssignedDate(e.target.value)}
-                  className="form-control"
-                  style={{ colorScheme: "dark" }}
-                />
+                <label className="form-label">Full Name *</label>
+                <input type="text" required value={manual.name} onChange={(e) => setManual({ ...manual, name: e.target.value })} className="form-control" />
               </div>
-
               <div className="form-group">
-                <label className="form-label">Expected Handover / Return Date</label>
-                <input
-                  type="date"
-                  value={expectedReturnDate}
-                  onChange={(e) => setExpectedReturnDate(e.target.value)}
-                  className="form-control"
-                  style={{ colorScheme: "dark" }}
-                />
+                <label className="form-label">Employee Code</label>
+                <input type="text" value={manual.empCode} onChange={(e) => setManual({ ...manual, empCode: e.target.value })} className="form-control" />
               </div>
             </div>
+          )}
 
-            {/* Hardware & Peripherals Allocation (Laptop/Desktop, Monitor, K/B & Mouse, Headphone, Printer, Scanner, UPS) */}
-            <HardwareAllocationSelector
-              deviceType={deviceType}
-              onDeviceTypeChange={setDeviceType}
-              accessories={accessories}
-              onAccessoriesChange={setAccessories}
-              monitorDetails={monitorDetails}
-              onMonitorDetailsChange={setMonitorDetails}
-              monitorSerialNo={monitorSerialNo}
-              onMonitorSerialNoChange={setMonitorSerialNo}
-              peripheralsList={peripheralsList}
-              onPeripheralsListChange={setPeripheralsList}
-              compact={false}
-              title="Workstation Peripherals & Equipment Handed Over to User"
-            />
-
-            {/* Optional Network IP & Hostname Setup (ONLY for Network-Capable Devices: Desktops, Laptops, Servers, Switches) */}
-            {isNetworkDevice(deviceType || asset.deviceType) && (
-              <div
-                style={{
-                  padding: "0.85rem 1rem",
-                  backgroundColor: "rgba(56, 189, 248, 0.05)",
-                  border: "1px solid rgba(56, 189, 248, 0.2)",
-                  borderRadius: "var(--radius-md)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.65rem",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", color: "#38bdf8", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase" }}>
-                    <Globe size={14} />
-                    <span>Assigned Network Configuration (Optional)</span>
-                  </div>
-                  <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontStyle: "italic" }}>
-                    Leave blank if DHCP / dynamic IP
-                  </span>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ fontSize: "0.74rem" }}>Assigned Local IP Address</label>
-                    <input
-                      type="text"
-                      value={ipAddress}
-                      onChange={(e) => setIpAddress(e.target.value)}
-                      className="form-control form-control-sm"
-                      placeholder="e.g. 192.168.8.45"
-                      style={{ fontFamily: "monospace" }}
-                    />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ fontSize: "0.74rem" }}>System Hostname</label>
-                    <input
-                      type="text"
-                      value={hostName}
-                      onChange={(e) => setHostName(e.target.value)}
-                      className="form-control form-control-sm"
-                      placeholder="e.g. DESK-VIT-102"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="form-group">
-              <label className="form-label">Handover Checklist & Allocation Remarks</label>
-              <textarea
-                rows={2}
-                placeholder="e.g. Issued with power adapter, mouse, and carrying bag. Verified working condition."
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                className="form-control"
-              />
-            </div>
+          <div className="form-group">
+            <label className="form-label">Assignment Date</label>
+            <input type="date" value={assignedDate} onChange={(e) => setAssignedDate(e.target.value)} className="form-control" />
           </div>
 
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
-              Cancel
-            </button>
-            <button type="submit" disabled={loading} className="btn btn-primary btn-sm">
-              {loading ? "Allocating..." : "Confirm Allocation"}
-            </button>
+          <div className="form-group">
+            <label className="form-label">Remarks / Notes</label>
+            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Condition, handover notes..." className="form-control" rows={2} />
           </div>
-        </form>
-      </div>
-    </div>
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" onClick={onClose} className="btn btn-secondary btn-sm" disabled={loading}>Cancel</button>
+          <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>{loading ? "Assigning..." : "Assign Custodian"}</button>
+        </div>
+      </form>
+    </ModalContainer>
   );
 }
 
-// ----------------- TRANSFER MODAL -----------------
-export function TransferModal({
-  asset,
-  employees = [],
-  departments = [],
-  locations = [],
-  onClose,
-  onSuccess,
-}) {
+// 2. TRANSFER MODAL
+export function TransferModal({ asset, employees = [], departments = [], locations = [], onClose, onSuccess }) {
   const { user } = useAuth();
   const toast = useToast();
-
-  const [mode, setMode] = useState("select"); // "select" | "manual"
-  const [newEmpId, setNewEmpId] = useState("");
-  
-  // Manual transfer fields
-  const [manualName, setManualName] = useState("");
-  const [manualEmpCode, setManualEmpCode] = useState("");
-  const [manualEmail, setManualEmail] = useState("");
-  const [manualDept, setManualDept] = useState(asset.department || COMPANY_DEPARTMENTS[0]);
-  const [manualPlant, setManualPlant] = useState("Vitromed");
-
+  const [selectedEmpId, setSelectedEmpId] = useState("");
   const [transferDate, setTransferDate] = useState(new Date().toISOString().split("T")[0]);
-  const [transferReason, setTransferReason] = useState("");
+  const [transferReason, setTransferReason] = useState("Employee Transfer");
+  const [remarks, setRemarks] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleTransfer = async (e) => {
     e.preventDefault();
-
-    let targetName = "";
-    let targetCode = "";
-    let targetEmail = "";
-    let targetDept = manualDept;
-    let targetPlant = manualPlant;
-
-    if (mode === "select") {
-      const emp = employees.find((e) => e.employeeId === newEmpId || e._id === newEmpId);
-      if (!emp) {
-        return toast.error("Please select new employee recipient or enter details manually");
-      }
-      targetName = emp.name;
-      targetCode = emp.employeeId;
-      targetEmail = emp.email || "";
-      targetDept = emp.department || asset.department;
-      targetPlant = emp.location || asset.plant;
-    } else {
-      if (!manualName.trim()) {
-        return toast.error("Please enter the recipient employee full name");
-      }
-      targetName = manualName.trim();
-      targetCode = manualEmpCode.trim() || ("VIT-" + Math.floor(1000 + Math.random() * 9000));
-      targetEmail = manualEmail.trim() || (targetName.toLowerCase().replace(/[^a-z0-9]/g, "") + "@vitromed.com");
-    }
+    const emp = employees.find((e) => e.employeeId === selectedEmpId || e._id === selectedEmpId);
+    if (!emp) return toast.error("Please select a target employee");
 
     setLoading(true);
     try {
       const res = await api.transferAsset(asset._id, {
-        newUserName: targetName,
-        newEmpCode: targetCode,
-        newMailId: targetEmail,
-        newDepartment: targetDept,
-        newLocation: targetPlant,
+        newUserName: emp.name,
+        newEmpCode: emp.employeeId,
+        newMailId: emp.email || "",
+        newDepartment: emp.department || asset.department,
+        newLocation: emp.location || asset.plant,
         transferDate,
-        transferReason: transferReason || ("Custody transferred from " + asset.userName + " to " + targetName + " by " + (user?.name || "IT Admin")),
+        transferReason,
+        remarks,
         actorName: user?.name || "IT Admin",
       });
-
-      toast.success("Custody transferred to " + targetName + " successfully!", "Asset Transferred");
+      toast.success(`Custody transferred to ${emp.name}!`, "Asset Transferred");
       if (onSuccess) onSuccess(res.data);
       onClose();
     } catch (err) {
@@ -518,223 +187,65 @@ export function TransferModal({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "580px" }}>
-        <div className="modal-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <ArrowRightLeft size={18} color="#38bdf8" />
-            <h3 style={{ fontSize: "1.05rem", fontWeight: 700 }}>Transfer Hardware Custody</h3>
+    <ModalContainer title="Transfer Hardware Custody" icon={ArrowRightLeft} onClose={onClose}>
+      <form onSubmit={handleTransfer}>
+        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div style={{ padding: "0.65rem 0.85rem", backgroundColor: "var(--bg-surface-raised)", borderRadius: "6px", fontSize: "0.82rem" }}>
+            Current: <strong>{asset.userName}</strong> ({asset.department} • {asset.plant})
           </div>
-          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
-            <X size={16} />
-          </button>
+
+          <div className="form-group">
+            <label className="form-label">Transfer To *</label>
+            <select value={selectedEmpId} onChange={(e) => setSelectedEmpId(e.target.value)} required className="form-select">
+              <option value="">-- Choose New Custodian --</option>
+              {employees.filter((e) => e.name !== asset.userName).map((emp) => (
+                <option key={emp._id || emp.employeeId} value={emp.employeeId}>
+                  {emp.name} ({emp.employeeId || "No ID"}) - {emp.department}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Transfer Date</label>
+            <input type="date" value={transferDate} onChange={(e) => setTransferDate(e.target.value)} className="form-control" />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Transfer Reason</label>
+            <input type="text" value={transferReason} onChange={(e) => setTransferReason(e.target.value)} className="form-control" />
+          </div>
         </div>
 
-        <div
-          style={{
-            padding: "0.75rem 1.5rem",
-            backgroundColor: "rgba(9, 15, 26, 0.5)",
-            borderBottom: "1px solid var(--border-default)",
-          }}
-        >
-          <div style={{ fontWeight: 600 }}>{asset.make} {asset.model}</div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-            Current Custodian: <strong style={{ color: "#38bdf8" }}>{asset.userName}</strong> ({asset.department} • {asset.plant})
-          </div>
+        <div className="modal-footer">
+          <button type="button" onClick={onClose} className="btn btn-secondary btn-sm" disabled={loading}>Cancel</button>
+          <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>{loading ? "Transferring..." : "Complete Handover"}</button>
         </div>
-
-        <form onSubmit={handleTransfer}>
-          <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {/* Mode switch */}
-            <div
-              style={{
-                display: "flex",
-                backgroundColor: "rgba(0, 0, 0, 0.3)",
-                padding: "3px",
-                borderRadius: "var(--radius-md)",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setMode("select")}
-                style={{
-                  flex: 1,
-                  padding: "0.35rem 0.5rem",
-                  fontSize: "0.8rem",
-                  fontWeight: mode === "select" ? 700 : 500,
-                  backgroundColor: mode === "select" ? "var(--color-primary)" : "transparent",
-                  color: mode === "select" ? "#fff" : "var(--text-muted)",
-                  border: "none",
-                  borderRadius: "var(--radius-sm)",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                Choose from Staff Directory
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("manual")}
-                style={{
-                  flex: 1,
-                  padding: "0.35rem 0.5rem",
-                  fontSize: "0.8rem",
-                  fontWeight: mode === "manual" ? 700 : 500,
-                  backgroundColor: mode === "manual" ? "var(--color-primary)" : "transparent",
-                  color: mode === "manual" ? "#fff" : "var(--text-muted)",
-                  border: "none",
-                  borderRadius: "var(--radius-sm)",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                + Enter Recipient Manually
-              </button>
-            </div>
-
-            {mode === "select" ? (
-              <div className="form-group">
-                <label className="form-label">
-                  Transfer To Employee <span style={{ color: "#f87171" }}>*</span>
-                </label>
-                <select
-                  required
-                  value={newEmpId}
-                  onChange={(e) => setNewEmpId(e.target.value)}
-                  className="form-select"
-                >
-                  <option value="">-- Choose New Custodian ({employees.length} available) --</option>
-                  {employees
-                    .filter((emp) => emp.name !== asset.userName)
-                    .map((emp) => (
-                      <option key={emp._id || emp.employeeId} value={emp.employeeId}>
-                        {emp.name} ({emp.employeeId}) • {emp.department} • {emp.location}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">
-                      New Custodian Name <span style={{ color: "#f87171" }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Suresh Patel"
-                      value={manualName}
-                      onChange={(e) => setManualName(e.target.value)}
-                      className="form-control"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Employee Code / ID</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. VIT-1088"
-                      value={manualEmpCode}
-                      onChange={(e) => setManualEmpCode(e.target.value)}
-                      className="form-control"
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">New Department</label>
-                    <select
-                      value={manualDept}
-                      onChange={(e) => setManualDept(e.target.value)}
-                      className="form-select"
-                    >
-                      {COMPANY_DEPARTMENTS.map((dept) => (
-                        <option key={dept} value={dept}>
-                          {dept}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">New Plant / Facility</label>
-                    <select
-                      value={manualPlant}
-                      onChange={(e) => setManualPlant(e.target.value)}
-                      className="form-select"
-                    >
-                      <option value="Vitromed">Vitromed</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="form-group">
-              <label className="form-label">
-                Transfer Handover Date <span style={{ color: "#f87171" }}>*</span>
-              </label>
-              <input
-                type="date"
-                required
-                value={transferDate}
-                onChange={(e) => setTransferDate(e.target.value)}
-                className="form-control"
-                style={{ colorScheme: "dark" }}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Reason for Inter-Departmental Transfer</label>
-              <textarea
-                rows={2}
-                placeholder="e.g. Employee departmental transfer, replacement of faulty unit, or plant reallocation."
-                value={transferReason}
-                onChange={(e) => setTransferReason(e.target.value)}
-                className="form-control"
-              />
-            </div>
-          </div>
-
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
-              Cancel
-            </button>
-            <button type="submit" disabled={loading} className="btn btn-primary btn-sm">
-              {loading ? "Transferring..." : "Execute Transfer"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </ModalContainer>
   );
 }
 
-// ----------------- RETURN MODAL -----------------
+// 3. RETURN MODAL
 export function ReturnModal({ asset, onClose, onSuccess }) {
   const { user } = useAuth();
   const toast = useToast();
   const [returnCondition, setReturnCondition] = useState("Good");
-  const [returnNotes, setReturnNotes] = useState("");
-  const [damageDetails, setDamageDetails] = useState("");
+  const [returnLocation, setReturnLocation] = useState(asset.plant || "Vitromed");
+  const [remarks, setRemarks] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleReturn = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       const res = await api.returnAsset(asset._id, {
         returnCondition,
-        workingCondition: returnCondition,
-        notes: returnNotes || ("Returned to inventory by " + (asset.userName || "Employee")),
-        remarks: returnNotes || ("Returned to inventory by " + (asset.userName || "Employee")),
-        damageDetails: damageDetails || "",
+        returnLocation,
+        remarks,
         actorName: user?.name || "IT Admin",
       });
-
-      toast.success("\"" + asset.make + " " + asset.model + "\" checked in to available stock!", "Asset Returned");
+      toast.success("Asset returned to inventory pool", "Asset Returned");
       if (onSuccess) onSuccess(res.data);
       onClose();
     } catch (err) {
@@ -745,203 +256,74 @@ export function ReturnModal({ asset, onClose, onSuccess }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "520px" }}>
-        <div className="modal-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Undo2 size={18} color="#38bdf8" />
-            <h3 style={{ fontSize: "1.05rem", fontWeight: 700 }}>Asset Return & Stock Handover</h3>
+    <ModalContainer title="Return Asset to Inventory" icon={Undo2} iconColor="#fbbf24" onClose={onClose}>
+      <form onSubmit={handleReturn}>
+        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: 0 }}>
+            Return <strong>{asset.make} {asset.model}</strong> from <strong>{asset.userName}</strong> back to stock.
+          </p>
+
+          <div className="form-group">
+            <label className="form-label">Return Working Condition</label>
+            <select value={returnCondition} onChange={(e) => setReturnCondition(e.target.value)} className="form-select">
+              <option value="Good">Good (Ready for Reassignment)</option>
+              <option value="Minor Wear">Minor Wear & Tear</option>
+              <option value="Needs Repair">Needs Repair / Maintenance</option>
+            </select>
           </div>
-          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
-            <X size={16} />
-          </button>
+
+          <div className="form-group">
+            <label className="form-label">Stock Location</label>
+            <select value={returnLocation} onChange={(e) => setReturnLocation(e.target.value)} className="form-select">
+              <option value="Vitromed">Vitromed IT Stockroom</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Return Notes</label>
+            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Physical condition, accessories returned..." className="form-control" rows={2} />
+          </div>
         </div>
 
-        <div
-          style={{
-            padding: "0.75rem 1.5rem",
-            backgroundColor: "rgba(9, 15, 26, 0.5)",
-            borderBottom: "1px solid var(--border-default)",
-          }}
-        >
-          <div style={{ fontWeight: 600 }}>{asset.make} {asset.model}</div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-            Returned by Custodian: <strong style={{ color: "var(--text-primary)" }}>{asset.userName}</strong> ({asset.department} • {asset.plant})
-          </div>
+        <div className="modal-footer">
+          <button type="button" onClick={onClose} className="btn btn-secondary btn-sm" disabled={loading}>Cancel</button>
+          <button type="submit" className="btn btn-warning btn-sm" disabled={loading}>{loading ? "Processing..." : "Return to Stock"}</button>
         </div>
-
-        <form onSubmit={handleReturn}>
-          <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <div className="form-group">
-              <label className="form-label">Inspected Physical Condition</label>
-              <select
-                value={returnCondition}
-                onChange={(e) => setReturnCondition(e.target.value)}
-                className="form-select"
-              >
-                <option value="Excellent">Excellent (Like New)</option>
-                <option value="Good">Good (Normal Wear)</option>
-                <option value="Needs Repair">Needs Repair / Diagnostics</option>
-                <option value="Damaged">Damaged / Physical Fault</option>
-              </select>
-            </div>
-
-            {returnCondition === "Damaged" && (
-              <div className="form-group">
-                <label className="form-label" style={{ color: "#f87171" }}>Damage Description</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Cracked bezel, missing keycap, faulty power port"
-                  value={damageDetails}
-                  onChange={(e) => setDamageDetails(e.target.value)}
-                  className="form-control"
-                />
-              </div>
-            )}
-
-            <div className="form-group">
-              <label className="form-label">Return Inspection Notes</label>
-              <textarea
-                rows={3}
-                placeholder="e.g. Returned upon project handover. Checked power adapter, formatted OS, verified hardware."
-                value={returnNotes}
-                onChange={(e) => setReturnNotes(e.target.value)}
-                className="form-control"
-              />
-            </div>
-          </div>
-
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
-              Cancel
-            </button>
-            <button type="submit" disabled={loading} className="btn btn-primary btn-sm">
-              {loading ? "Processing..." : "Return to Available Stock"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </ModalContainer>
   );
 }
 
-// ----------------- FULL-ATTRIBUTE EDIT ASSET MODAL -----------------
-export function EditAssetModal({
-  asset,
-  employees = [],
-  departments = [],
-  locations = [],
-  onClose,
-  onSuccess,
-}) {
+// 4. EDIT ASSET MODAL
+export function EditAssetModal({ asset, departments = [], locations = [], onClose, onSuccess }) {
   const { user } = useAuth();
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState("custodian"); // custodian | hardware | network | software | procurement | notes
-
-  const [formData, setFormData] = useState({
-    // 1. Identification & Status
+  const [form, setForm] = useState({
     make: asset.make || "",
     model: asset.model || "",
-    deviceType: asset.deviceType || "Desktop",
     sr: asset.sr || "",
-    assetNo: asset.assetNo || "",
-    status: asset.status || "Available",
-    workingCondition: asset.workingCondition || "Good",
-    accessories: asset.accessories || "",
-
-    // 2. Custodian & Placement
-    userName: asset.userName || "Unassigned",
-    empCode: asset.empCode || "",
-    mailId: asset.mailId || "",
+    plant: asset.plant || "Vitromed",
     department: asset.department || COMPANY_DEPARTMENTS[0],
-    plant: 'Vitromed',
-    floorCabin: asset.floorCabin || "",
-    assignedDate: formatDateInput(asset.assignedDate),
-    expectedReturnDate: formatDateInput(asset.expectedReturnDate),
-
-    // 3. Technical Specs
+    deviceType: asset.deviceType || "Laptop",
+    status: asset.status || "Available",
     processor: asset.processor || "",
     ramSize: asset.ramSize || "",
     storage: asset.storage || "",
-    monitorDetails: asset.monitorDetails || "",
-    monitorSerialNo: asset.monitorSerialNo || "",
-
-    // 4. Network & Credentials
-    hostName: asset.hostName || "",
-    ipAddress: asset.ipAddress || "",
-    macAddress: asset.macAddress || "",
-    vncPassword: asset.vncPassword || "",
-
-    // 5. Software & Licenses
     osVersion: asset.osVersion || "",
-    windowsKey: asset.windowsKey || "",
-    officeSoftware: asset.officeSoftware || "",
-    officeKey: asset.officeKey || "",
-    antivirus: asset.antivirus || "",
-    antivirusKey: asset.antivirusKey || "",
-    otherSoftware: asset.otherSoftware || "",
-
-    // 6. Procurement & Financial
-    billNo: asset.billNo || "",
-    vendorName: asset.vendorName || "",
-    purchasePrice: asset.purchasePrice || 0,
-    currentValue: asset.currentValue || 0,
-    purchaseDate: formatDateInput(asset.purchaseDate),
-    deliveryDate: formatDateInput(asset.deliveryDate),
-    warrantyDetails: asset.warrantyDetails || "",
-    warrantyStartDate: formatDateInput(asset.warrantyStartDate),
-    warrantyEndDate: formatDateInput(asset.warrantyEndDate),
-    invoiceImage: asset.invoiceImage || "",
-
-    // 7. Remarks
-    remarks: asset.remarks || "",
-    maintenanceNotes: asset.maintenanceNotes || "",
-    serviceVendor: asset.serviceVendor || "",
-    repairCost: asset.repairCost || 0,
+    ipAddress: asset.ipAddress || "",
+    hostName: asset.hostName || "",
   });
-
   const [loading, setLoading] = useState(false);
-
-  const handleChange = (e) => {
-    const { name, value, type } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "number" ? (value === "" ? 0 : parseFloat(value)) : value,
-    }));
-  };
-
-  // Quick autofill from selected staff member
-  const handleSelectStaff = (empId) => {
-    const emp = employees.find((e) => e.employeeId === empId || e._id === empId);
-    if (emp) {
-      setFormData((prev) => ({
-        ...prev,
-        userName: emp.name,
-        empCode: emp.employeeId,
-        mailId: emp.email || "",
-        department: emp.department || prev.department,
-        plant: emp.location || prev.plant,
-        status: "Assigned",
-      }));
-      toast.success("Filled custodian details from " + emp.name);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.make.trim()) return toast.error("Hardware Make is required");
-    if (!formData.model.trim()) return toast.error("Hardware Model is required");
-    if (!formData.sr.trim()) return toast.error("Serial Number (SR) is required");
-
+    if (!form.make.trim() || !form.model.trim() || !form.sr.trim()) {
+      return toast.error("Make, Model, and Serial Number are required");
+    }
     setLoading(true);
-
     try {
-      const res = await api.updateAsset(asset._id, {
-        ...formData,
-        actorName: user?.name || "IT Admin",
-      });
-
-      toast.success(`Asset "${formData.make} ${formData.model}" updated successfully!`, "Changes Saved");
+      const res = await api.updateAsset(asset._id, { ...form, actorName: user?.name || "IT Admin" });
+      toast.success("Asset specifications updated successfully");
       if (onSuccess) onSuccess(res.data);
       onClose();
     } catch (err) {
@@ -951,1170 +333,189 @@ export function EditAssetModal({
     }
   };
 
-  const isNetwork = isNetworkDevice(formData.deviceType);
-  const currentTab = !isNetwork && activeTab === "network" ? "hardware" : activeTab;
-
-  const tabs = [
-    { id: "custodian", label: "Custodian & User", icon: User },
-    { id: "hardware", label: "Hardware & Specs", icon: Cpu },
-    ...(isNetwork ? [{ id: "network", label: "Network & Access", icon: Globe }] : []),
-    { id: "software", label: "Software & Keys", icon: Key },
-    { id: "procurement", label: "Procurement & AMC", icon: FileText },
-    { id: "notes", label: "Remarks & Notes", icon: FileText },
-  ];
-
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content"
-        onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: "860px", width: "95vw" }}
-      >
-        {/* Header */}
-        <div className="modal-header" style={{ padding: "1rem 1.5rem" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-              <Edit3 size={18} color="#38bdf8" />
-              <h3 style={{ fontSize: "1.15rem", fontWeight: 800 }}>
-                Edit Asset: {asset.make} {asset.model}
-              </h3>
-              <span
-                className="badge"
-                style={{
-                  fontSize: "0.72rem",
-                  padding: "0.15rem 0.55rem",
-                  borderRadius: "999px",
-                  backgroundColor: formData.status === "Assigned" ? "rgba(56, 189, 248, 0.15)" : (formData.status === "Available" ? "rgba(52, 211, 153, 0.15)" : "rgba(251, 191, 36, 0.15)"),
-                  color: formData.status === "Assigned" ? "#38bdf8" : (formData.status === "Available" ? "#34d399" : "#fbbf24"),
-                  border: "1px solid currentColor",
-                }}
-              >
-                ● {formData.status}
-              </span>
+    <ModalContainer title="Edit Hardware Asset" icon={Edit3} onClose={onClose} maxWidth="600px">
+      <form onSubmit={handleSubmit}>
+        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+            <div className="form-group">
+              <label className="form-label">Make *</label>
+              <input type="text" required value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })} className="form-control" />
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px", fontFamily: "var(--font-mono)" }}>
-              Tag: {formData.assetNo || "AST-NEW"} • S/N: {formData.sr} • Custodian: <strong style={{ color: "#38bdf8" }}>{formData.userName}</strong>
+            <div className="form-group">
+              <label className="form-label">Model *</label>
+              <input type="text" required value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} className="form-control" />
             </div>
           </div>
-          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
-            <X size={18} />
-          </button>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+            <div className="form-group">
+              <label className="form-label">Serial Number (SR) *</label>
+              <input type="text" required value={form.sr} onChange={(e) => setForm({ ...form, sr: e.target.value })} className="form-control" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Device Type</label>
+              <input type="text" value={form.deviceType} onChange={(e) => setForm({ ...form, deviceType: e.target.value })} className="form-control" />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+            <div className="form-group">
+              <label className="form-label">Processor</label>
+              <input type="text" value={form.processor} onChange={(e) => setForm({ ...form, processor: e.target.value })} className="form-control" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">RAM</label>
+              <input type="text" value={form.ramSize} onChange={(e) => setForm({ ...form, ramSize: e.target.value })} className="form-control" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Storage</label>
+              <input type="text" value={form.storage} onChange={(e) => setForm({ ...form, storage: e.target.value })} className="form-control" />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+            <div className="form-group">
+              <label className="form-label">Department</label>
+              <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} className="form-select">
+                {COMPANY_DEPARTMENTS.map((dept) => <option key={dept} value={dept}>{dept}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Status</label>
+              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="form-select">
+                <option value="Available">Available</option>
+                <option value="Assigned">Assigned</option>
+                <option value="Under Maintenance">Under Maintenance</option>
+                <option value="Retired">Retired</option>
+              </select>
+            </div>
+          </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div
-          style={{
-            display: "flex",
-            gap: "0.25rem",
-            padding: "0.5rem 1.5rem",
-            backgroundColor: "rgba(0, 0, 0, 0.25)",
-            borderBottom: "1px solid var(--border-default)",
-            overflowX: "auto",
-          }}
-        >
-          {tabs.map((t) => {
-            const Icon = t.icon;
-            const isAct = currentTab === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setActiveTab(t.id)}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.4rem",
-                  padding: "0.45rem 0.85rem",
-                  fontSize: "0.8rem",
-                  fontWeight: isAct ? 700 : 500,
-                  backgroundColor: isAct ? "var(--bg-surface-elevated)" : "transparent",
-                  color: isAct ? "#fff" : "var(--text-muted)",
-                  border: isAct ? "1px solid var(--color-primary)" : "1px solid transparent",
-                  borderRadius: "var(--radius-md)",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                <Icon size={14} color={isAct ? "#38bdf8" : "currentColor"} />
-                <span>{t.label}</span>
-              </button>
-            );
-          })}
+        <div className="modal-footer">
+          <button type="button" onClick={onClose} className="btn btn-secondary btn-sm" disabled={loading}>Cancel</button>
+          <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>{loading ? "Saving..." : "Save Changes"}</button>
         </div>
-
-        <form onSubmit={handleSubmit}>
-          <div
-            className="modal-body"
-            style={{
-              maxHeight: "62vh",
-              overflowY: "auto",
-              padding: "1.25rem 1.5rem",
-              display: "flex",
-              flexDirection: "column",
-              gap: "1.25rem",
-            }}
-          >
-            {/* TAB 1: CUSTODIAN & ASSIGNMENT */}
-            {currentTab === "custodian" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                {/* Staff Quick Picker */}
-                {employees.length > 0 && (
-                  <div
-                    style={{
-                      padding: "0.75rem 1rem",
-                      backgroundColor: "rgba(129, 140, 248, 0.08)",
-                      border: "1px solid rgba(129, 140, 248, 0.25)",
-                      borderRadius: "var(--radius-md)",
-                    }}
-                  >
-                    <label className="form-label" style={{ color: "#38bdf8", marginBottom: "0.35rem" }}>
-                      ⚡ Quick-Assign from Staff Directory
-                    </label>
-                    <select
-                      className="form-select"
-                      value=""
-                      onChange={(e) => {
-                        if (e.target.value) handleSelectStaff(e.target.value);
-                      }}
-                    >
-                      <option value="">-- Choose employee to auto-fill fields --</option>
-                      {employees.map((emp) => (
-                        <option key={emp._id || emp.employeeId} value={emp.employeeId}>
-                          {emp.name} ({emp.employeeId}) • {emp.department} • {emp.location}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">
-                      Custodian / User Name <span style={{ color: "#f87171" }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      name="userName"
-                      value={formData.userName}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. sachin, Ramesh Sharma, Unassigned"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Employee Code / ID</label>
-                    <input
-                      type="text"
-                      name="empCode"
-                      value={formData.empCode}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. VIT-1045"
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">Work Email Address</label>
-                    <input
-                      type="email"
-                      name="mailId"
-                      value={formData.mailId}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. employee@vitromed.com"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Cabin / Floor / Desk Location</label>
-                    <input
-                      type="text"
-                      name="floorCabin"
-                      value={formData.floorCabin}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. Main Floor, Bay 4, Exec Cabin"
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">Department</label>
-                    <select
-                      name="department"
-                      value={formData.department}
-                      onChange={handleChange}
-                      className="form-select"
-                    >
-                      {COMPANY_DEPARTMENTS.map((dept) => (
-                        <option key={dept} value={dept}>
-                          {dept}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Plant / Facility</label>
-                    <select
-                      name="plant"
-                      value={formData.plant}
-                      onChange={handleChange}
-                      className="form-select"
-                    >
-                      <option value="Vitromed">Vitromed</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">Operational Status</label>
-                    <select
-                      name="status"
-                      value={formData.status}
-                      onChange={handleChange}
-                      className="form-select"
-                      style={{
-                        fontWeight: 600,
-                        color: formData.status === "Assigned" ? "#38bdf8" : (formData.status === "Available" ? "#34d399" : "#fbbf24"),
-                      }}
-                    >
-                      <option value="Assigned">Assigned (In Active Use)</option>
-                      <option value="Available">Available (In Stock / Pool)</option>
-                      <option value="Under Maintenance">Under Maintenance (In Repair)</option>
-                      <option value="Retired">Retired (Decommissioned)</option>
-                      <option value="Lost">Lost / Stolen</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Physical Working Condition</label>
-                    <select
-                      name="workingCondition"
-                      value={formData.workingCondition}
-                      onChange={handleChange}
-                      className="form-select"
-                    >
-                      <option value="New">New (Mint in box)</option>
-                      <option value="Excellent">Excellent (Like new)</option>
-                      <option value="Good">Good (Normal operational wear)</option>
-                      <option value="Fair">Fair (Minor cosmetic wear)</option>
-                      <option value="Needs Repair">Needs Repair / Diagnostics</option>
-                      <option value="Damaged">Damaged (Faulty hardware)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">Custody Handover / Assigned Date</label>
-                    <input
-                      type="date"
-                      name="assignedDate"
-                      value={formData.assignedDate}
-                      onChange={handleChange}
-                      className="form-control"
-                      style={{ colorScheme: "dark" }}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Expected Handover / Return Date</label>
-                    <input
-                      type="date"
-                      name="expectedReturnDate"
-                      value={formData.expectedReturnDate}
-                      onChange={handleChange}
-                      className="form-control"
-                      style={{ colorScheme: "dark" }}
-                    />
-                  </div>
-                </div>
-
-                {/* Hardware & Peripherals Allocated Bundle */}
-                <HardwareAllocationSelector
-                  deviceType={formData.deviceType}
-                  onDeviceTypeChange={(val) => setFormData((prev) => ({ ...prev, deviceType: val }))}
-                  accessories={formData.accessories}
-                  onAccessoriesChange={(val) => setFormData((prev) => ({ ...prev, accessories: val }))}
-                  monitorDetails={formData.monitorDetails}
-                  onMonitorDetailsChange={(val) => setFormData((prev) => ({ ...prev, monitorDetails: val }))}
-                  monitorSerialNo={formData.monitorSerialNo}
-                  onMonitorSerialNoChange={(val) => setFormData((prev) => ({ ...prev, monitorSerialNo: val }))}
-                  peripheralsList={formData.peripheralsList}
-                  onPeripheralsListChange={(list) => setFormData((prev) => ({ ...prev, peripheralsList: list }))}
-                  compact={true}
-                  title="Workstation Peripherals & Equipment Allocated"
-                />
-              </div>
-            )}
-
-            {/* TAB 2: HARDWARE & SPECS */}
-            {currentTab === "hardware" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">
-                      Manufacturer / Make <span style={{ color: "#f87171" }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      name="make"
-                      value={formData.make}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. Dell, HP, Apple"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">
-                      Model Number / Series <span style={{ color: "#f87171" }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      name="model"
-                      value={formData.model}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. OptiPlex 7090, Latitude 5440"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Device Type</label>
-                    <select
-                      name="deviceType"
-                      value={formData.deviceType}
-                      onChange={handleChange}
-                      className="form-select"
-                    >
-                      <option value="Laptop">Laptop</option>
-                      <option value="Desktop">Desktop</option>
-                      <option value="All in One Desktop">All in One Desktop</option>
-                      <option value="Server">Server</option>
-                      <option value="Workstation">Workstation</option>
-                      <option value="Monitor">Monitor</option>
-                      <option value="Printer">Printer</option>
-                      <option value="Tablet">Tablet</option>
-                      <option value="Network Switch">Network Switch</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">
-                      Hardware Serial Number (SR) <span style={{ color: "#f87171" }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      name="sr"
-                      value={formData.sr}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="Unique serial number"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Internal Asset Tag Number</label>
-                    <input
-                      type="text"
-                      name="assetNo"
-                      value={formData.assetNo}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. AST-VIT-0114"
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">Processor (CPU)</label>
-                    <input
-                      type="text"
-                      name="processor"
-                      value={formData.processor}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. Intel Core i5-12500"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">RAM Memory</label>
-                    <input
-                      type="text"
-                      name="ramSize"
-                      value={formData.ramSize}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. 16 GB DDR4"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Storage Drive</label>
-                    <input
-                      type="text"
-                      name="storage"
-                      value={formData.storage}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. 512 GB NVMe SSD"
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">External Monitor Details</label>
-                    <input
-                      type="text"
-                      name="monitorDetails"
-                      value={formData.monitorDetails}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. Dell 24-inch FHD IPS (P2422H)"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">External Monitor S/N</label>
-                    <input
-                      type="text"
-                      name="monitorSerialNo"
-                      value={formData.monitorSerialNo}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. CN-0K98N2-72872"
-                    />
-                  </div>
-                </div>
-
-                {/* Hardware & Peripherals Allocation Checklist */}
-                <HardwareAllocationSelector
-                  deviceType={formData.deviceType}
-                  onDeviceTypeChange={(val) => setFormData((prev) => ({ ...prev, deviceType: val }))}
-                  accessories={formData.accessories}
-                  onAccessoriesChange={(val) => setFormData((prev) => ({ ...prev, accessories: val }))}
-                  monitorDetails={formData.monitorDetails}
-                  onMonitorDetailsChange={(val) => setFormData((prev) => ({ ...prev, monitorDetails: val }))}
-                  monitorSerialNo={formData.monitorSerialNo}
-                  onMonitorSerialNoChange={(val) => setFormData((prev) => ({ ...prev, monitorSerialNo: val }))}
-                  peripheralsList={formData.peripheralsList}
-                  onPeripheralsListChange={(list) => setFormData((prev) => ({ ...prev, peripheralsList: list }))}
-                  compact={false}
-                  title="Workstation Peripherals & Equipment Checklist"
-                />
-              </div>
-            )}
-
-            {/* TAB 3: NETWORK & REMOTE ACCESS */}
-            {currentTab === "network" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">System Host Name</label>
-                    <input
-                      type="text"
-                      name="hostName"
-                      value={formData.hostName}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. sachin, PC-JPPL-114"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Assigned Local IP Address</label>
-                    <input
-                      type="text"
-                      name="ipAddress"
-                      value={formData.ipAddress}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. 192.168.8.75"
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">Physical MAC Address</label>
-                    <input
-                      type="text"
-                      name="macAddress"
-                      value={formData.macAddress}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. 00:E0:4C:1A:8B:22"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">VNC / Remote Desktop Password</label>
-                    <input
-                      type="text"
-                      name="vncPassword"
-                      value={formData.vncPassword}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. V!tr0"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 4: SOFTWARE & KEYS */}
-            {activeTab === "software" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">Operating System</label>
-                    <input
-                      type="text"
-                      name="osVersion"
-                      value={formData.osVersion}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. Windows 11 Pro, Ubuntu 22.04"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Windows / OS License Key</label>
-                    <input
-                      type="text"
-                      name="windowsKey"
-                      value={formData.windowsKey}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. W269N-WFGWX-YVC9B-4J6C9-T83GX"
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">Office Productivity Software</label>
-                    <input
-                      type="text"
-                      name="officeSoftware"
-                      value={formData.officeSoftware}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. MS Office 2021 Home & Business"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Office Product Key</label>
-                    <input
-                      type="text"
-                      name="officeKey"
-                      value={formData.officeKey}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="Office activation code"
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">Antivirus Endpoint Software</label>
-                    <input
-                      type="text"
-                      name="antivirus"
-                      value={formData.antivirus}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. QuickHeal Total Security Endpoint"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Antivirus License Key</label>
-                    <input
-                      type="text"
-                      name="antivirusKey"
-                      value={formData.antivirusKey}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="Antivirus activation key"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Other Licensed Software & Tools</label>
-                  <input
-                    type="text"
-                    name="otherSoftware"
-                    value={formData.otherSoftware}
-                    onChange={handleChange}
-                    className="form-control"
-                    placeholder="e.g. AutoCAD 2024, SAP Client, Adobe Acrobat Pro"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* TAB 5: PROCUREMENT & WARRANTY */}
-            {activeTab === "procurement" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">PO / Bill / Invoice Number</label>
-                    <input
-                      type="text"
-                      name="billNo"
-                      value={formData.billNo}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. INV-2024-8841"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Vendor / Supplier Name</label>
-                    <input
-                      type="text"
-                      name="vendorName"
-                      value={formData.vendorName}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. Dell Direct India, HP Enterprise"
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">Purchase Date</label>
-                    <input
-                      type="date"
-                      name="purchaseDate"
-                      value={formData.purchaseDate}
-                      onChange={handleChange}
-                      className="form-control"
-                      style={{ colorScheme: "dark" }}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Delivery / Inward Date</label>
-                    <input
-                      type="date"
-                      name="deliveryDate"
-                      value={formData.deliveryDate}
-                      onChange={handleChange}
-                      className="form-control"
-                      style={{ colorScheme: "dark" }}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Warranty / AMC Terms</label>
-                  <input
-                    type="text"
-                    name="warrantyDetails"
-                    value={formData.warrantyDetails}
-                    onChange={handleChange}
-                    className="form-control"
-                    placeholder="e.g. 3 Years Comprehensive Next-Business-Day On-Site"
-                  />
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">Warranty Start Date</label>
-                    <input
-                      type="date"
-                      name="warrantyStartDate"
-                      value={formData.warrantyStartDate}
-                      onChange={handleChange}
-                      className="form-control"
-                      style={{ colorScheme: "dark" }}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Warranty Expiration Date</label>
-                    <input
-                      type="date"
-                      name="warrantyEndDate"
-                      value={formData.warrantyEndDate}
-                      onChange={handleChange}
-                      className="form-control"
-                      style={{ colorScheme: "dark" }}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Invoice Photo / Scanned Document URL</label>
-                  <input
-                    type="text"
-                    name="invoiceImage"
-                    value={formData.invoiceImage}
-                    onChange={handleChange}
-                    className="form-control"
-                    placeholder="https://... or data:image/..."
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* TAB 6: REMARKS & SERVICE */}
-            {activeTab === "notes" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div className="form-group">
-                  <label className="form-label">System Remarks & Configuration Notes</label>
-                  <textarea
-                    rows={4}
-                    name="remarks"
-                    value={formData.remarks}
-                    onChange={handleChange}
-                    className="form-control"
-                    placeholder="e.g. VNC Password = V!tr0. High priority production system. Replaced SSD in Aug 2024."
-                  />
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label className="form-label">Latest Service / Repair Vendor</label>
-                    <input
-                      type="text"
-                      name="serviceVendor"
-                      value={formData.serviceVendor}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="e.g. Dell Support Partner, In-house IT"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Service / Maintenance Notes</label>
-                  <textarea
-                    rows={3}
-                    name="maintenanceNotes"
-                    value={formData.maintenanceNotes}
-                    onChange={handleChange}
-                    className="form-control"
-                    placeholder="Log historical repairs or unresolved faults..."
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Modal Footer */}
-          <div
-            className="modal-footer"
-            style={{
-              padding: "0.85rem 1.5rem",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-              Editing <strong style={{ color: "var(--text-primary)" }}>{formData.make} {formData.model}</strong> • {formData.status}
-            </div>
-
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn btn-primary btn-sm"
-                style={{ padding: "0.45rem 1.25rem", fontWeight: 700 }}
-              >
-                {loading ? "Saving All Attributes..." : "Save All Changes"}
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </ModalContainer>
   );
 }
 
-// ----------------- QUICK MAINTENANCE MODAL -----------------
+// 5. QUICK MAINTENANCE MODAL
 export function QuickMaintenanceModal({ asset, onClose, onSuccess }) {
+  const { user } = useAuth();
   const toast = useToast();
-  const [maintenanceStartDate, setMaintenanceStartDate] = useState(new Date().toISOString().split("T")[0]);
-  const [issue, setIssue] = useState("");
-  const [serviceVendor, setServiceVendor] = useState(asset.serviceVendor || "Authorized OEM Service Partner");
-  const [repairCost, setRepairCost] = useState(0);
+  const [issueDescription, setIssueDescription] = useState("");
+  const [priority, setPriority] = useState("Medium");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!issue.trim()) return toast.error("Please describe the maintenance issue");
-
+    if (!issueDescription.trim()) return toast.error("Please enter issue details");
     setLoading(true);
     try {
-      const sentDate = maintenanceStartDate ? new Date(maintenanceStartDate) : new Date();
-      await api.updateAsset(asset._id, {
-        status: "Under Maintenance",
-        maintenanceStartDate: sentDate.toISOString(),
-        serviceVendor,
-        maintenanceNotes: issue,
-        remarks: "Maintenance Opened: " + issue + " (" + serviceVendor + ") on " + sentDate.toLocaleDateString("en-GB"),
+      await api.reportAssetIssue(asset._id, {
+        issueDescription,
+        priority,
+        reportedBy: user?.name || "IT Admin",
       });
-
-      // Also create formal ticket in maintenance collection
-      await api.createMaintenance({
-        ticketId: "MNT-" + Date.now().toString().slice(-6),
-        assetTag: asset.sr || asset.assetNo || "AST-N/A",
-        assetName: asset.make + " " + asset.model,
-        technician: serviceVendor,
-        issue,
-        cost: parseFloat(repairCost) || 0,
-        startDate: sentDate,
-        status: "In Progress",
-      }).catch(() => {});
-
-      toast.success("Asset \"" + asset.make + " " + asset.model + "\" flagged Under Maintenance.", "Service Ticket Logged");
+      toast.success("Maintenance ticket logged successfully");
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      toast.error(err.message, "Maintenance Request Failed");
+      toast.error(err.message, "Ticket Creation Failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "540px" }}>
-        <div className="modal-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Wrench size={18} color="#fbbf24" />
-            <h3 style={{ fontSize: "1.05rem", fontWeight: 700 }}>Log Maintenance / Repair Ticket</h3>
+    <ModalContainer title="Log Maintenance Ticket" icon={Wrench} iconColor="#ef4444" onClose={onClose}>
+      <form onSubmit={handleSubmit}>
+        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="form-group">
+            <label className="form-label">Issue Description *</label>
+            <textarea value={issueDescription} onChange={(e) => setIssueDescription(e.target.value)} required placeholder="Describe symptoms, boot failures, physical damage..." className="form-control" rows={3} />
           </div>
-          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
-            <X size={16} />
-          </button>
-        </div>
 
-        <div
-          style={{
-            padding: "0.75rem 1.5rem",
-            backgroundColor: "rgba(9, 15, 26, 0.5)",
-            borderBottom: "1px solid var(--border-default)",
-          }}
-        >
-          <div style={{ fontWeight: 600 }}>{asset.make} {asset.model}</div>
-          <div style={{ fontSize: "0.75rem", color: "#fbbf24", fontFamily: "var(--font-mono)" }}>
-            Tag: {asset.assetNo || "AST-N/A"} • S/N: {asset.sr} • Plant: {asset.plant}
+          <div className="form-group">
+            <label className="form-label">Priority</label>
+            <select value={priority} onChange={(e) => setPriority(e.target.value)} className="form-select">
+              <option value="Low">Low (Non-urgent)</option>
+              <option value="Medium">Medium (Standard)</option>
+              <option value="High">High (Immediate Action Required)</option>
+            </select>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <div className="form-group">
-                <label className="form-label">
-                  Date Sent to Maintenance <span style={{ color: "#f87171" }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={maintenanceStartDate}
-                  onChange={(e) => setMaintenanceStartDate(e.target.value)}
-                  className="form-control"
-                  style={{ colorScheme: "dark" }}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Service Provider / Partner</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Dell Service Partner, In-house IT"
-                  value={serviceVendor}
-                  onChange={(e) => setServiceVendor(e.target.value)}
-                  className="form-control"
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                Reported Hardware / Software Fault <span style={{ color: "#f87171" }}>*</span>
-              </label>
-              <textarea
-                required
-                rows={3}
-                placeholder="e.g. Display backlight intermittent, fan making loud noise, thermal shutdown."
-                value={issue}
-                onChange={(e) => setIssue(e.target.value)}
-                className="form-control"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Estimated Repair Cost (₹)</label>
-              <input
-                type="number"
-                min="0"
-                placeholder="0"
-                value={repairCost}
-                onChange={(e) => setRepairCost(e.target.value)}
-                className="form-control"
-              />
-            </div>
-          </div>
-
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
-              Cancel
-            </button>
-            <button type="submit" disabled={loading} className="btn btn-primary btn-sm" style={{ backgroundColor: "#d97706", borderColor: "#d97706" }}>
-              {loading ? "Submitting..." : "Flag Under Maintenance"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="modal-footer">
+          <button type="button" onClick={onClose} className="btn btn-secondary btn-sm" disabled={loading}>Cancel</button>
+          <button type="submit" className="btn btn-danger btn-sm" disabled={loading}>{loading ? "Logging..." : "Create Ticket"}</button>
+        </div>
+      </form>
+    </ModalContainer>
   );
 }
 
-// ----------------- RECORD RETURN FROM MAINTENANCE MODAL -----------------
+// 6. MAINTENANCE RETURN MODAL
 export function MaintenanceReturnModal({ asset, onClose, onSuccess }) {
   const { user } = useAuth();
   const toast = useToast();
-
-  const [returnDate, setReturnDate] = useState(new Date().toISOString().split("T")[0]);
   const [resolution, setResolution] = useState("");
-  const [repairCost, setRepairCost] = useState(asset.lastMaintenanceCost || 0);
-  const [workingCondition, setWorkingCondition] = useState(asset.workingCondition || "Good");
-  const [serviceVendor, setServiceVendor] = useState(asset.serviceVendor || "OEM Service Partner");
-  const [returnTo, setReturnTo] = useState("Stock"); // "Stock" | "Custodian"
-  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const sentDateFormatted = asset.maintenanceStartDate
-    ? new Date(asset.maintenanceStartDate).toLocaleDateString("en-GB")
-    : "N/A";
-
-  const handleReturnFromMaintenance = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!resolution.trim()) {
-      return toast.error("Please enter the repair resolution / work done details");
-    }
-
     setLoading(true);
     try {
-      const res = await api.returnFromMaintenance(asset._id, {
-        returnDate,
-        resolution,
-        repairCost: parseFloat(repairCost) || 0,
-        workingCondition,
-        serviceVendor,
-        returnTo,
-        notes,
+      await api.returnFromMaintenance(asset._id, {
+        resolution: resolution || "Repaired and returned to inventory pool",
         actorName: user?.name || "IT Admin",
       });
-
-      toast.success(
-        `"${asset.make} ${asset.model}" returned from maintenance and marked ${returnTo === "Custodian" ? "Assigned" : "In Stock"}!`,
-        "Maintenance Completed"
-      );
-      if (onSuccess) onSuccess(res.data);
+      toast.success("Asset restored from maintenance to active pool");
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      toast.error(err.message, "Return from Maintenance Failed");
+      toast.error(err.message, "Resolution Failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "560px" }}>
-        <div className="modal-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <CheckCircle2 size={18} color="#34d399" />
-            <h3 style={{ fontSize: "1.05rem", fontWeight: 700 }}>Record Return from Maintenance</h3>
+    <ModalContainer title="Complete Maintenance & Restore" icon={CheckCircle2} iconColor="#10b981" onClose={onClose}>
+      <form onSubmit={handleSubmit}>
+        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="form-group">
+            <label className="form-label">Repair Resolution Notes</label>
+            <textarea value={resolution} onChange={(e) => setResolution(e.target.value)} placeholder="Parts replaced, OS reinstalled, diagnostic test pass..." className="form-control" rows={3} />
           </div>
-          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
-            <X size={16} />
-          </button>
         </div>
 
-        {/* Header Preview showing Sent Date and Issue */}
-        <div
-          style={{
-            padding: "0.75rem 1.5rem",
-            backgroundColor: "rgba(9, 15, 26, 0.5)",
-            borderBottom: "1px solid var(--border-default)",
-          }}
-        >
-          <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{asset.make} {asset.model}</div>
-          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "3px" }}>
-            <span>Tag: <strong style={{ color: "#38bdf8", fontFamily: "var(--font-mono)" }}>{asset.assetNo || "AST-N/A"}</strong></span>
-            <span>Sent for Repair: <strong style={{ color: "#fbbf24" }}>{sentDateFormatted}</strong></span>
-            <span>Vendor: <strong>{asset.serviceVendor || "Service Center"}</strong></span>
-          </div>
-          {asset.maintenanceNotes && (
-            <div style={{ fontSize: "0.74rem", color: "#fbbf24", marginTop: "4px", backgroundColor: "rgba(251, 191, 36, 0.08)", padding: "0.25rem 0.5rem", borderRadius: "4px" }}>
-              Reported Issue: {asset.maintenanceNotes}
-            </div>
-          )}
+        <div className="modal-footer">
+          <button type="button" onClick={onClose} className="btn btn-secondary btn-sm" disabled={loading}>Cancel</button>
+          <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>{loading ? "Restoring..." : "Restore to Stock"}</button>
         </div>
-
-        <form onSubmit={handleReturnFromMaintenance}>
-          <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <div className="form-group">
-                <label className="form-label">
-                  Return / Received Date <span style={{ color: "#f87171" }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={returnDate}
-                  onChange={(e) => setReturnDate(e.target.value)}
-                  className="form-control"
-                  style={{ colorScheme: "dark" }}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Actual Repair Cost (₹)</label>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={repairCost}
-                  onChange={(e) => setRepairCost(e.target.value)}
-                  className="form-control"
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                Work Done / Repair Resolution <span style={{ color: "#f87171" }}>*</span>
-              </label>
-              <textarea
-                required
-                rows={3}
-                placeholder="e.g. Replaced display panel, applied thermal paste, tested hardware diagnostics."
-                value={resolution}
-                onChange={(e) => setResolution(e.target.value)}
-                className="form-control"
-              />
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <div className="form-group">
-                <label className="form-label">Working Condition Upon Return</label>
-                <select
-                  value={workingCondition}
-                  onChange={(e) => setWorkingCondition(e.target.value)}
-                  className="form-select"
-                >
-                  <option value="Excellent">Excellent (Like New)</option>
-                  <option value="Good">Good (Fully Operational)</option>
-                  <option value="Fair">Fair (Minor cosmetic wear)</option>
-                  <option value="Needs Repair">Needs Repair (Partially fixed)</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Return Destination</label>
-                <select
-                  value={returnTo}
-                  onChange={(e) => setReturnTo(e.target.value)}
-                  className="form-select"
-                >
-                  <option value="Stock">Return to Available Stock</option>
-                  {asset.userName && asset.userName !== "Unassigned" && (
-                    <option value="Custodian">Restore to Custodian ({asset.userName})</option>
-                  )}
-                </select>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Service Vendor / Technician</label>
-              <input
-                type="text"
-                value={serviceVendor}
-                onChange={(e) => setServiceVendor(e.target.value)}
-                className="form-control"
-                placeholder="e.g. Dell Authorized Service Center"
-              />
-            </div>
-          </div>
-
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
-              Cancel
-            </button>
-            <button type="submit" disabled={loading} className="btn btn-primary btn-sm" style={{ backgroundColor: "#059669", borderColor: "#059669" }}>
-              {loading ? "Recording..." : "Complete Return & Update Asset"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </ModalContainer>
   );
 }
 
-// ----------------- RETIRE ASSET MODAL -----------------
+// 7. RETIRE ASSET MODAL
 export function RetireAssetModal({ asset, onClose, onSuccess }) {
   const { user } = useAuth();
   const toast = useToast();
-
-  const [retireDate, setRetireDate] = useState(new Date().toISOString().split("T")[0]);
-  const [reasonCategory, setReasonCategory] = useState("End of Life / Obsolete");
-  const [customReason, setCustomReason] = useState("");
-  const [workingCondition, setWorkingCondition] = useState("Fair");
+  const [reason, setReason] = useState("End of Lifecycle / Obsolete");
   const [loading, setLoading] = useState(false);
 
-  const handleRetire = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
-    const finalReason = customReason.trim()
-      ? `${reasonCategory}: ${customReason.trim()}`
-      : reasonCategory;
-
     try {
-      const res = await api.retireAsset(asset._id, {
-        retireDate,
-        reason: finalReason,
-        workingCondition,
-        actorName: user?.name || "IT Admin",
-      });
-
-      toast.success(`Asset "${asset.make} ${asset.model}" has been successfully decommissioned / retired.`, "Asset Retired");
-      if (onSuccess) onSuccess(res.data);
+      await api.retireAsset(asset._id, { reason, actorName: user?.name || "IT Admin" });
+      toast.success("Asset retired from active inventory");
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
       toast.error(err.message, "Retire Failed");
@@ -2124,101 +525,29 @@ export function RetireAssetModal({ asset, onClose, onSuccess }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "520px" }}>
-        <div className="modal-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span style={{ fontSize: "1.1rem" }}>📦</span>
-            <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#f87171" }}>Decommission / Retire Asset</h3>
-          </div>
-          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
-            <X size={16} />
-          </button>
-        </div>
+    <ModalContainer title="Retire Asset from Fleet" icon={Trash2} iconColor="#ef4444" onClose={onClose}>
+      <form onSubmit={handleSubmit}>
+        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: 0 }}>
+            Are you sure you want to retire <strong>{asset.make} {asset.model}</strong> (#{asset.assetNo || asset.sr})?
+          </p>
 
-        <div
-          style={{
-            padding: "0.75rem 1.5rem",
-            backgroundColor: "rgba(239, 68, 68, 0.08)",
-            borderBottom: "1px solid rgba(239, 68, 68, 0.2)",
-          }}
-        >
-          <div style={{ fontWeight: 600 }}>{asset.make} {asset.model}</div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px", fontFamily: "var(--font-mono)" }}>
-            Tag: {asset.assetNo || "AST-N/A"} • S/N: {asset.sr} • Current Custodian: {asset.userName || "Unassigned"}
+          <div className="form-group">
+            <label className="form-label">Retirement Reason</label>
+            <select value={reason} onChange={(e) => setReason(e.target.value)} className="form-select">
+              <option value="End of Lifecycle / Obsolete">End of Lifecycle / Obsolete</option>
+              <option value="Damaged Beyond Repair">Damaged Beyond Repair</option>
+              <option value="Scrapped / Recycled">Scrapped / Recycled</option>
+              <option value="Sold / Transferred Off-Premises">Sold / Transferred Off-Premises</option>
+            </select>
           </div>
         </div>
 
-        <form onSubmit={handleRetire}>
-          <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <div className="form-group">
-                <label className="form-label">
-                  Retirement Date <span style={{ color: "#f87171" }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={retireDate}
-                  onChange={(e) => setRetireDate(e.target.value)}
-                  className="form-control"
-                  style={{ colorScheme: "dark" }}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Physical Working Condition</label>
-                <select
-                  value={workingCondition}
-                  onChange={(e) => setWorkingCondition(e.target.value)}
-                  className="form-select"
-                >
-                  <option value="Fair">Fair (Operational but aged)</option>
-                  <option value="Damaged">Damaged / Beyond Economical Repair</option>
-                  <option value="Needs Repair">Needs Repair (Obsolete components)</option>
-                  <option value="Good">Good (Replaced under upgrade cycle)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Primary Decommissioning Reason</label>
-              <select
-                value={reasonCategory}
-                onChange={(e) => setReasonCategory(e.target.value)}
-                className="form-select"
-              >
-                <option value="End of Life / Obsolete">End of Life / Obsolete (Warranty expired)</option>
-                <option value="Hardware Failure Beyond Repair">Hardware Failure Beyond Economical Repair</option>
-                <option value="Sent for E-Waste Disposal / Recycling">Sent for E-Waste Disposal / Recycling</option>
-                <option value="Stripped for Spare Parts">Stripped for Spare Parts</option>
-                <option value="Lost or Stolen">Lost or Stolen</option>
-                <option value="Other">Other Reason</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Additional Decommissioning Notes</label>
-              <textarea
-                rows={2}
-                placeholder="e.g. Scrapped HDD degaussed, motherboard sent to certified recycler."
-                value={customReason}
-                onChange={(e) => setCustomReason(e.target.value)}
-                className="form-control"
-              />
-            </div>
-          </div>
-
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
-              Cancel
-            </button>
-            <button type="submit" disabled={loading} className="btn btn-primary btn-sm" style={{ backgroundColor: "#ef4444", borderColor: "#ef4444" }}>
-              {loading ? "Retiring..." : "Confirm & Retire Asset"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="modal-footer">
+          <button type="button" onClick={onClose} className="btn btn-secondary btn-sm" disabled={loading}>Cancel</button>
+          <button type="submit" className="btn btn-danger btn-sm" disabled={loading}>{loading ? "Retiring..." : "Retire Hardware"}</button>
+        </div>
+      </form>
+    </ModalContainer>
   );
 }

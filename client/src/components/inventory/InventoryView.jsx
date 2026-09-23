@@ -10,6 +10,7 @@ import {
   Archive,
   Trash2,
   Search,
+  X,
   Filter,
   Download,
   Plus,
@@ -422,8 +423,35 @@ export default function InventoryView({
                 setCurrentPage(1);
               }}
               className="input-field"
-              style={{ paddingLeft: '32px', fontSize: '0.82rem', height: '36px' }}
+              style={{ paddingLeft: '32px', paddingRight: searchTerm ? '30px' : '10px', fontSize: '0.82rem', height: '36px' }}
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setCurrentPage(1);
+                }}
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-faint)',
+                  padding: '3px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '4px',
+                }}
+                title="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>

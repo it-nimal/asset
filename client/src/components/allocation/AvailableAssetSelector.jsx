@@ -83,7 +83,7 @@ export default function AvailableAssetSelector({
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by Asset Tag (AST-VIT-XXXXX), Serial, Model, Device Type..."
             className="form-input"
-            style={{ paddingLeft: '2.2rem', fontSize: '0.82rem' }}
+            style={{ paddingLeft: '2.2rem', paddingRight: searchTerm ? '2.2rem' : '0.65rem', fontSize: '0.82rem', width: '100%' }}
           />
           <Search
             size={15}
@@ -95,6 +95,28 @@ export default function AvailableAssetSelector({
               color: 'var(--text-muted)',
             }}
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              style={{
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                padding: 0,
+              }}
+              title="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px' }}>

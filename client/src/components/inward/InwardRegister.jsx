@@ -15,6 +15,7 @@ import {
   Calendar,
   Layers,
   ArrowRight,
+  X,
 } from 'lucide-react';
 import { INWARD_CATEGORIES } from '../../config/assetSpecificationConfig';
 import InwardForm from './InwardForm';
@@ -236,8 +237,30 @@ export default function InwardRegister({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="form-control"
-              style={{ paddingLeft: '2.25rem', fontSize: '0.82rem' }}
+              style={{ paddingLeft: '2.25rem', paddingRight: searchQuery ? '2.25rem' : '0.65rem', fontSize: '0.82rem', width: '100%' }}
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-faint)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: 0,
+                }}
+                title="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
         </div>
 

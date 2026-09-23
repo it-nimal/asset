@@ -66,7 +66,6 @@ export default function Sidebar({
       title: 'Hardware Depot & Stock',
       items: [
         { id: 'inventory-all', label: 'Central Inventory Depot', icon: Boxes, count: stats?.total },
-        { id: 'inward-register', label: 'Inward / Receiving Gate', icon: Truck, isAction: true },
         { id: 'assets-all', label: 'Hardware Master Fleet', icon: FolderTree, count: stats?.total },
         { id: 'assets-laptops', label: 'Laptops', icon: Laptop, count: countsByCategory?.Laptop },
         { id: 'assets-desktops', label: 'Desktops', icon: Monitor, count: (countsByCategory?.Desktop || 0) + (countsByCategory?.['All in One Desktop'] || 0) },

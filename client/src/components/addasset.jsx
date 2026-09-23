@@ -1725,8 +1725,32 @@ export default function Addasset({
                         value={empSearchQuery}
                         onChange={(e) => setEmpSearchQuery(e.target.value)}
                         className="form-control"
-                        style={{ paddingLeft: '2rem', fontSize: '0.78rem' }}
+                        style={{ paddingLeft: '2rem', paddingRight: empSearchQuery ? '2rem' : '0.65rem', fontSize: '0.78rem' }}
                       />
+                      {empSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setEmpSearchQuery('')}
+                          style={{
+                            position: 'absolute',
+                            right: '8px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--text-faint)',
+                            padding: '3px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '4px',
+                          }}
+                          title="Clear search"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
                     </div>
 
                     <div className="form-group">

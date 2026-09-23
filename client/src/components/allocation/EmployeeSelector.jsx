@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Search, User, Check, Building2, MapPin, Laptop, Layers, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Search, X, User, Check, Building2, MapPin, Laptop, Layers, ShieldCheck, AlertCircle, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function EmployeeSelector({
   employees = [],
@@ -11,6 +11,18 @@ export default function EmployeeSelector({
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Filter active employees matching search term
   const filteredEmployees = useMemo(() => {
@@ -194,10 +206,33 @@ export default function EmployeeSelector({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', position: 'relative' }}>
-      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-        Select Employee Custodian <span style={{ color: '#ef4444' }}>*</span>
-      </label>
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', position: 'relative' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+          Select Employee Custodian <span style={{ color: '#ef4444' }}>*</span>
+        </label>
+        {isDropdownOpen && (
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(false)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#0284c7',
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.2rem',
+              padding: '0 4px',
+            }}
+          >
+            <span>Close List</span>
+            <X size={12} />
+          </button>
+        )}
+      </div>
 
       <div style={{ position: 'relative' }}>
         <input
@@ -208,9 +243,18 @@ export default function EmployeeSelector({
             setIsDropdownOpen(true);
           }}
           onFocus={() => setIsDropdownOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setIsDropdownOpen(false);
+            }
+          }}
           placeholder="Search employee by Name, Employee ID (e.g. EMP00125), or Department..."
           className="form-input"
-          style={{ paddingLeft: '2.2rem' }}
+          style={{
+            paddingLeft: '2.2rem',
+            paddingRight: searchTerm ? '3.8rem' : '2.2rem',
+            width: '100%',
+          }}
         />
         <Search
           size={16}
@@ -220,15 +264,66 @@ export default function EmployeeSelector({
             top: '50%',
             transform: 'translateY(-50%)',
             color: 'var(--text-muted)',
+            pointerEvents: 'none',
           }}
         />
+        <div
+          style={{
+            position: 'absolute',
+            right: '6px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2px',
+          }}
+        >
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-faint)',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '4px',
+              }}
+              title="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-muted)',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '4px',
+            }}
+            title={isDropdownOpen ? 'Close list' : 'Open list'}
+          >
+            {isDropdownOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+        </div>
       </div>
 
       {/* Dropdown list */}
       {isDropdownOpen && (
         <div
           style={{
-            maxHeight: '230px',
+            maxHeight: '260px',
             overflowY: 'auto',
             backgroundColor: 'var(--bg-surface, #ffffff)',
             border: '1px solid var(--border-default)',
@@ -239,6 +334,46 @@ export default function EmployeeSelector({
             flexDirection: 'column',
           }}
         >
+          {/* Sticky Dropdown Header with Close Button */}
+          <div
+            style={{
+              padding: '0.45rem 0.75rem',
+              backgroundColor: 'var(--bg-surface-raised, #f1f5f9)',
+              borderBottom: '1px solid var(--border-default)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              position: 'sticky',
+              top: 0,
+              zIndex: 2,
+            }}
+          >
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+              STAFF DIRECTORY ({filteredEmployees.length})
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsDropdownOpen(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                padding: '2px 6px',
+                borderRadius: '4px',
+              }}
+              title="Close list (Esc)"
+            >
+              <span>Close</span>
+              <X size={13} />
+            </button>
+          </div>
+
           {filteredEmployees.length === 0 ? (
             <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
               No matching active employees found.

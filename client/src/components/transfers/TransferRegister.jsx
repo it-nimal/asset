@@ -13,6 +13,7 @@ import {
   Boxes,
   FileSpreadsheet,
   AlertTriangle,
+  X,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useToast } from '../common/Toast';
@@ -316,8 +317,30 @@ export default function TransferRegister({ onRefresh }) {
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search transfer ID, tag, user..."
             className="form-control form-control-sm"
-            style={{ paddingLeft: '2rem' }}
+            style={{ paddingLeft: '2rem', paddingRight: searchTerm ? '2rem' : '0.65rem' }}
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              style={{
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-faint)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                padding: 0,
+              }}
+              title="Clear search"
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
       </div>
 

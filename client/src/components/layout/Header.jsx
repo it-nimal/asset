@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Palette,
   Check,
+  LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../common/Toast';
@@ -28,13 +29,13 @@ export default function Header({
   onSelectAsset,
   onNavigate,
 }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const toast = useToast();
   const [notifMenuOpen, setNotifMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
 
-  // Theme Management (Defaults to White Background & Black Words with Sky Blue)
+  // Theme Management (Defaults to White Enterprise Slate & Blue Theme)
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('it_asset_theme') || 'light';
   });
@@ -764,6 +765,33 @@ export default function Header({
             {user?.role || 'IT Admin'}
           </span>
         </div>
+
+        {/* Sign Out Action Button */}
+        <button
+          type="button"
+          onClick={() => {
+            logout();
+            toast.info('You have been signed out', 'Session Ended');
+          }}
+          className="btn btn-outline btn-xs"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            color: '#ef4444',
+            borderColor: 'rgba(239, 68, 68, 0.25)',
+            backgroundColor: 'rgba(239, 68, 68, 0.04)',
+            padding: '0.3rem 0.6rem',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            borderRadius: 'var(--radius-sm)',
+            cursor: 'pointer',
+          }}
+          title="Sign Out of Session"
+        >
+          <LogOut size={13} />
+          <span>Sign Out</span>
+        </button>
       </div>
     </header>
   );

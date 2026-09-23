@@ -145,7 +145,7 @@ import {
   clearAllData,
   seedDemoData,
   feedUserData,
-} from '../controllers/assetController.js';
+} from '../controllers/index.js';
 
 const router = express.Router();
 
@@ -243,20 +243,28 @@ router.put('/notifications/:id/read', markNotificationRead);
 router.delete('/notifications/:id', deleteNotification);
 
 // ----------------- ASSETS ROOT COLLECTION & LIFECYCLE -----------------
-router.get('/available', getAvailableAssets);
-router.post('/allocate', allocateAssets);
-router.route('/').get(getAssets).post(createAsset);
-router.post('/:id/acknowledge', acknowledgeAsset);
-router.post('/:id/report-issue', reportAssetIssue);
-router.get('/:id/maintenance', getAssetMaintenanceHistory);
-router.get('/:id/transfers', getAssetTransfers);
-router.post('/:id/assign', assignAsset);
-router.post('/:id/return', returnAsset);
-router.post('/:id/transfer', transferAsset);
-router.post('/:id/maintenance-return', returnFromMaintenance);
-router.post('/:id/retire', retireAsset);
-router.route('/:id').get(getAssetById).put(updateAsset).delete(deleteAsset);
+router.get(['/available', '/assets/available'], getAvailableAssets);
+router.post(['/allocate', '/assets/allocate'], allocateAssets);
+router.get(['/stats/summary', '/assets/stats/summary'], getAssetStats);
+router.post(['/bulk-import', '/assets/bulk-import'], bulkImportAssets);
+router.get(['/export-master-csv', '/assets/export-master-csv'], exportAssetsCSV);
+router.post(['/seed/sample-master-row', '/assets/seed/sample-master-row'], seedSampleMasterRow);
 
-export { COMPANY_DEPARTMENTS } from '../controllers/assetController.js';
+// Sub-actions on Assets
+router.post(['/:id/acknowledge', '/assets/:id/acknowledge'], acknowledgeAsset);
+router.post(['/:id/report-issue', '/assets/:id/report-issue'], reportAssetIssue);
+router.get(['/:id/maintenance', '/assets/:id/maintenance'], getAssetMaintenanceHistory);
+router.get(['/:id/transfers', '/assets/:id/transfers'], getAssetTransfers);
+router.post(['/:id/assign', '/assets/:id/assign'], assignAsset);
+router.post(['/:id/return', '/assets/:id/return'], returnAsset);
+router.post(['/:id/transfer', '/assets/:id/transfer'], transferAsset);
+router.post(['/:id/maintenance-return', '/assets/:id/maintenance-return'], returnFromMaintenance);
+router.post(['/:id/retire', '/assets/:id/retire'], retireAsset);
+
+// Root Asset Resource
+router.route(['/', '/assets']).get(getAssets).post(createAsset);
+router.route(['/:id', '/assets/:id']).get(getAssetById).put(updateAsset).delete(deleteAsset);
+
+export { COMPANY_DEPARTMENTS } from '../controllers/index.js';
 
 export default router;

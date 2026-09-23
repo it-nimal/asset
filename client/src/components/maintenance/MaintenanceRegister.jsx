@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Wrench, 
-  Search, 
-  Plus, 
-  Filter, 
-  RefreshCw, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Clock, 
-  User, 
-  Laptop, 
-  ChevronRight,
+import {
+  Wrench,
+  Search,
+  Plus,
+  Filter,
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Laptop,
   ShieldCheck,
   ArrowLeftRight,
-  Eye
+  Eye,
+  X,
 } from 'lucide-react';
 import MaintenanceStatusBadge from './MaintenanceStatusBadge';
 import MaintenanceForm from './MaintenanceForm';
@@ -65,98 +64,363 @@ export default function MaintenanceRegister() {
   };
 
   // Metrics counters
-  const totalInMaintenance = tickets.filter(t => !['Returned', 'Cancelled', 'Resolved', 'Closed'].includes(t.status)).length;
-  const inRepairCount = tickets.filter(t => ['In Repair', 'Under Diagnosis'].includes(t.status)).length;
-  const awaitingCount = tickets.filter(t => ['Awaiting Vendor', 'Awaiting Parts'].includes(t.status)).length;
-  const readyCount = tickets.filter(t => t.status === 'Ready').length;
+  const totalInMaintenance = tickets.filter(
+    (t) => !['Returned', 'Cancelled', 'Resolved', 'Closed'].includes(t.status)
+  ).length;
+  const inRepairCount = tickets.filter((t) =>
+    ['In Repair', 'Under Diagnosis'].includes(t.status)
+  ).length;
+  const awaitingCount = tickets.filter((t) =>
+    ['Awaiting Vendor', 'Awaiting Parts'].includes(t.status)
+  ).length;
+  const readyCount = tickets.filter((t) => t.status === 'Ready').length;
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner & Action */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 p-6 rounded-2xl border border-slate-800">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-400">
-            <Wrench className="w-8 h-8" />
+    <div className="page-container" style={{ paddingBottom: '3rem' }}>
+      {/* Top Banner & Actions */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1.5rem',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+          <div
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: 'var(--radius-lg)',
+              backgroundColor: 'rgba(245, 158, 11, 0.12)',
+              border: '1px solid rgba(245, 158, 11, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#f59e0b',
+            }}
+          >
+            <Wrench size={22} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Maintenance & Repair Register</h1>
-            <p className="text-sm text-slate-400">
+            <h1
+              style={{
+                fontSize: '1.45rem',
+                fontWeight: 800,
+                color: 'var(--text-primary)',
+                letterSpacing: '-0.02em',
+                margin: 0,
+              }}
+            >
+              Maintenance & Repair Register
+            </h1>
+            <p
+              style={{
+                fontSize: '0.82rem',
+                color: 'var(--text-muted)',
+                marginTop: '0.15rem',
+                margin: 0,
+              }}
+            >
               Track physical equipment repair lifecycle, vendor claims, QC testing, and custodian returns.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <button
+            type="button"
             onClick={loadTickets}
-            className="p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+            disabled={loading}
+            className="btn btn-outline btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
             title="Refresh"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <span>Refresh</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-sm transition-all shadow-lg shadow-amber-500/20"
+            className="btn btn-primary btn-sm"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              backgroundColor: '#f59e0b',
+              borderColor: '#f59e0b',
+              color: '#ffffff',
+              fontWeight: 700,
+              boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
+            }}
           >
-            <Plus className="w-4 h-4" />
+            <Plus size={16} />
             <span>Log Maintenance Request</span>
           </button>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Active In Maintenance</span>
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
-              <Wrench className="w-4 h-4" />
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '1rem',
+          marginBottom: '1.5rem',
+        }}
+      >
+        <div className="card" style={{ padding: '1rem 1.25rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Active In Maintenance
+            </span>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                color: '#3b82f6',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Wrench size={16} />
             </div>
           </div>
-          <div className="mt-3 text-2xl font-bold text-white">{totalInMaintenance}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Total active repair tickets</div>
+          <div
+            style={{
+              fontSize: '1.65rem',
+              fontWeight: 800,
+              color: 'var(--text-primary)',
+              marginTop: '0.5rem',
+              lineHeight: 1,
+            }}
+          >
+            {totalInMaintenance}
+          </div>
+          <div
+            style={{
+              fontSize: '0.72rem',
+              color: 'var(--text-muted)',
+              marginTop: '0.35rem',
+            }}
+          >
+            Total active repair tickets
+          </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">In Repair / Diagnosis</span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
-              <Clock className="w-4 h-4" />
+        <div className="card" style={{ padding: '1rem 1.25rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}
+            >
+              In Repair / Diagnosis
+            </span>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                color: '#f59e0b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Clock size={16} />
             </div>
           </div>
-          <div className="mt-3 text-2xl font-bold text-amber-400">{inRepairCount}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Technician bench testing & repairs</div>
+          <div
+            style={{
+              fontSize: '1.65rem',
+              fontWeight: 800,
+              color: '#f59e0b',
+              marginTop: '0.5rem',
+              lineHeight: 1,
+            }}
+          >
+            {inRepairCount}
+          </div>
+          <div
+            style={{
+              fontSize: '0.72rem',
+              color: 'var(--text-muted)',
+              marginTop: '0.35rem',
+            }}
+          >
+            Technician bench testing & repairs
+          </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Vendor / Parts Pending</span>
-            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400">
-              <AlertTriangle className="w-4 h-4" />
+        <div className="card" style={{ padding: '1rem 1.25rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Vendor / Parts Pending
+            </span>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'rgba(2, 132, 199, 0.12)',
+                color: '#0284c7',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <AlertTriangle size={16} />
             </div>
           </div>
-          <div className="mt-3 text-2xl font-bold text-sky-400">{awaitingCount}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Awaiting vendor or spare parts</div>
+          <div
+            style={{
+              fontSize: '1.65rem',
+              fontWeight: 800,
+              color: '#0284c7',
+              marginTop: '0.5rem',
+              lineHeight: 1,
+            }}
+          >
+            {awaitingCount}
+          </div>
+          <div
+            style={{
+              fontSize: '0.72rem',
+              color: 'var(--text-muted)',
+              marginTop: '0.35rem',
+            }}
+          >
+            Awaiting vendor or spare parts
+          </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">QC Passed / Ready</span>
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-400">
-              <CheckCircle2 className="w-4 h-4" />
+        <div className="card" style={{ padding: '1rem 1.25rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}
+            >
+              QC Passed / Ready
+            </span>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'rgba(13, 148, 136, 0.12)',
+                color: '#0d9488',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <CheckCircle2 size={16} />
             </div>
           </div>
-          <div className="mt-3 text-2xl font-bold text-teal-400">{readyCount}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Ready for employee/stock return</div>
+          <div
+            style={{
+              fontSize: '1.65rem',
+              fontWeight: 800,
+              color: '#0d9488',
+              marginTop: '0.5rem',
+              lineHeight: 1,
+            }}
+          >
+            {readyCount}
+          </div>
+          <div
+            style={{
+              fontSize: '0.72rem',
+              color: 'var(--text-muted)',
+              marginTop: '0.35rem',
+            }}
+          >
+            Ready for employee/stock return
+          </div>
         </div>
       </div>
 
       {/* Filter Tabs & Search Bar */}
-      <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="card" style={{ padding: '1.1rem', marginBottom: '1.25rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem',
+          }}
+        >
           {/* Status Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-950/60 rounded-xl border border-slate-800 overflow-x-auto max-w-full">
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.35rem',
+              backgroundColor: 'var(--bg-canvas)',
+              padding: '0.25rem',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-default)',
+              overflowX: 'auto',
+              maxWidth: '100%',
+            }}
+          >
             {[
               { id: 'Active', label: 'Active Repairs' },
               { id: 'Reported', label: 'Reported' },
@@ -168,12 +432,31 @@ export default function MaintenanceRegister() {
             ].map((tab) => (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setStatusFilter(tab.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                  statusFilter === tab.id
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/10'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                }`}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '0.78rem',
+                  fontWeight: statusFilter === tab.id ? 700 : 500,
+                  backgroundColor:
+                    statusFilter === tab.id ? 'var(--bg-surface)' : 'transparent',
+                  color:
+                    statusFilter === tab.id
+                      ? 'var(--text-primary)'
+                      : 'var(--text-muted)',
+                  border:
+                    statusFilter === tab.id
+                      ? '1px solid var(--border-default)'
+                      : '1px solid transparent',
+                  cursor: 'pointer',
+                  boxShadow:
+                    statusFilter === tab.id
+                      ? '0 1px 3px rgba(0,0,0,0.06)'
+                      : 'none',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease',
+                }}
               >
                 {tab.label}
               </button>
@@ -181,29 +464,88 @@ export default function MaintenanceRegister() {
           </div>
 
           {/* Search */}
-          <form onSubmit={handleSearch} className="relative min-w-[280px]">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+          <form onSubmit={handleSearch} style={{ position: 'relative', minWidth: '260px' }}>
+            <Search
+              size={15}
+              style={{
+                position: 'absolute',
+                left: '0.75rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--text-muted)',
+              }}
+            />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search Ticket, Tag, Serial, Custodian..."
-              className="w-full pl-9.5 pr-4 py-2 bg-slate-950/60 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50"
+              className="form-input"
+              style={{
+                paddingLeft: '2.2rem',
+                paddingRight: search ? '2.2rem' : '0.75rem',
+                paddingTop: '0.45rem',
+                paddingBottom: '0.45rem',
+                fontSize: '0.8rem',
+                width: '100%',
+              }}
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: 0,
+                }}
+                title="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
           </form>
         </div>
 
         {/* Priority & Category Dropdowns */}
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-800/60">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <Filter className="w-3.5 h-3.5" />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            marginTop: '0.85rem',
+            paddingTop: '0.85rem',
+            borderTop: '1px solid var(--border-default)',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              fontSize: '0.78rem',
+              color: 'var(--text-muted)',
+              fontWeight: 600,
+            }}
+          >
+            <Filter size={14} />
             <span>Filters:</span>
           </div>
 
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="px-3 py-1 bg-slate-950/60 border border-slate-800 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-amber-500/50"
+            className="form-select"
+            style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', width: 'auto' }}
           >
             <option value="All">All Priorities</option>
             <option value="High">High Priority</option>
@@ -214,7 +556,8 @@ export default function MaintenanceRegister() {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-1 bg-slate-950/60 border border-slate-800 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-amber-500/50"
+            className="form-select"
+            style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', width: 'auto' }}
           >
             <option value="All">All Issue Categories</option>
             <option value="Hardware">Hardware Fault</option>
@@ -227,123 +570,232 @@ export default function MaintenanceRegister() {
       </div>
 
       {/* Maintenance Table */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 overflow-hidden">
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {loading ? (
-          <div className="p-12 text-center text-slate-400 text-sm">
-            <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-3 text-amber-400" />
-            Loading maintenance register...
+          <div style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <RefreshCw
+              size={24}
+              className="animate-spin"
+              style={{ margin: '0 auto 0.75rem', color: '#f59e0b' }}
+            />
+            <div style={{ fontSize: '0.85rem' }}>Loading maintenance register...</div>
           </div>
         ) : error ? (
-          <div className="p-8 text-center text-rose-400 text-sm flex items-center justify-center gap-2">
-            <AlertTriangle className="w-5 h-5 shrink-0" />
+          <div
+            style={{
+              padding: '2.5rem',
+              textAlign: 'center',
+              color: '#ef4444',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              fontSize: '0.85rem',
+            }}
+          >
+            <AlertTriangle size={18} />
             <span>{error}</span>
           </div>
         ) : tickets.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 text-sm space-y-2">
-            <Wrench className="w-8 h-8 mx-auto text-slate-600" />
-            <p>No maintenance tickets match the selected filters.</p>
+          <div style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <Wrench size={32} style={{ margin: '0 auto 0.75rem', color: 'var(--text-muted)', opacity: 0.5 }} />
+            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              No maintenance tickets found
+            </div>
+            <div style={{ fontSize: '0.78rem', marginTop: '0.25rem' }}>
+              No maintenance records match the selected filters.
+            </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+          <div style={{ overflowX: 'auto' }}>
+            <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-950/50 text-slate-400 uppercase tracking-wider font-semibold">
-                  <th className="p-3.5 pl-6">Ticket ID</th>
-                  <th className="p-3.5">Equipment / Tag</th>
-                  <th className="p-3.5">Custodian</th>
-                  <th className="p-3.5">Issue Description</th>
-                  <th className="p-3.5">Priority</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5">Vendor / Cost</th>
-                  <th className="p-3.5 pr-6 text-right">Actions</th>
+                <tr style={{ backgroundColor: 'var(--bg-canvas)' }}>
+                  <th style={{ padding: '0.75rem 1rem 0.75rem 1.25rem', textAlign: 'left', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
+                    Ticket ID
+                  </th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
+                    Equipment / Tag
+                  </th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
+                    Custodian
+                  </th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
+                    Issue Description
+                  </th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
+                    Priority
+                  </th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
+                    Status
+                  </th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
+                    Vendor / Cost
+                  </th>
+                  <th style={{ padding: '0.75rem 1.25rem 0.75rem 1rem', textAlign: 'right', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
+                    Actions
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody>
                 {tickets.map((t) => (
                   <tr
                     key={t._id}
-                    className="hover:bg-slate-800/40 transition-colors group cursor-pointer"
                     onClick={() => {
                       setSelectedTicket(t);
                       setShowDetailsModal(true);
                     }}
+                    style={{
+                      borderTop: '1px solid var(--border-default)',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
-                    <td className="p-3.5 pl-6 font-mono font-semibold text-white">
+                    <td style={{ padding: '0.85rem 1rem 0.85rem 1.25rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.82rem' }}>
                       {t.maintenanceId}
                     </td>
 
-                    <td className="p-3.5">
-                      <div className="font-medium text-slate-200">{t.assetMake} {t.assetModel}</div>
-                      <div className="text-[11px] font-mono text-slate-400">{t.assetTag || t.assetSerial}</div>
+                    <td style={{ padding: '0.85rem 1rem' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.82rem' }}>
+                        {t.assetMake} {t.assetModel}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                        {t.assetTag || t.assetSerial}
+                      </div>
                     </td>
 
-                    <td className="p-3.5">
-                      <div className="font-medium text-slate-200">{t.employeeName || 'Unassigned'}</div>
-                      <div className="text-[11px] text-slate-400">{t.department || 'Vitromed'}</div>
+                    <td style={{ padding: '0.85rem 1rem' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.82rem' }}>
+                        {t.employeeName || 'Unassigned'}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        {t.department || 'Vitromed'}
+                      </div>
                     </td>
 
-                    <td className="p-3.5 max-w-[220px]">
-                      <div className="text-slate-300 truncate font-medium">{t.issueDescription}</div>
-                      <div className="text-[11px] text-slate-500">{t.issueCategory || 'Hardware'}</div>
+                    <td style={{ padding: '0.85rem 1rem', maxWidth: '240px' }}>
+                      <div
+                        style={{
+                          fontWeight: 500,
+                          color: 'var(--text-secondary)',
+                          fontSize: '0.8rem',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {t.issueDescription}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        {t.issueCategory || 'Hardware'}
+                      </div>
                     </td>
 
-                    <td className="p-3.5">
-                      <span className={`px-2 py-0.5 rounded font-medium text-[11px] ${
-                        t.priority === 'High' ? 'bg-rose-500/20 text-rose-300' : 
-                        t.priority === 'Medium' ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-400'
-                      }`}>
+                    <td style={{ padding: '0.85rem 1rem' }}>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          backgroundColor:
+                            t.priority === 'High'
+                              ? 'rgba(239, 68, 68, 0.12)'
+                              : t.priority === 'Medium'
+                              ? 'rgba(245, 158, 11, 0.12)'
+                              : 'var(--bg-canvas)',
+                          color:
+                            t.priority === 'High'
+                              ? '#ef4444'
+                              : t.priority === 'Medium'
+                              ? '#f59e0b'
+                              : 'var(--text-muted)',
+                          border: `1px solid ${
+                            t.priority === 'High'
+                              ? 'rgba(239, 68, 68, 0.25)'
+                              : t.priority === 'Medium'
+                              ? 'rgba(245, 158, 11, 0.25)'
+                              : 'var(--border-default)'
+                          }`,
+                        }}
+                      >
                         {t.priority || 'Medium'}
                       </span>
                     </td>
 
-                    <td className="p-3.5">
+                    <td style={{ padding: '0.85rem 1rem' }}>
                       <MaintenanceStatusBadge status={t.status} size="sm" />
                     </td>
 
-                    <td className="p-3.5">
-                      <div className="text-slate-300">{t.vendor || t.serviceVendor || 'Internal'}</div>
+                    <td style={{ padding: '0.85rem 1rem' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+                        {t.vendor || t.serviceVendor || 'Internal IT'}
+                      </div>
                       {(t.repairCost > 0 || t.cost > 0) && (
-                        <div className="text-[11px] text-teal-400 font-semibold">₹{t.repairCost || t.cost}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#0d9488', fontWeight: 700 }}>
+                          ₹{t.repairCost || t.cost}
+                        </div>
                       )}
                     </td>
 
-                    <td className="p-3.5 pr-6 text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-2">
+                    <td style={{ padding: '0.85rem 1.25rem 0.85rem 1rem', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.4rem' }}>
                         {['Reported', 'Under Diagnosis', 'In Repair', 'Awaiting Vendor', 'Awaiting Parts', 'QC Pending'].includes(t.status) && (
                           <button
+                            type="button"
                             onClick={() => {
                               setSelectedTicket(t);
                               setShowQCModal(true);
                             }}
-                            className="p-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20"
+                            className="btn btn-ghost btn-xs btn-icon"
+                            style={{
+                              backgroundColor: 'rgba(168, 85, 247, 0.12)',
+                              color: '#a855f7',
+                              border: '1px solid rgba(168, 85, 247, 0.25)',
+                            }}
                             title="Perform QC Testing"
                           >
-                            <ShieldCheck className="w-4 h-4" />
+                            <ShieldCheck size={15} />
                           </button>
                         )}
 
                         {t.status === 'Ready' && (
                           <button
+                            type="button"
                             onClick={() => {
                               setSelectedTicket(t);
                               setShowReturnModal(true);
                             }}
-                            className="p-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/20"
+                            className="btn btn-ghost btn-xs btn-icon"
+                            style={{
+                              backgroundColor: 'rgba(13, 148, 136, 0.12)',
+                              color: '#0d9488',
+                              border: '1px solid rgba(13, 148, 136, 0.25)',
+                            }}
                             title="Return to Custodian / Stock"
                           >
-                            <ArrowLeftRight className="w-4 h-4" />
+                            <ArrowLeftRight size={15} />
                           </button>
                         )}
 
                         <button
+                          type="button"
                           onClick={() => {
                             setSelectedTicket(t);
                             setShowDetailsModal(true);
                           }}
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+                          className="btn btn-ghost btn-xs btn-icon"
+                          style={{
+                            backgroundColor: 'var(--bg-canvas)',
+                            color: 'var(--text-secondary)',
+                            border: '1px solid var(--border-default)',
+                          }}
                           title="View Details"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye size={15} />
                         </button>
                       </div>
                     </td>

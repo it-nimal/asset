@@ -13,6 +13,7 @@ import {
   ExternalLink,
   CheckCircle2,
   XCircle,
+  X,
 } from 'lucide-react';
 import { useToast } from '../common/Toast';
 
@@ -339,8 +340,33 @@ export default function WarrantyView({
               setCurrentPage(1);
             }}
             className="input-field"
-            style={{ paddingLeft: '32px', fontSize: '0.82rem', height: '36px' }}
+            style={{ paddingLeft: '32px', paddingRight: searchTerm ? '32px' : '10px', fontSize: '0.82rem', height: '36px', width: '100%' }}
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm('');
+                setCurrentPage(1);
+              }}
+              style={{
+                position: 'absolute',
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-faint)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                padding: 0,
+              }}
+              title="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>

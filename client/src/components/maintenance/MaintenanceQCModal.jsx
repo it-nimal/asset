@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle2, XCircle, X, AlertTriangle, ShieldCheck, FileText } from 'lucide-react';
+import { CheckCircle2, XCircle, X, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { api } from '../../services/api';
 
 export default function MaintenanceQCModal({ isOpen, onClose, ticket, onSuccess }) {
@@ -32,130 +32,213 @@ export default function MaintenanceQCModal({ isOpen, onClose, ticket, onSuccess 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 110 }}>
+      <div
+        className="modal-content"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: '540px', width: '95vw' }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
-              <ShieldCheck className="w-5 h-5" />
+        <div className="modal-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'rgba(168, 85, 247, 0.12)',
+                color: '#a855f7',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ShieldCheck size={18} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Quality Control (QC) Inspection</h3>
-              <p className="text-xs text-slate-400">Validate hardware repair & test before return</p>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                Quality Control (QC) Inspection
+              </h3>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                Validate hardware repair & testing before return
+              </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition-colors"
-          >
-            <X className="w-5 h-5" />
+          <button type="button" onClick={onClose} className="btn btn-ghost btn-icon btn-xs">
+            <X size={16} />
           </button>
         </div>
 
-        {error && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Ticket Summary Card */}
-          <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60 text-xs space-y-1.5">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Ticket ID:</span>
-              <strong className="text-white font-mono">{ticket.maintenanceId}</strong>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Equipment:</span>
-              <span className="text-white">{ticket.assetMake} {ticket.assetModel} ({ticket.assetTag})</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Original Fault:</span>
-              <span className="text-slate-300 truncate max-w-[240px]">{ticket.issueDescription}</span>
-            </div>
-          </div>
-
-          {/* Pass / Fail Buttons */}
-          <div>
-            <label className="block text-xs font-medium text-slate-300 mb-2">
-              QC Evaluation Outcome <span className="text-rose-400">*</span>
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setQcResult('Passed')}
-                className={`p-3.5 rounded-xl border flex items-center justify-center gap-2.5 font-medium text-sm transition-all ${
-                  qcResult === 'Passed'
-                    ? 'bg-teal-500/20 border-teal-500/60 text-teal-300 ring-2 ring-teal-500/20'
-                    : 'bg-slate-800/40 border-slate-700 text-slate-400 hover:text-white'
-                }`}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {error && (
+              <div
+                style={{
+                  padding: '0.75rem 1rem',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  color: '#ef4444',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
               >
-                <CheckCircle2 className="w-5 h-5 text-teal-400" />
-                <span>Passed & Ready</span>
-              </button>
+                <AlertTriangle size={16} />
+                <span>{error}</span>
+              </div>
+            )}
 
-              <button
-                type="button"
-                onClick={() => setQcResult('Failed')}
-                className={`p-3.5 rounded-xl border flex items-center justify-center gap-2.5 font-medium text-sm transition-all ${
-                  qcResult === 'Failed'
-                    ? 'bg-rose-500/20 border-rose-500/60 text-rose-300 ring-2 ring-rose-500/20'
-                    : 'bg-slate-800/40 border-slate-700 text-slate-400 hover:text-white'
-                }`}
-              >
-                <XCircle className="w-5 h-5 text-rose-400" />
-                <span>Failed (Rework)</span>
-              </button>
-            </div>
-            <p className="text-[11px] text-slate-400 mt-2">
-              {qcResult === 'Passed'
-                ? 'Equipment will be marked as "Ready for Return" to custodian or central stock.'
-                : 'Equipment will be reverted back to "In Repair" for further technician rework.'}
-            </p>
-          </div>
-
-          {/* QC Notes */}
-          <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              QC Checklist / Inspection Notes
-            </label>
-            <textarea
-              rows={3}
-              value={qcNotes}
-              onChange={(e) => setQcNotes(e.target.value)}
-              placeholder="e.g. Stress test passed, OS boots cleanly, display and ports fully verified..."
-              className="w-full px-3.5 py-2 bg-slate-800/60 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 resize-none"
-            />
-          </div>
-
-          {/* Inspector Name */}
-          <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Inspected By
-            </label>
-            <input
-              type="text"
-              value={qcBy}
-              onChange={(e) => setQcBy(e.target.value)}
-              className="w-full px-3.5 py-2 bg-slate-800/60 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500/50"
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            {/* Ticket Summary Card */}
+            <div
+              style={{
+                padding: '0.85rem 1rem',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'var(--bg-surface-raised)',
+                border: '1px solid var(--border-default)',
+                fontSize: '0.78rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.35rem',
+              }}
             >
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Ticket ID:</span>
+                <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                  {ticket.maintenanceId}
+                </strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Equipment:</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                  {ticket.assetMake} {ticket.assetModel} ({ticket.assetTag || ticket.assetSerial})
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Fault Reported:</span>
+                <span style={{ color: 'var(--text-secondary)', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {ticket.issueDescription}
+                </span>
+              </div>
+            </div>
+
+            {/* Pass / Fail Selection */}
+            <div>
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: '0.45rem' }}>
+                QC Evaluation Outcome <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setQcResult('Passed')}
+                  style={{
+                    padding: '0.85rem 1rem',
+                    borderRadius: 'var(--radius-lg)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    backgroundColor:
+                      qcResult === 'Passed'
+                        ? 'rgba(13, 148, 136, 0.12)'
+                        : 'var(--bg-canvas)',
+                    border:
+                      qcResult === 'Passed'
+                        ? '2px solid #0d9488'
+                        : '1px solid var(--border-default)',
+                    color: qcResult === 'Passed' ? '#0d9488' : 'var(--text-secondary)',
+                  }}
+                >
+                  <CheckCircle2 size={18} color={qcResult === 'Passed' ? '#0d9488' : 'var(--text-muted)'} />
+                  <span>Passed & Ready</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setQcResult('Failed')}
+                  style={{
+                    padding: '0.85rem 1rem',
+                    borderRadius: 'var(--radius-lg)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    backgroundColor:
+                      qcResult === 'Failed'
+                        ? 'rgba(239, 68, 68, 0.12)'
+                        : 'var(--bg-canvas)',
+                    border:
+                      qcResult === 'Failed'
+                        ? '2px solid #ef4444'
+                        : '1px solid var(--border-default)',
+                    color: qcResult === 'Failed' ? '#ef4444' : 'var(--text-secondary)',
+                  }}
+                >
+                  <XCircle size={18} color={qcResult === 'Failed' ? '#ef4444' : 'var(--text-muted)'} />
+                  <span>Failed (Rework)</span>
+                </button>
+              </div>
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.45rem', marginBottom: 0 }}>
+                {qcResult === 'Passed'
+                  ? 'Equipment will be marked as "Ready for Return" to custodian or central stock.'
+                  : 'Equipment will be reverted back to "In Repair" for further technician rework.'}
+              </p>
+            </div>
+
+            {/* QC Notes */}
+            <div>
+              <label className="form-label" style={{ fontWeight: 600, marginBottom: '0.35rem' }}>
+                QC Checklist / Inspection Notes
+              </label>
+              <textarea
+                rows={3}
+                value={qcNotes}
+                onChange={(e) => setQcNotes(e.target.value)}
+                placeholder="e.g. Bench burn-in passed, OS boots cleanly, display and ports verified..."
+                className="form-input"
+                style={{ fontSize: '0.8rem', resize: 'vertical' }}
+              />
+            </div>
+
+            {/* Inspector Name */}
+            <div>
+              <label className="form-label" style={{ fontWeight: 600, marginBottom: '0.35rem' }}>
+                Inspected By
+              </label>
+              <input
+                type="text"
+                value={qcBy}
+                onChange={(e) => setQcBy(e.target.value)}
+                className="form-input"
+                style={{ fontSize: '0.8rem' }}
+              />
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="modal-footer">
+            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition-all shadow-lg shadow-purple-500/20 flex items-center gap-2"
+              className="btn btn-primary btn-sm"
+              style={{
+                backgroundColor: '#a855f7',
+                borderColor: '#a855f7',
+                color: '#ffffff',
+                fontWeight: 700,
+              }}
             >
               {loading ? 'Submitting...' : 'Record QC Result'}
             </button>

@@ -77,12 +77,38 @@ export const getAssets = async (req, res) => {
       query.vendorName = vendor;
     }
 
-    const assets = await Asset.find(query).sort({ sn: 1, createdAt: -1 });
+    const page = parseInt(req.query.page, 10);
+    const limit = parseInt(req.query.limit, 10);
+    const isPaginated = !isNaN(page) && !isNaN(limit) && page > 0 && limit > 0;
+
+    const total = await Asset.countDocuments(query);
+    let assetQuery = Asset.find(query).sort({ sn: 1, createdAt: -1 });
+
+    if (isPaginated) {
+      assetQuery = assetQuery.skip((page - 1) * limit).limit(limit);
+    }
+
+    const assets = await assetQuery;
 
     res.status(200).json({
       success: true,
       count: assets.length,
       data: assets,
+      pagination: isPaginated
+        ? {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+            hasMore: page * limit < total,
+          }
+        : {
+            total,
+            page: 1,
+            limit: total,
+            totalPages: 1,
+            hasMore: false,
+          },
     });
   } catch (error) {
     res.status(500).json({
