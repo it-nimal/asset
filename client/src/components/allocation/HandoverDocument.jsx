@@ -21,7 +21,57 @@ export default function HandoverDocument({
     : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 100 }}>
+    <div className="modal-overlay handover-modal-overlay" onClick={onClose} style={{ zIndex: 100 }}>
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm 10mm 8mm 10mm;
+          }
+
+          body, html, #root {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          .app-main-layout,
+          .no-print,
+          .sidebar,
+          .app-header,
+          .toast-container {
+            display: none !important;
+          }
+
+          .modal-overlay.handover-modal-overlay {
+            position: static !important;
+            display: block !important;
+            background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            inset: auto !important;
+            width: 100% !important;
+            height: auto !important;
+          }
+
+          .modal-content.handover-printable-card {
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            max-height: none !important;
+            overflow: visible !important;
+            background: #ffffff !important;
+          }
+
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      `}</style>
       <div
         className="modal-content handover-printable-card"
         onClick={(e) => e.stopPropagation()}
@@ -142,12 +192,50 @@ export default function HandoverDocument({
                     <td style={{ padding: '6px 8px', fontWeight: 700 }}>{asset.make} {asset.model}</td>
                     <td style={{ padding: '6px 8px', fontFamily: 'monospace' }}>{asset.sr || 'N/A'}</td>
                     <td style={{ padding: '6px 8px', color: '#475569', fontSize: '0.72rem' }}>
-                      {[
-                        asset.processor,
-                        asset.ramSize ? 'RAM: ' + asset.ramSize : null,
-                        asset.storage ? 'SSD: ' + asset.storage : null,
-                        asset.accessories ? 'Acc: ' + asset.accessories : null
-                      ].filter(Boolean).join(' | ') || 'Standard Equipment'}
+                      {(() => {
+                        const devCat = (asset.deviceCategory || asset.category || '').toLowerCase();
+                        const devType = (asset.deviceType || '').toLowerCase();
+                        const isPower = devCat === 'power' || devType.includes('ups') || devType.includes('inverter') || devType.includes('battery');
+                        const isNetwork = devCat === 'network' || devType.includes('switch') || devType.includes('router') || devType.includes('firewall');
+                        const isPrinter = devCat === 'printer' || devCat === 'printers' || devType.includes('printer');
+                        const isDisplay = devCat === 'display' || devCat === 'displays' || devType.includes('monitor');
+
+                        if (isPower) {
+                          const cap = asset.specifications?.upsCapacity || (asset.processor && !asset.processor.toLowerCase().includes('intel') ? asset.processor : null);
+                          const batt = asset.specifications?.batteryConfig || (asset.storage && !asset.storage.toLowerCase().includes('ssd') ? asset.storage : null);
+                          return [
+                            cap ? `Capacity: ${cap}` : null,
+                            batt ? `Battery: ${batt}` : null,
+                            asset.specifications?.backupRuntime ? `Runtime: ${asset.specifications.backupRuntime}` : null
+                          ].filter(Boolean).join(' | ') || 'Power Backup Unit';
+                        }
+                        if (isNetwork) {
+                          return [
+                            asset.specifications?.portCount ? `${asset.specifications.portCount} Ports` : null,
+                            asset.specifications?.networkRole ? `Role: ${asset.specifications.networkRole}` : null,
+                            asset.ipAddress ? `IP: ${asset.ipAddress}` : null
+                          ].filter(Boolean).join(' | ') || 'Network Hardware';
+                        }
+                        if (isPrinter) {
+                          return [
+                            asset.specifications?.printTechnology || asset.processor,
+                            asset.specifications?.tonerCartridgeModel ? `Toner: ${asset.specifications.tonerCartridgeModel}` : null,
+                            asset.ipAddress ? `IP: ${asset.ipAddress}` : null
+                          ].filter(Boolean).join(' | ') || 'Printer / Imaging';
+                        }
+                        if (isDisplay) {
+                          return [
+                            asset.specifications?.screenSize || asset.monitorDetails ? `Size: ${asset.specifications?.screenSize || asset.monitorDetails}` : null,
+                            asset.specifications?.resolution ? `Res: ${asset.specifications.resolution}` : null
+                          ].filter(Boolean).join(' | ') || 'Display Monitor';
+                        }
+                        return [
+                          asset.processor,
+                          asset.ramSize ? 'RAM: ' + asset.ramSize : null,
+                          asset.storage ? 'Storage: ' + asset.storage : null,
+                          asset.accessories ? 'Acc: ' + asset.accessories : null
+                        ].filter(Boolean).join(' | ') || 'Standard Equipment';
+                      })()}
                     </td>
                   </tr>
                 ))}

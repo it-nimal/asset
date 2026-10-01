@@ -22,6 +22,7 @@ import {
 import { api } from '../../services/api';
 import { useToast } from '../common/Toast';
 import { useAuth } from '../../context/AuthContext';
+import { isComputingDevice } from '../../constants/specifications';
 
 export default function EmployeeSelfService({ onRefresh }) {
   const { user } = useAuth();
@@ -451,19 +452,39 @@ export default function EmployeeSelfService({ onRefresh }) {
                       </span>
                     </div>
 
-                    <div>
-                      <span style={{ color: 'var(--text-faint)', display: 'block', fontSize: '0.7rem' }}>Processor / RAM</span>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                        {asset.processor || 'Intel Core'} • {asset.ramSize || asset.ram || '8 GB'}
-                      </span>
-                    </div>
+                    {isComputingDevice(asset.deviceType, asset) ? (
+                      <>
+                        <div>
+                          <span style={{ color: 'var(--text-faint)', display: 'block', fontSize: '0.7rem' }}>Processor / RAM</span>
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                            {asset.processor || 'N/A'} {asset.ramSize || asset.ram ? `• ${asset.ramSize || asset.ram}` : ''}
+                          </span>
+                        </div>
 
-                    <div>
-                      <span style={{ color: 'var(--text-faint)', display: 'block', fontSize: '0.7rem' }}>Storage / OS</span>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                        {asset.storage || asset.hdd || 'SSD'} • {asset.osVersion || 'Win 10/11'}
-                      </span>
-                    </div>
+                        <div>
+                          <span style={{ color: 'var(--text-faint)', display: 'block', fontSize: '0.7rem' }}>Storage / OS</span>
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                            {asset.storage || asset.hdd || 'N/A'} {asset.osVersion ? `• ${asset.osVersion}` : ''}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <span style={{ color: 'var(--text-faint)', display: 'block', fontSize: '0.7rem' }}>Asset Type</span>
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                            {asset.deviceType || asset.category || 'Hardware'}
+                          </span>
+                        </div>
+
+                        <div>
+                          <span style={{ color: 'var(--text-faint)', display: 'block', fontSize: '0.7rem' }}>Condition / Specs</span>
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                            {asset.processor || asset.storage || asset.workingCondition || 'Good'}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Bundled Accessories */}

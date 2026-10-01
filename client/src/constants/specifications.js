@@ -297,3 +297,119 @@ export function isNetworkDevice(deviceType, details = {}) {
   return false;
 }
 
+/**
+ * Determines whether an asset is a computing device (e.g. PC, Laptop, Workstation, Server)
+ * that logically runs an OS, has CPU/RAM/Storage, software licenses, and machine login credentials.
+ */
+export function isComputingDevice(deviceType, details = {}) {
+  if (!deviceType && !details.category) return false;
+  const dt = String(deviceType || '').trim().toLowerCase();
+  const cat = String(details.category || '').trim().toLowerCase();
+
+  // Explicit non-computing categories
+  if (
+    cat === 'power' ||
+    cat === 'power & infrastructure' ||
+    cat === 'displays' ||
+    cat === 'monitors & displays' ||
+    cat === 'printers' ||
+    cat === 'printers & imaging' ||
+    cat === 'cables & connectivity' ||
+    cat === 'cctv & surveillance' ||
+    cat === 'peripherals' ||
+    cat === 'accessories' ||
+    cat === 'other hardware'
+  ) {
+    return false;
+  }
+
+  // Explicit non-computing device types
+  if (
+    dt.includes('ups') ||
+    dt.includes('inverter') ||
+    dt.includes('pdu') ||
+    dt.includes('battery') ||
+    dt.includes('power') ||
+    dt.includes('monitor') ||
+    dt.includes('display') ||
+    dt.includes('tv') ||
+    dt.includes('screen') ||
+    dt.includes('projector') ||
+    dt.includes('printer') ||
+    dt.includes('scanner') ||
+    dt.includes('copier') ||
+    dt.includes('switch') ||
+    dt.includes('router') ||
+    dt.includes('firewall') ||
+    dt.includes('access point') ||
+    dt.includes('camera') ||
+    dt.includes('cctv') ||
+    dt.includes('dvr') ||
+    dt.includes('nvr') ||
+    dt.includes('cable') ||
+    dt.includes('adapter') ||
+    dt.includes('charger') ||
+    dt.includes('bag') ||
+    dt.includes('backpack') ||
+    dt.includes('mouse') ||
+    dt.includes('keyboard') ||
+    dt.includes('headset') ||
+    dt.includes('headphone') ||
+    dt.includes('webcam') ||
+    dt.includes('biometric') ||
+    dt.includes('dock') ||
+    dt.includes('dongle') ||
+    dt.includes('phone') ||
+    dt.includes('smartphone') ||
+    dt.includes('tablet')
+  ) {
+    return false;
+  }
+
+  // Explicit computing category or device types
+  if (
+    cat === 'computing' ||
+    cat === 'computers & laptops' ||
+    cat === 'enterprise servers' ||
+    cat === 'servers' ||
+    dt.includes('laptop') ||
+    dt.includes('desktop') ||
+    dt.includes('workstation') ||
+    dt.includes('mini pc') ||
+    dt.includes('thin client') ||
+    dt.includes('all-in-one') ||
+    dt.includes('all in one') ||
+    dt.includes('server') ||
+    dt.includes('pc') ||
+    dt.includes('computer')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Checks if the asset logically has or requires OS & software licensing records.
+ */
+export function hasSoftwareLicensing(deviceType, details = {}) {
+  if (isComputingDevice(deviceType, details)) return true;
+  if (details.osVersion && details.osVersion !== 'N/A' && details.osVersion !== 'None / DOS') return true;
+  if (details.windowsKey && details.windowsKey !== 'N/A') return true;
+  if (details.officeSoftware && details.officeSoftware !== 'N/A') return true;
+  if (details.officeKey && details.officeKey !== 'N/A') return true;
+  return false;
+}
+
+/**
+ * Checks if the asset logically has or requires local login credentials / access passwords.
+ */
+export function hasMachineCredentials(deviceType, details = {}) {
+  if (isComputingDevice(deviceType, details)) return true;
+  if (details.loginUserName && details.loginUserName !== 'N/A') return true;
+  if (details.loginPassword && details.loginPassword !== 'N/A') return true;
+  if (details.vncPassword && details.vncPassword !== 'N/A') return true;
+  return false;
+}
+
+

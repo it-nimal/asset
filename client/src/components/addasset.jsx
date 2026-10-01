@@ -38,7 +38,6 @@ import { useToast } from './common/Toast';
 import { useAuth } from '../context/AuthContext';
 import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from '../constants/organization';
 import { isNetworkDevice } from '../constants/specifications';
-import HardwareAllocationSelector from './assets/HardwareAllocationSelector';
 
 // ASSET CATEGORIES CONFIGURATION
 const ASSET_CATEGORIES = [
@@ -426,28 +425,74 @@ export default function Addasset({
       payload.osVersion = formData.serverOs;
       payload.remarks = `[Server] Rack: ${formData.rackLocation}, Pos: ${formData.uPosition}. Mgmt IP: ${formData.managementIp}. ${formData.remarks}`;
     } else if (activeCategory === 'network') {
+      payload.ramSize = '';
       payload.storage = formData.portConfig;
       payload.processor = formData.networkRole;
       payload.osVersion = formData.firmwareVersion;
+      payload.windowsType = '';
+      payload.windowsKey = '';
+      payload.officeSoftware = '';
+      payload.officeKey = '';
+      payload.accessories = '';
       payload.remarks = `[Network Device] Rack: ${formData.rackLocation}, Pos: ${formData.uPosition}. ${formData.remarks}`;
     } else if (activeCategory === 'printers') {
+      payload.ramSize = '';
       payload.processor = formData.printTechnology;
       payload.storage = formData.tonerCartridge;
       payload.osVersion = formData.connectivity;
+      payload.windowsType = '';
+      payload.windowsKey = '';
+      payload.officeSoftware = '';
+      payload.officeKey = '';
+      payload.accessories = '';
     } else if (activeCategory === 'displays') {
+      payload.ramSize = '';
+      payload.osVersion = '';
+      payload.windowsType = '';
+      payload.windowsKey = '';
+      payload.officeSoftware = '';
+      payload.officeKey = '';
+      payload.accessories = '';
       payload.processor = `${formData.screenSize} • ${formData.panelType}`;
       payload.storage = formData.resolution;
       payload.monitorDetails = `${finalMake} ${formData.model} (${formData.screenSize})`;
       payload.monitorSerialNo = formData.sr;
     } else if (activeCategory === 'mobile') {
+      payload.ramSize = '';
       payload.processor = formData.mobileOs;
       payload.storage = formData.screenSize;
+      payload.osVersion = formData.mobileOs;
+      payload.windowsType = '';
+      payload.windowsKey = '';
+      payload.officeSoftware = '';
+      payload.officeKey = '';
       payload.remarks = `[Mobile] IMEI: ${formData.imeiNumber}. ${formData.remarks}`;
     } else if (activeCategory === 'power') {
+      payload.ramSize = '';
+      payload.osVersion = '';
+      payload.windowsType = '';
+      payload.windowsKey = '';
+      payload.officeSoftware = '';
+      payload.officeKey = '';
+      payload.mailSoftware = '';
+      payload.loginUserName = '';
+      payload.loginPassword = '';
+      payload.antivirus = '';
+      payload.accessories = '';
       payload.processor = formData.upsCapacity || 'UPS Power Unit';
       payload.storage = formData.batteryConfig || 'Internal Batteries';
       payload.remarks = `[Power/Infrastructure] Runtime: ${formData.backupRuntime || 'N/A'}. Outlets: ${formData.pduOutlets || 'N/A'}. ${formData.remarks}`;
     } else if (activeCategory === 'other') {
+      payload.ramSize = '';
+      payload.osVersion = '';
+      payload.windowsType = '';
+      payload.windowsKey = '';
+      payload.officeSoftware = '';
+      payload.officeKey = '';
+      payload.mailSoftware = '';
+      payload.loginUserName = '';
+      payload.loginPassword = '';
+      payload.antivirus = '';
       payload.processor = formData.deviceSpecs || 'Custom Peripheral';
       payload.storage = formData.connectivityPorts || 'Standard I/O';
     }
@@ -1095,24 +1140,6 @@ export default function Addasset({
                     </div>
                   </>
                 )}
-
-                {/* Peripherals & Hardware Bundle Allocation */}
-                <div style={{ gridColumn: '1 / -1', marginTop: '0.75rem' }}>
-                  <HardwareAllocationSelector
-                    deviceType={formData.deviceType}
-                    onDeviceTypeChange={(val) => setFormData((prev) => ({ ...prev, deviceType: val }))}
-                    accessories={formData.accessories}
-                    onAccessoriesChange={(val) => setFormData((prev) => ({ ...prev, accessories: val }))}
-                    monitorDetails={formData.monitorDetails}
-                    onMonitorDetailsChange={(val) => setFormData((prev) => ({ ...prev, monitorDetails: val }))}
-                    monitorSerialNo={formData.monitorSerialNo}
-                    onMonitorSerialNoChange={(val) => setFormData((prev) => ({ ...prev, monitorSerialNo: val }))}
-                    peripheralsList={formData.peripheralsList}
-                    onPeripheralsListChange={(list) => setFormData((prev) => ({ ...prev, peripheralsList: list }))}
-                    compact={false}
-                    title="Workstation Peripherals & Equipment Bundle"
-                  />
-                </div>
               </div>
             )}
 
@@ -1816,24 +1843,6 @@ export default function Addasset({
                     </div>
                   </div>
                 )}
-
-                {/* Peripherals & Hardware Bundle Assigned to Custodian */}
-                <div style={{ marginTop: '0.85rem' }}>
-                  <HardwareAllocationSelector
-                    deviceType={formData.deviceType}
-                    onDeviceTypeChange={(val) => setFormData((prev) => ({ ...prev, deviceType: val }))}
-                    accessories={formData.accessories}
-                    onAccessoriesChange={(val) => setFormData((prev) => ({ ...prev, accessories: val }))}
-                    monitorDetails={formData.monitorDetails}
-                    onMonitorDetailsChange={(val) => setFormData((prev) => ({ ...prev, monitorDetails: val }))}
-                    monitorSerialNo={formData.monitorSerialNo}
-                    onMonitorSerialNoChange={(val) => setFormData((prev) => ({ ...prev, monitorSerialNo: val }))}
-                    peripheralsList={formData.peripheralsList}
-                    onPeripheralsListChange={(val) => setFormData((prev) => ({ ...prev, peripheralsList: val }))}
-                    compact={true}
-                    title="Hardware & Peripherals Handed Over with Asset"
-                  />
-                </div>
               </div>
             )}
           </div>
@@ -1846,19 +1855,6 @@ export default function Addasset({
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-              <div className="form-group">
-                <label className="form-label">Purchase Order (PO Number)</label>
-                <input
-                  type="text"
-                  name="poNumber"
-                  placeholder="e.g. PO-2024-0042"
-                  value={formData.poNumber}
-                  onChange={handleChange}
-                  className="form-control"
-                  style={{ fontFamily: 'monospace' }}
-                />
-              </div>
-
               <div className="form-group">
                 <label className="form-label">Invoice / Bill Number</label>
                 <input
@@ -1887,19 +1883,6 @@ export default function Addasset({
                     <option key={v._id || v.name} value={v.name} />
                   ))}
                 </datalist>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Procurement Cost (₹ INR)</label>
-                <input
-                  type="number"
-                  name="purchasePrice"
-                  placeholder="e.g. 54990"
-                  value={formData.purchasePrice}
-                  onChange={handleChange}
-                  className="form-control"
-                  min="0"
-                />
               </div>
 
               <div className="form-group">
@@ -2337,7 +2320,11 @@ export default function Addasset({
                 {formData.peripheralsList && formData.peripheralsList.length > 0 && (
                   <div style={{ marginTop: '0.35rem', color: '#a5b4fc' }}>
                     <strong>Allocated Bundle ({formData.peripheralsList.length} items):</strong>{' '}
-                    {formData.peripheralsList.map((p) => `${p.itemType} (${p.make || ''} ${p.model || ''})`).join(', ')}
+                    {formData.peripheralsList.map((p) => {
+                      const tag = p.assetTag ? ` [Tag: #${p.assetTag}]` : '';
+                      const sn = p.serialNo ? ` (S/N: ${p.serialNo})` : '';
+                      return `${p.itemType}${tag} (${p.make || ''} ${p.model || ''})${sn}`;
+                    }).join(', ')}
                   </div>
                 )}
               </div>
@@ -2350,10 +2337,9 @@ export default function Addasset({
 
               <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-surface-raised)', borderRadius: '6px' }}>
                 <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '0.25rem' }}>4. Procurement & Warranty</strong>
-                <div><strong>PO / Invoice:</strong> {formData.poNumber || 'N/A'} / {formData.billNo || 'N/A'}</div>
-                <div><strong>Vendor:</strong> {formData.vendorName}</div>
-                {formData.purchasePrice && <div><strong>Cost:</strong> ₹{Number(formData.purchasePrice).toLocaleString()}</div>}
-                <div><strong>Warranty Coverage:</strong> {formData.warrantyDetails} (Valid: {formData.warrantyStartDate} to {formData.warrantyEndDate})</div>
+                <div><strong>Invoice / Bill:</strong> {formData.billNo || 'N/A'}</div>
+                <div><strong>Vendor:</strong> {formData.vendorName || 'N/A'}</div>
+                <div><strong>Warranty Coverage:</strong> {formData.warrantyDetails || 'Standard'} (Valid: {formData.warrantyStartDate || 'N/A'} to {formData.warrantyEndDate || 'N/A'})</div>
               </div>
             </div>
 

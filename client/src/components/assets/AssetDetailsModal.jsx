@@ -43,16 +43,26 @@ import {
   Check,
   Eye,
   EyeOff,
+  QrCode,
 } from 'lucide-react';
 import { STATUS_COLORS } from './AssetTable';
 import { useToast } from '../common/Toast';
 import { api } from '../../services/api';
 import logo from '../photos/VitromedLogo.png';
+import AssetLabelModal from './AssetLabelModal';
+import {
+  isNetworkDevice,
+  isComputingDevice,
+  hasSoftwareLicensing,
+  hasMachineCredentials,
+} from '../../constants/specifications';
 
 export default function AssetDetailsModal({
   asset,
   onClose,
   initialTab = 'overview',
+  employees = [],
+  onInspectUser,
   onAssign,
   onTransfer,
   onReturn,
@@ -76,10 +86,32 @@ export default function AssetDetailsModal({
     setCurrentAsset(asset);
   }, [asset]);
 
+  const handleInspectCustodian = () => {
+    if (!asset?.userName || asset.userName === 'Unassigned') return;
+    const emp = (employees || []).find(
+      (e) =>
+        (asset.empCode && e.employeeId && e.employeeId.toLowerCase() === asset.empCode.toLowerCase()) ||
+        (asset.mailId && e.email && e.email.toLowerCase() === asset.mailId.toLowerCase()) ||
+        (e.name && e.name.toLowerCase() === asset.userName.toLowerCase())
+    ) || {
+      name: asset.userName,
+      employeeId: asset.empCode || '',
+      email: asset.mailId || '',
+      department: asset.department || 'General',
+      location: asset.plant || 'Vitromed',
+      phone: asset.officialNumber || '',
+      status: asset.userStatus || 'Active',
+    };
+    if (onInspectUser) {
+      onInspectUser(emp);
+    }
+  };
+
   // Default to 'single-page' to show all details in one page!
   const [viewMode, setViewMode] = useState('single-page'); // 'single-page' | 'tabs'
   const [tab, setTab] = useState(initialTab === 'overview' ? 'overview' : initialTab);
   const [includeBillInPrint, setIncludeBillInPrint] = useState(Boolean(asset?.invoiceImage));
+  const [showLabelModal, setShowLabelModal] = useState(false);
   const [revealedKeys, setRevealedKeys] = useState({
     windowsKey: false,
     officeKey: false,
@@ -201,14 +233,20 @@ export default function AssetDetailsModal({
     window.print();
   };
 
+  const isNetwork = isNetworkDevice(currentAsset?.deviceType, currentAsset);
+  const showNetworkSection = isNetwork || Boolean(currentAsset?.ipAddress || currentAsset?.hostName || currentAsset?.macAddress || currentAsset?.antivirus);
+  const showSoftware = hasSoftwareLicensing(currentAsset?.deviceType, currentAsset);
+  const showCredentials = hasMachineCredentials(currentAsset?.deviceType, currentAsset);
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Laptop },
-    { id: 'specs', label: 'Hardware & Display', icon: Cpu },
-    { id: 'software', label: 'OS & Licenses', icon: ShieldCheck },
+    { id: 'specs', label: 'Hardware & Specifications', icon: Cpu },
+    ...(showSoftware ? [{ id: 'software', label: 'OS & Licenses', icon: ShieldCheck }] : []),
     { id: 'assignment', label: 'Custodian & User', icon: User },
     { id: 'warranty', label: 'Warranty & Inward', icon: FileText },
     { id: 'history', label: 'Audit Trail', icon: History },
   ];
+
 
   const renderCredential = (val, fieldKey) => {
     if (!val || val === 'N/A') return <span style={{ color: 'var(--text-muted)' }}>N/A</span>;
@@ -776,7 +814,7 @@ export default function AssetDetailsModal({
                 )}
               </div>
               <div style={{ fontSize: '0.78rem', color: '#38bdf8', fontWeight: 600, marginTop: '3px', fontFamily: 'var(--font-mono)' }}>
-                S/N: {asset.sn || '109'} • Asset Tag: {asset.assetNo || '21'} • Hardware S/N: {asset.sr || 'N/A'} • Facility: {asset.plant || 'Vitromed'}
+                {asset.sn ? `S/N: ${asset.sn} • ` : ''}Asset Tag: {asset.assetNo || 'N/A'} • Hardware S/N: {asset.sr || 'N/A'} • Facility: {asset.plant || 'Vitromed'}
               </div>
             </div>
           </div>
@@ -858,6 +896,26 @@ export default function AssetDetailsModal({
                 <span>Transfer Custody</span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => setShowLabelModal(true)}
+              className="btn btn-outline btn-sm no-print"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                color: '#0284c7',
+                borderColor: '#bae6fd',
+                backgroundColor: 'rgba(2, 132, 199, 0.08)',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+              }}
+              title="Print physical QR code sticker for hardware tagging"
+            >
+              <QrCode size={14} />
+              <span>Print QR Tag</span>
+            </button>
 
             <button
               type="button"
@@ -1039,7 +1097,7 @@ export default function AssetDetailsModal({
                 <div>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textTransform: 'uppercase' }}>1. S/N Index</span>
                   <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
-                    #{asset.sn || '109'}
+                    #{asset.sn || 'N/A'}
                   </div>
                 </div>
                 <div>
@@ -1049,29 +1107,33 @@ export default function AssetDetailsModal({
                   </div>
                 </div>
                 <div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textTransform: 'uppercase' }}>3. Assest No.</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textTransform: 'uppercase' }}>3. Asset No.</span>
                   <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
-                    {asset.assetNo || '21'}
+                    {asset.assetNo || 'N/A'}
                   </div>
                 </div>
                 <div>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textTransform: 'uppercase' }}>17. Serial Number</span>
                   <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fbbf24', fontFamily: 'var(--font-mono)' }}>
-                    {asset.sr || 'CND744D8ZH'}
+                    {asset.sr || 'N/A'}
                   </div>
                 </div>
-                <div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textTransform: 'uppercase' }}>11. Host-Name</span>
-                  <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
-                    {asset.hostName || 'CCTV'}
-                  </div>
-                </div>
-                <div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textTransform: 'uppercase' }}>12. IP Address</span>
-                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#34d399', fontFamily: 'var(--font-mono)' }}>
-                    {asset.ipAddress || '192.168.8.123'}
-                  </div>
-                </div>
+                {showNetworkSection && (
+                  <>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textTransform: 'uppercase' }}>11. Host-Name</span>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                        {asset.hostName || 'N/A'}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textTransform: 'uppercase' }}>12. IP Address</span>
+                      <div style={{ fontSize: '1rem', fontWeight: 800, color: '#34d399', fontFamily: 'var(--font-mono)' }}>
+                        {asset.ipAddress || 'N/A'}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* SECTION 1: CUSTODIAN & USER ALLOCATION (Cols 4, 5, 6, 7, 8, 9) */}
@@ -1085,8 +1147,32 @@ export default function AssetDetailsModal({
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.85rem', fontSize: '0.8rem' }}>
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>5. User Name (Assigned):</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.userName || 'CCTV / Mahendra Yadav / Rajnath Singh'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '2px', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {asset.userName || 'Unassigned'}
+                      </span>
+                      {asset.userName && asset.userName !== 'Unassigned' && onInspectUser && (
+                        <button
+                          type="button"
+                          onClick={handleInspectCustodian}
+                          className="btn btn-outline btn-xs no-print"
+                          style={{
+                            fontSize: '0.68rem',
+                            padding: '0.1rem 0.45rem',
+                            height: '22px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            borderColor: '#38bdf8',
+                            color: '#38bdf8',
+                            fontWeight: 700,
+                          }}
+                          title="Inspect Employee Custody Profile & History"
+                        >
+                          <User size={11} />
+                          <span>Inspect User</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div>
@@ -1098,77 +1184,79 @@ export default function AssetDetailsModal({
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>6. Emp. Code:</span>
                     <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-                      {asset.empCode || 'OS1130'}
+                      {asset.empCode || 'N/A'}
                     </div>
                   </div>
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>7. Mail Id's:</span>
                     <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.mailId || 'cctvit@vitromed.co.in'}
+                      {asset.mailId || 'N/A'}
                     </div>
                   </div>
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>8. Department:</span>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.department || 'IT'}
+                      {asset.department || 'N/A'}
                     </div>
                   </div>
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>9. Official Number:</span>
                     <div style={{ fontWeight: 700, color: '#fbbf24', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-                      {asset.officialNumber || '8000929236'}
+                      {asset.officialNumber || 'N/A'}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* SECTION 2: NETWORK & ENDPOINT IDENTITY (Cols 10, 11, 12, 13, 29) */}
-              <div className="card" style={{ padding: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-                  <Wifi size={16} color="#34d399" />
-                  <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                    2. Network, PC Group & Security Policy
-                  </h3>
+              {showNetworkSection && (
+                <div className="card" style={{ padding: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
+                    <Wifi size={16} color="#34d399" />
+                    <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                      2. Network, PC Group & Security Policy
+                    </h3>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.85rem', fontSize: '0.8rem' }}>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>10. PC Group:</span>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                        {asset.pcGroup || (isNetwork ? 'Workgroup' : 'N/A')}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>11. Host-Name:</span>
+                      <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                        {asset.hostName || 'N/A'}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>12. IP Address:</span>
+                      <div style={{ fontWeight: 700, color: '#34d399', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                        {asset.ipAddress || 'N/A'}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>13. eScan Policy:</span>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                        {asset.escanPolicy || 'N/A'}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>29. Antivirus:</span>
+                      <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
+                        {asset.antivirus || 'N/A'}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>MAC Address:</span>
+                      <div style={{ fontWeight: 600, color: 'var(--text-muted)', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                        {asset.macAddress || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.85rem', fontSize: '0.8rem' }}>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>10. PC Group:</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.pcGroup || 'Workgroup'}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>11. Host-Name:</span>
-                    <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-                      {asset.hostName || 'CCTV'}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>12. IP Address:</span>
-                    <div style={{ fontWeight: 700, color: '#34d399', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-                      {asset.ipAddress || '192.168.8.123'}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>13. eScan Policy:</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.escanPolicy || 'Profile'}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>29. Antivirus:</span>
-                    <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
-                      {asset.antivirus || 'eScan'}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>MAC Address:</span>
-                    <div style={{ fontWeight: 600, color: 'var(--text-muted)', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-                      {asset.macAddress || 'N/A'}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
 
               {/* SECTION 3: HARDWARE SPECIFICATIONS & DISPLAY */}
               <div className="card" style={{ padding: '1.25rem' }}>
@@ -1201,25 +1289,25 @@ export default function AssetDetailsModal({
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>14. System Type:</span>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.deviceType || 'Laptop'}
+                      {asset.deviceType || 'Hardware Asset'}
                     </div>
                   </div>
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>15. System Brand:</span>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.make || 'HP'}
+                      {asset.make || 'N/A'}
                     </div>
                   </div>
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>16. Model No.:</span>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.model || 'HP Laptop 15-bs1xx'}
+                      {asset.model || 'N/A'}
                     </div>
                   </div>
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>17. Serial Number:</span>
                     <div style={{ fontWeight: 800, color: '#fbbf24', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-                      {asset.sr || 'CND744D8ZH'}
+                      {asset.sr || 'N/A'}
                     </div>
                   </div>
 
@@ -1229,19 +1317,19 @@ export default function AssetDetailsModal({
                       <div style={{ gridColumn: '1 / -1' }}>
                         <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Server CPU Configuration:</span>
                         <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                          {asset.specifications?.serverCpu || asset.processor}
+                          {asset.specifications?.serverCpu || asset.processor || 'N/A'}
                         </div>
                       </div>
                       <div>
                         <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>ECC Registered RAM:</span>
                         <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
-                          {asset.specifications?.serverRam || asset.ramSize}
+                          {asset.specifications?.serverRam || asset.ramSize || 'N/A'}
                         </div>
                       </div>
                       <div>
                         <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Hardware RAID Array:</span>
                         <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                          {asset.specifications?.serverRaid || asset.storage}
+                          {asset.specifications?.serverRaid || asset.storage || 'N/A'}
                         </div>
                       </div>
                       <div>
@@ -1253,7 +1341,7 @@ export default function AssetDetailsModal({
                       <div>
                         <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Rack Location:</span>
                         <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                          {asset.specifications?.rackLocation || 'Server Room Rack-01'} {asset.specifications?.uPosition ? `(${asset.specifications.uPosition})` : ''}
+                          {asset.specifications?.rackLocation || 'Server Room'} {asset.specifications?.uPosition ? `(${asset.specifications.uPosition})` : ''}
                         </div>
                       </div>
                     </>
@@ -1262,19 +1350,19 @@ export default function AssetDetailsModal({
                       <div style={{ gridColumn: '1 / -1' }}>
                         <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Port & Uplink Config:</span>
                         <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                          {asset.specifications?.portConfig || asset.storage}
+                          {asset.specifications?.portConfig || asset.storage || 'N/A'}
                         </div>
                       </div>
                       <div>
                         <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Device Network Role:</span>
                         <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
-                          {asset.specifications?.networkRole || asset.processor}
+                          {asset.specifications?.networkRole || asset.processor || 'N/A'}
                         </div>
                       </div>
                       <div>
                         <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Firmware / OS:</span>
                         <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                          {asset.specifications?.firmwareVersion || asset.osVersion}
+                          {asset.specifications?.firmwareVersion || asset.osVersion || 'N/A'}
                         </div>
                       </div>
                       <div>
@@ -1289,13 +1377,13 @@ export default function AssetDetailsModal({
                       <div>
                         <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>UPS VA / Rating:</span>
                         <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                          {asset.specifications?.upsCapacity || asset.processor}
+                          {asset.specifications?.upsCapacity || asset.processor || 'N/A'}
                         </div>
                       </div>
                       <div>
                         <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Battery Configuration:</span>
                         <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
-                          {asset.specifications?.batteryConfig || asset.storage}
+                          {asset.specifications?.batteryConfig || asset.storage || 'N/A'}
                         </div>
                       </div>
                       <div>
@@ -1314,86 +1402,46 @@ export default function AssetDetailsModal({
                   ) : (
                     <>
                       <div style={{ gridColumn: '1 / -1' }}>
-                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>31. Processor Full Detail's:</span>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Processor / Specifications:</span>
                         <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                          {asset.processor || 'Intel Core i5'}
+                          {asset.processor || 'N/A'}
                         </div>
                       </div>
                       <div>
-                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>32. RAM:</span>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>RAM / Memory:</span>
                         <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
-                          {asset.ramSize || '8 GB'}
+                          {asset.ramSize || 'N/A'}
                         </div>
                       </div>
                       <div>
-                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>33. HDD / Storage:</span>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Storage / Capacity:</span>
                         <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                          {asset.storage || '512 GB SSD'}
+                          {asset.storage || 'N/A'}
                         </div>
                       </div>
                       <div>
-                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>34. LCD Screen:</span>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Display / Screen:</span>
                         <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                          {asset.monitorDetails || '22 inch'}
+                          {asset.monitorDetails || 'N/A'}
                         </div>
                       </div>
                       <div>
-                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>35. LCD Sr. No:</span>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Display Serial No:</span>
                         <div style={{ fontWeight: 600, color: 'var(--text-muted)', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
                           {asset.monitorSerialNo || 'N/A'}
                         </div>
                       </div>
                       <div>
-                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>36. Data Backup:</span>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Data Backup Policy:</span>
                         <div style={{ fontWeight: 700, color: '#34d399', marginTop: '2px' }}>
-                          {asset.dataBackup || 'Daily Backup'}
+                          {asset.dataBackup || 'N/A'}
                         </div>
                       </div>
                     </>
                   )}
 
-                  {/* ALLOCATED HARDWARE PERIPHERALS BUNDLE TABLE */}
-                  {asset.peripheralsList && asset.peripheralsList.length > 0 && (
-                    <div style={{ gridColumn: '1 / -1', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)' }}>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#38bdf8', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <Layers size={14} />
-                        <span>Allocated Hardware Peripherals Bundle ({asset.peripheralsList.length} items)</span>
-                      </div>
-                      <div style={{ overflowX: 'auto', border: '1px solid var(--border-default)', borderRadius: '6px' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', textAlign: 'left' }}>
-                          <thead>
-                            <tr style={{ backgroundColor: 'var(--bg-surface-raised)', borderBottom: '1px solid var(--border-default)' }}>
-                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Item Type</th>
-                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Make & Model</th>
-                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Serial No (S/N)</th>
-                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Asset Tag</th>
-                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Warranty</th>
-                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Condition</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {asset.peripheralsList.map((p, idx) => (
-                              <tr key={idx} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                <td style={{ padding: '0.45rem 0.65rem', fontWeight: 600, color: 'var(--text-primary)' }}>{p.itemType}</td>
-                                <td style={{ padding: '0.45rem 0.65rem', color: 'var(--text-secondary)' }}>{p.make || '-'} {p.model || ''}</td>
-                                <td style={{ padding: '0.45rem 0.65rem', fontFamily: 'var(--font-mono)', color: '#fbbf24' }}>{p.serialNo || '-'}</td>
-                                <td style={{ padding: '0.45rem 0.65rem', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>{p.assetTag || '-'}</td>
-                                <td style={{ padding: '0.45rem 0.65rem', color: 'var(--text-muted)' }}>{p.warranty || '-'}</td>
-                                <td style={{ padding: '0.45rem 0.65rem' }}>
-                                  <span style={{ padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.68rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#34d399' }}>
-                                    {p.condition || 'Good'}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-
                   {/* Text Accessories fallback */}
-                  {asset.accessories && (!asset.peripheralsList || asset.peripheralsList.length === 0) && (
+                  {asset.accessories && (
                     <div style={{ gridColumn: '1 / -1' }}>
                       <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>37. Accessories & Peripherals:</span>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '4px' }}>
@@ -1426,94 +1474,98 @@ export default function AssetDetailsModal({
                 </div>
               </div>
 
-              {/* SECTION 4: OPERATING SYSTEM & SOFTWARE LICENSES */}
-              <div className="card" style={{ padding: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-                  <ShieldCheck size={16} color="#38bdf8" />
-                  <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                    4. Operating System & Software Licensing
-                  </h3>
+              {/* SECTION 4: OPERATING SYSTEM & SOFTWARE LICENSES - ONLY SHOWN IF APPLICABLE */}
+              {showSoftware && (
+                <div className="card" style={{ padding: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
+                    <ShieldCheck size={16} color="#38bdf8" />
+                    <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                      4. Operating System & Software Licensing
+                    </h3>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.85rem', fontSize: '0.8rem' }}>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>20. Windows:</span>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                        {asset.osVersion || 'N/A'}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>21. Windows Type:</span>
+                      <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
+                        {asset.windowsType || 'N/A'}
+                      </div>
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>22. Windows License Keys:</span>
+                      {renderCredential(asset.windowsKey, 'windowsKey')}
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>23. Office Software’s:</span>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                        {asset.officeSoftware || 'N/A'}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>25. Mail Software:</span>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                        {asset.mailSoftware || 'N/A'}
+                      </div>
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>24. Office License Keys:</span>
+                      {renderCredential(asset.officeKey, 'officeKey')}
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>26. SAP ID:</span>
+                      <div style={{ fontWeight: 600, color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {asset.sapId || 'N/A'}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>30. Other Software:</span>
+                      <div style={{ fontWeight: 600, color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {asset.otherSoftware || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.85rem', fontSize: '0.8rem' }}>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>20. Windows:</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.osVersion || 'Windows 10 Professional 64-bit'}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>21. Windows Type:</span>
-                    <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
-                      {asset.windowsType || 'OPEN OS'}
-                    </div>
-                  </div>
-                  <div style={{ gridColumn: 'span 2' }}>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>22. Windows License Keys:</span>
-                    {renderCredential(asset.windowsKey, 'windowsKey')}
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>23. Office Software’s:</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.officeSoftware || 'MS Office 2013 Std'}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>25. Mail Software:</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.mailSoftware || 'Online WPA'}
-                    </div>
-                  </div>
-                  <div style={{ gridColumn: 'span 2' }}>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>24. Office License Keys:</span>
-                    {renderCredential(asset.officeKey, 'officeKey')}
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>26. SAP ID:</span>
-                    <div style={{ fontWeight: 600, color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {asset.sapId || 'N/A'}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>30. Other Software:</span>
-                    <div style={{ fontWeight: 600, color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {asset.otherSoftware || 'N/A'}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
 
-              {/* SECTION 5: SYSTEM LOGIN & CREDENTIALS */}
-              <div className="card" style={{ padding: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-                  <Key size={16} color="#f472b6" />
-                  <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                    5. Local Machine Credentials & Security Access
-                  </h3>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.85rem', fontSize: '0.8rem' }}>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>27. User Name (Login):</span>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.loginUserName || 'Vitromed'}
+              {/* SECTION 5: SYSTEM LOGIN & CREDENTIALS - ONLY SHOWN IF APPLICABLE */}
+              {showCredentials && (
+                <div className="card" style={{ padding: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
+                    <Key size={16} color="#f472b6" />
+                    <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                      5. Local Machine Credentials & Security Access
+                    </h3>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.85rem', fontSize: '0.8rem' }}>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>27. User Name (Login):</span>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                        {asset.loginUserName || 'N/A'}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>28. New ID/Login Password:</span>
+                      {renderCredential(asset.loginPassword, 'loginPassword')}
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>VNC Remote Password:</span>
+                      {renderCredential(asset.vncPassword, 'vncPassword')}
                     </div>
                   </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>28. New ID/Login Password:</span>
-                    {renderCredential(asset.loginPassword, 'loginPassword')}
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>VNC Remote Password:</span>
-                    {renderCredential(asset.vncPassword, 'vncPassword')}
-                  </div>
                 </div>
-              </div>
+              )}
 
               {/* SECTION 6: PROCUREMENT, WARRANTY & REMARKS (Cols 18, 19, 38) */}
               <div className="card" style={{ padding: '1.25rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
                   <FileText size={16} color="#c084fc" />
                   <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                    6. Procurement, Inward & Warranty
+                    {showSoftware && showCredentials ? '6. Procurement, Inward & Warranty' : '4. Procurement, Inward & Warranty'}
                   </h3>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.85rem', fontSize: '0.8rem' }}>
@@ -1526,7 +1578,7 @@ export default function AssetDetailsModal({
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>19. Warranty Details:</span>
                     <div style={{ fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
-                      {asset.warrantyDetails || '13-12-2017 to 10-02-2019'}
+                      {asset.warrantyDetails || 'N/A'}
                     </div>
                   </div>
                   <div>
@@ -1538,7 +1590,7 @@ export default function AssetDetailsModal({
                   <div>
                     <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>Vendor / Source:</span>
                     <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {asset.vendorName || 'Authorized OEM Partner'}
+                      {asset.vendorName || 'N/A'}
                     </div>
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
@@ -1833,15 +1885,27 @@ export default function AssetDetailsModal({
                       {asset.plant}
                     </div>
                   </div>
-                  <div className="card" style={{ padding: '1rem' }}>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Network Host</span>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.2rem', fontFamily: 'var(--font-mono)' }}>
-                      {asset.hostName || 'CCTV'}
+                  {showNetworkSection ? (
+                    <div className="card" style={{ padding: '1rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Network Host</span>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.2rem', fontFamily: 'var(--font-mono)' }}>
+                        {asset.hostName || 'N/A'}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#34d399', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                        {asset.ipAddress || 'N/A'}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: '#34d399', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-                      {asset.ipAddress || '192.168.8.123'}
+                  ) : (
+                    <div className="card" style={{ padding: '1rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Hardware Serial & Tag</span>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fbbf24', marginTop: '0.2rem', fontFamily: 'var(--font-mono)' }}>
+                        {asset.sr || 'N/A'}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                        Asset #{asset.assetNo || 'N/A'}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -1869,42 +1933,6 @@ export default function AssetDetailsModal({
                       <div style={{ fontWeight: 700, color: '#34d399', marginTop: '0.25rem' }}>{asset.dataBackup || 'Daily'}</div>
                     </div>
                   </div>
-
-                  {asset.peripheralsList && asset.peripheralsList.length > 0 && (
-                    <div className="card" style={{ padding: '1rem' }}>
-                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#38bdf8', marginBottom: '0.65rem' }}>
-                        Allocated Peripherals Bundle ({asset.peripheralsList.length} items)
-                      </div>
-                      <div style={{ overflowX: 'auto', border: '1px solid var(--border-default)', borderRadius: '6px' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', textAlign: 'left' }}>
-                          <thead>
-                            <tr style={{ backgroundColor: 'var(--bg-surface-raised)', borderBottom: '1px solid var(--border-default)' }}>
-                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Item Type</th>
-                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Make & Model</th>
-                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Serial No (S/N)</th>
-                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Asset Tag</th>
-                              <th style={{ padding: '0.45rem 0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>Condition</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {asset.peripheralsList.map((p, idx) => (
-                              <tr key={idx} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                <td style={{ padding: '0.45rem 0.65rem', fontWeight: 600, color: 'var(--text-primary)' }}>{p.itemType}</td>
-                                <td style={{ padding: '0.45rem 0.65rem', color: 'var(--text-secondary)' }}>{p.make || '-'} {p.model || ''}</td>
-                                <td style={{ padding: '0.45rem 0.65rem', fontFamily: 'var(--font-mono)', color: '#fbbf24' }}>{p.serialNo || '-'}</td>
-                                <td style={{ padding: '0.45rem 0.65rem', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>{p.assetTag || '-'}</td>
-                                <td style={{ padding: '0.45rem 0.65rem' }}>
-                                  <span style={{ padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.68rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#34d399' }}>
-                                    {p.condition || 'Good'}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -1935,7 +1963,20 @@ export default function AssetDetailsModal({
 
               {tab === 'assignment' && (
                 <div className="card" style={{ padding: '1.25rem' }}>
-                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.75rem' }}>Employee Allocation</h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+                    <h4 style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0 }}>Employee Allocation</h4>
+                    {asset.userName && asset.userName !== 'Unassigned' && onInspectUser && (
+                      <button
+                        type="button"
+                        onClick={handleInspectCustodian}
+                        className="btn btn-outline btn-xs"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#38bdf8', borderColor: '#38bdf8', fontWeight: 700 }}
+                      >
+                        <User size={12} />
+                        <span>Inspect User Profile →</span>
+                      </button>
+                    )}
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.8rem' }}>
                     <div><span style={{ color: 'var(--text-faint)' }}>Custodian:</span> <strong>{asset.userName}</strong></div>
                     <div><span style={{ color: 'var(--text-faint)' }}>Code:</span> <strong>{asset.empCode}</strong></div>
@@ -2266,13 +2307,22 @@ export default function AssetDetailsModal({
                 <span className="hero-val">{currentAsset.userName || 'Unassigned'}</span>
               </div>
               <div className="hero-stat">
-                <span className="hero-lbl">HOSTNAME & IP ADDRESS</span>
-                <span className="hero-val-mono">{currentAsset.hostName || 'N/A'} • {currentAsset.ipAddress || 'N/A'}</span>
+                {showNetworkSection ? (
+                  <>
+                    <span className="hero-lbl">HOSTNAME & IP ADDRESS</span>
+                    <span className="hero-val-mono">{currentAsset.hostName || 'N/A'} • {currentAsset.ipAddress || 'N/A'}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="hero-lbl">EQUIPMENT TYPE & SERIAL</span>
+                    <span className="hero-val-mono">{currentAsset.deviceType || 'Hardware Asset'} • {currentAsset.sr || 'N/A'}</span>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* 3 Balanced Symmetrical Rows */}
-            {/* ROW 1: CUSTODIAN & ALLOCATION (Left) + NETWORK & SECURITY (Right) */}
+            {/* Symmetrical Rows */}
+            {/* ROW 1: CUSTODIAN & ALLOCATION (Left) + NETWORK & SECURITY / ASSET IDENTITY (Right) */}
             <div className="doc-section-row">
               {/* 1. Custodian & Allocation Details */}
               <div className="doc-card">
@@ -2287,7 +2337,7 @@ export default function AssetDetailsModal({
                   </div>
                   <div className="kv-row">
                     <div className="kv-item"><span className="kv-lbl">Emp. Code:</span><span className="kv-val font-mono font-bold">{currentAsset.empCode || 'N/A'}</span></div>
-                    <div className="kv-item"><span className="kv-lbl">Department:</span><span className="kv-val font-bold">{currentAsset.department || 'IT'}</span></div>
+                    <div className="kv-item"><span className="kv-lbl">Department:</span><span className="kv-val font-bold">{currentAsset.department || 'N/A'}</span></div>
                   </div>
                   <div className="kv-row">
                     <div className="kv-item"><span className="kv-lbl">Official Email:</span><span className="kv-val">{currentAsset.mailId || 'N/A'}</span></div>
@@ -2296,30 +2346,52 @@ export default function AssetDetailsModal({
                 </div>
               </div>
 
-              {/* 2. Network & Endpoint Configuration */}
-              <div className="doc-card">
-                <div className="doc-card-header">
-                  <span className="card-dot"></span>
-                  <span>2. Network & Endpoint Security</span>
+              {/* 2. Network & Endpoint Configuration / Asset Identity */}
+              {showNetworkSection ? (
+                <div className="doc-card">
+                  <div className="doc-card-header">
+                    <span className="card-dot"></span>
+                    <span>2. Network & Endpoint Security</span>
+                  </div>
+                  <div className="doc-card-body">
+                    <div className="kv-row">
+                      <div className="kv-item"><span className="kv-lbl">Host-Name:</span><span className="kv-val font-bold font-mono">{currentAsset.hostName || 'N/A'}</span></div>
+                      <div className="kv-item"><span className="kv-lbl">IP Address:</span><span className="kv-val font-bold font-mono">{currentAsset.ipAddress || 'N/A'}</span></div>
+                    </div>
+                    <div className="kv-row">
+                      <div className="kv-item"><span className="kv-lbl">PC Group:</span><span className="kv-val">{currentAsset.pcGroup || (isNetwork ? 'Workgroup' : 'N/A')}</span></div>
+                      <div className="kv-item"><span className="kv-lbl">MAC Address:</span><span className="kv-val font-mono">{currentAsset.macAddress || 'N/A'}</span></div>
+                    </div>
+                    <div className="kv-row">
+                      <div className="kv-item"><span className="kv-lbl">Antivirus Suite:</span><span className="kv-val font-bold">{currentAsset.antivirus || 'N/A'}</span></div>
+                      <div className="kv-item"><span className="kv-lbl">eScan Policy:</span><span className="kv-val">{currentAsset.escanPolicy || 'N/A'}</span></div>
+                    </div>
+                  </div>
                 </div>
-                <div className="doc-card-body">
-                  <div className="kv-row">
-                    <div className="kv-item"><span className="kv-lbl">Host-Name:</span><span className="kv-val font-bold font-mono">{currentAsset.hostName || 'N/A'}</span></div>
-                    <div className="kv-item"><span className="kv-lbl">IP Address:</span><span className="kv-val font-bold font-mono">{currentAsset.ipAddress || 'N/A'}</span></div>
+              ) : (
+                <div className="doc-card">
+                  <div className="doc-card-header">
+                    <span className="card-dot"></span>
+                    <span>2. Facility & Master Identity</span>
                   </div>
-                  <div className="kv-row">
-                    <div className="kv-item"><span className="kv-lbl">PC Group / Workgroup:</span><span className="kv-val">{currentAsset.pcGroup || 'Workgroup'}</span></div>
-                    <div className="kv-item"><span className="kv-lbl">MAC Address:</span><span className="kv-val font-mono">{currentAsset.macAddress || 'N/A'}</span></div>
-                  </div>
-                  <div className="kv-row">
-                    <div className="kv-item"><span className="kv-lbl">Antivirus Suite:</span><span className="kv-val font-bold">{currentAsset.antivirus || 'eScan'}</span></div>
-                    <div className="kv-item"><span className="kv-lbl">eScan Policy:</span><span className="kv-val">{currentAsset.escanPolicy || 'Profile'}</span></div>
+                  <div className="doc-card-body">
+                    <div className="kv-row">
+                      <div className="kv-item"><span className="kv-lbl">Plant Facility:</span><span className="kv-val font-bold">{currentAsset.plant || 'Vitromed'}</span></div>
+                      <div className="kv-item"><span className="kv-lbl">Asset Tag:</span><span className="kv-val font-bold font-mono">#{currentAsset.assetNo || 'N/A'}</span></div>
+                    </div>
+                    <div className="kv-row">
+                      <div className="kv-item"><span className="kv-lbl">Hardware Serial:</span><span className="kv-val font-mono font-bold">{currentAsset.sr || 'N/A'}</span></div>
+                      <div className="kv-item"><span className="kv-lbl">Working Condition:</span><span className="kv-val font-bold" style={{ color: '#059669' }}>{currentAsset.workingCondition || 'Good'}</span></div>
+                    </div>
+                    <div className="kv-row">
+                      <div className="kv-item full-width"><span className="kv-lbl">Vendor / Partner:</span><span className="kv-val">{currentAsset.vendorName || 'N/A'}</span></div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* ROW 2: HARDWARE SPECIFICATIONS (Left) + OPERATING SYSTEM & SOFTWARE (Right) */}
+            {/* ROW 2: HARDWARE SPECIFICATIONS (Left) + OPERATING SYSTEM & SOFTWARE / PROCUREMENT (Right) */}
             <div className="doc-section-row">
               {/* 3. Hardware Specifications & Peripherals */}
               <div className="doc-card">
@@ -2329,7 +2401,7 @@ export default function AssetDetailsModal({
                 </div>
                 <div className="doc-card-body">
                   <div className="kv-row">
-                    <div className="kv-item"><span className="kv-lbl">System Type:</span><span className="kv-val font-bold">{currentAsset.deviceType || 'Laptop'}</span></div>
+                    <div className="kv-item"><span className="kv-lbl">System Type:</span><span className="kv-val font-bold">{currentAsset.deviceType || 'Hardware Asset'}</span></div>
                     <div className="kv-item"><span className="kv-lbl">Brand / Make:</span><span className="kv-val font-bold">{currentAsset.make || 'N/A'}</span></div>
                   </div>
                   <div className="kv-row">
@@ -2337,92 +2409,116 @@ export default function AssetDetailsModal({
                     <div className="kv-item"><span className="kv-lbl">Hardware Serial:</span><span className="kv-val font-mono font-bold">{currentAsset.sr || 'N/A'}</span></div>
                   </div>
                   <div className="kv-row">
-                    <div className="kv-item full-width"><span className="kv-lbl">Processor:</span><span className="kv-val">{currentAsset.processor || 'N/A'}</span></div>
+                    <div className="kv-item full-width"><span className="kv-lbl">Processor / Specs:</span><span className="kv-val">{currentAsset.processor || 'N/A'}</span></div>
                   </div>
                   <div className="kv-row">
-                    <div className="kv-item"><span className="kv-lbl">RAM Capacity:</span><span className="kv-val font-bold">{currentAsset.ramSize || 'N/A'}</span></div>
-                    <div className="kv-item"><span className="kv-lbl">Storage (HDD/SSD):</span><span className="kv-val">{currentAsset.storage || 'N/A'}</span></div>
+                    <div className="kv-item"><span className="kv-lbl">RAM / Memory:</span><span className="kv-val font-bold">{currentAsset.ramSize || 'N/A'}</span></div>
+                    <div className="kv-item"><span className="kv-lbl">Storage / Specs:</span><span className="kv-val">{currentAsset.storage || 'N/A'}</span></div>
                   </div>
                   <div className="kv-row">
-                    <div className="kv-item"><span className="kv-lbl">LCD Screen:</span><span className="kv-val">{currentAsset.monitorDetails || 'N/A'}</span></div>
-                    <div className="kv-item"><span className="kv-lbl">LCD Sr. No:</span><span className="kv-val font-mono">{currentAsset.monitorSerialNo || 'N/A'}</span></div>
+                    <div className="kv-item"><span className="kv-lbl">Display:</span><span className="kv-val">{currentAsset.monitorDetails || 'N/A'}</span></div>
+                    <div className="kv-item"><span className="kv-lbl">Display S/N:</span><span className="kv-val font-mono">{currentAsset.monitorSerialNo || 'N/A'}</span></div>
                   </div>
                   <div className="kv-row">
-                    <div className="kv-item"><span className="kv-lbl">Data Backup:</span><span className="kv-val font-bold">{currentAsset.dataBackup || 'Daily Backup'}</span></div>
+                    <div className="kv-item"><span className="kv-lbl">Data Backup:</span><span className="kv-val font-bold">{currentAsset.dataBackup || 'N/A'}</span></div>
                     <div className="kv-item"><span className="kv-lbl">Accessories:</span><span className="kv-val">{currentAsset.accessories || 'N/A'}</span></div>
                   </div>
                 </div>
               </div>
 
-              {/* 4. Operating System & Software Licensing */}
-              <div className="doc-card">
-                <div className="doc-card-header">
-                  <span className="card-dot"></span>
-                  <span>4. Operating System & Software Licenses</span>
+              {/* 4. Operating System & Software Licensing OR Procurement & Inward (if non-computing) */}
+              {showSoftware ? (
+                <div className="doc-card">
+                  <div className="doc-card-header">
+                    <span className="card-dot"></span>
+                    <span>4. Operating System & Software Licenses</span>
+                  </div>
+                  <div className="doc-card-body">
+                    <div className="kv-row">
+                      <div className="kv-item"><span className="kv-lbl">Windows OS:</span><span className="kv-val font-bold">{currentAsset.osVersion || 'N/A'}</span></div>
+                      <div className="kv-item"><span className="kv-lbl">License Type:</span><span className="kv-val">{currentAsset.windowsType || 'N/A'}</span></div>
+                    </div>
+                    <div className="kv-row">
+                      <div className="kv-item full-width"><span className="kv-lbl">Windows Key:</span><span className="kv-val font-mono font-bold">{currentAsset.windowsKey || 'N/A'}</span></div>
+                    </div>
+                    <div className="kv-row">
+                      <div className="kv-item"><span className="kv-lbl">Office Suite:</span><span className="kv-val font-bold">{currentAsset.officeSoftware || 'N/A'}</span></div>
+                      <div className="kv-item"><span className="kv-lbl">SAP User ID:</span><span className="kv-val font-mono">{currentAsset.sapId || 'N/A'}</span></div>
+                    </div>
+                    <div className="kv-row">
+                      <div className="kv-item full-width"><span className="kv-lbl">Office Key:</span><span className="kv-val font-mono font-bold">{currentAsset.officeKey || 'N/A'}</span></div>
+                    </div>
+                    <div className="kv-row">
+                      <div className="kv-item"><span className="kv-lbl">Mail Client:</span><span className="kv-val">{currentAsset.mailSoftware || 'N/A'}</span></div>
+                      <div className="kv-item"><span className="kv-lbl">Other Software:</span><span className="kv-val">{currentAsset.otherSoftware || 'N/A'}</span></div>
+                    </div>
+                    <div className="kv-row">
+                      <div className="kv-item"><span className="kv-lbl">Working Condition:</span><span className="kv-val font-bold" style={{ color: '#059669' }}>{currentAsset.workingCondition || 'Good'}</span></div>
+                      <div className="kv-item"><span className="kv-lbl">Vendor / Partner:</span><span className="kv-val">{currentAsset.vendorName || 'N/A'}</span></div>
+                    </div>
+                  </div>
                 </div>
-                <div className="doc-card-body">
-                  <div className="kv-row">
-                    <div className="kv-item"><span className="kv-lbl">Windows OS:</span><span className="kv-val font-bold">{currentAsset.osVersion || 'N/A'}</span></div>
-                    <div className="kv-item"><span className="kv-lbl">License Type:</span><span className="kv-val">{currentAsset.windowsType || 'OPEN OS'}</span></div>
+              ) : (
+                <div className="doc-card">
+                  <div className="doc-card-header">
+                    <span className="card-dot"></span>
+                    <span>4. Procurement, Warranty & Inward</span>
                   </div>
-                  <div className="kv-row">
-                    <div className="kv-item full-width"><span className="kv-lbl">Windows Key:</span><span className="kv-val font-mono font-bold">{currentAsset.windowsKey || 'N/A'}</span></div>
-                  </div>
-                  <div className="kv-row">
-                    <div className="kv-item"><span className="kv-lbl">Office Suite:</span><span className="kv-val font-bold">{currentAsset.officeSoftware || 'N/A'}</span></div>
-                    <div className="kv-item"><span className="kv-lbl">SAP User ID:</span><span className="kv-val font-mono">{currentAsset.sapId || 'N/A'}</span></div>
-                  </div>
-                  <div className="kv-row">
-                    <div className="kv-item full-width"><span className="kv-lbl">Office Key:</span><span className="kv-val font-mono font-bold">{currentAsset.officeKey || 'N/A'}</span></div>
-                  </div>
-                  <div className="kv-row">
-                    <div className="kv-item"><span className="kv-lbl">Mail Client:</span><span className="kv-val">{currentAsset.mailSoftware || 'N/A'}</span></div>
-                    <div className="kv-item"><span className="kv-lbl">Other Software:</span><span className="kv-val">{currentAsset.otherSoftware || 'N/A'}</span></div>
-                  </div>
-                  <div className="kv-row">
-                    <div className="kv-item"><span className="kv-lbl">Working Condition:</span><span className="kv-val font-bold" style={{ color: '#059669' }}>{currentAsset.workingCondition || 'Good'}</span></div>
-                    <div className="kv-item"><span className="kv-lbl">Vendor / Partner:</span><span className="kv-val">{currentAsset.vendorName || 'Authorized OEM Partner'}</span></div>
+                  <div className="doc-card-body">
+                    <div className="kv-row">
+                      <div className="kv-item"><span className="kv-lbl">Bill Date / Ref:</span><span className="kv-val font-bold">{currentAsset.billCopyDate || currentAsset.billNo || 'N/A'}</span></div>
+                      <div className="kv-item"><span className="kv-lbl">Warranty Details:</span><span className="kv-val font-bold">{currentAsset.warrantyDetails || 'N/A'}</span></div>
+                    </div>
+                    <div className="kv-row">
+                      <div className="kv-item"><span className="kv-lbl">Working Condition:</span><span className="kv-val font-bold" style={{ color: '#059669' }}>{currentAsset.workingCondition || 'Good'}</span></div>
+                      <div className="kv-item"><span className="kv-lbl">Vendor / Source:</span><span className="kv-val">{currentAsset.vendorName || 'N/A'}</span></div>
+                    </div>
+                    <div className="kv-row">
+                      <div className="kv-item full-width"><span className="kv-lbl">IT Remarks:</span><span className="kv-val">{currentAsset.remarks || 'No remarks recorded.'}</span></div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* ROW 3: LOCAL MACHINE CREDENTIALS (Left) + PROCUREMENT & INWARD (Right) */}
-            <div className="doc-section-row">
-              {/* 5. System Login & Credentials */}
-              <div className="doc-card">
-                <div className="doc-card-header">
-                  <span className="card-dot"></span>
-                  <span>5. Local Machine Access & Credentials</span>
-                </div>
-                <div className="doc-card-body">
-                  <div className="kv-row">
-                    <div className="kv-item"><span className="kv-lbl">Login User:</span><span className="kv-val font-mono font-bold">{currentAsset.loginUserName || 'N/A'}</span></div>
-                    <div className="kv-item"><span className="kv-lbl">Login Password:</span><span className="kv-val font-mono font-bold">{currentAsset.loginPassword || 'N/A'}</span></div>
+            {/* ROW 3: LOCAL MACHINE CREDENTIALS (Left) + PROCUREMENT & INWARD (Right) - ONLY FOR COMPUTING / CREDENTIAL ASSETS */}
+            {showCredentials && (
+              <div className="doc-section-row">
+                {/* 5. System Login & Credentials */}
+                <div className="doc-card">
+                  <div className="doc-card-header">
+                    <span className="card-dot"></span>
+                    <span>5. Local Machine Access & Credentials</span>
                   </div>
-                  <div className="kv-row">
-                    <div className="kv-item full-width"><span className="kv-lbl">VNC Remote Password:</span><span className="kv-val font-mono">{currentAsset.vncPassword || 'N/A'}</span></div>
+                  <div className="doc-card-body">
+                    <div className="kv-row">
+                      <div className="kv-item"><span className="kv-lbl">Login User:</span><span className="kv-val font-mono font-bold">{currentAsset.loginUserName || 'N/A'}</span></div>
+                      <div className="kv-item"><span className="kv-lbl">Login Password:</span><span className="kv-val font-mono font-bold">{currentAsset.loginPassword || 'N/A'}</span></div>
+                    </div>
+                    <div className="kv-row">
+                      <div className="kv-item full-width"><span className="kv-lbl">VNC Remote Password:</span><span className="kv-val font-mono">{currentAsset.vncPassword || 'N/A'}</span></div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* 6. Procurement, Warranty & Inward */}
-              <div className="doc-card">
-                <div className="doc-card-header">
-                  <span className="card-dot"></span>
-                  <span>6. Procurement, Warranty & Inward</span>
-                </div>
-                <div className="doc-card-body">
-                  <div className="kv-row">
-                    <div className="kv-item"><span className="kv-lbl">Bill Date / Ref:</span><span className="kv-val font-bold">{currentAsset.billCopyDate || currentAsset.billNo || 'N/A'}</span></div>
-                    <div className="kv-item"><span className="kv-lbl">Warranty Details:</span><span className="kv-val font-bold">{currentAsset.warrantyDetails || 'N/A'}</span></div>
+                {/* 6. Procurement, Warranty & Inward */}
+                <div className="doc-card">
+                  <div className="doc-card-header">
+                    <span className="card-dot"></span>
+                    <span>6. Procurement, Warranty & Inward</span>
                   </div>
-                  <div className="kv-row">
-                    <div className="kv-item full-width"><span className="kv-lbl">IT Remarks:</span><span className="kv-val">{currentAsset.remarks || 'No remarks recorded.'}</span></div>
+                  <div className="doc-card-body">
+                    <div className="kv-row">
+                      <div className="kv-item"><span className="kv-lbl">Bill Date / Ref:</span><span className="kv-val font-bold">{currentAsset.billCopyDate || currentAsset.billNo || 'N/A'}</span></div>
+                      <div className="kv-item"><span className="kv-lbl">Warranty Details:</span><span className="kv-val font-bold">{currentAsset.warrantyDetails || 'N/A'}</span></div>
+                    </div>
+                    <div className="kv-row">
+                      <div className="kv-item full-width"><span className="kv-lbl">IT Remarks:</span><span className="kv-val">{currentAsset.remarks || 'No remarks recorded.'}</span></div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Official 3-Column Signatures Block */}
             <div className="doc-sign-block">
@@ -2707,6 +2803,13 @@ export default function AssetDetailsModal({
             </div>
           </div>
         </div>
+      )}
+
+      {showLabelModal && (
+        <AssetLabelModal
+          asset={currentAsset}
+          onClose={() => setShowLabelModal(false)}
+        />
       )}
     </div>
   );

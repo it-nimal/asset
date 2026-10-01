@@ -8,8 +8,8 @@ import {
   Headphones,
   Printer,
   Check,
-  Plus,
-  Trash2,
+  Tag,
+  Box,
 } from 'lucide-react';
 
 export const STANDARD_PERIPHERALS = [
@@ -84,6 +84,7 @@ export default function HardwareAllocationSelector({
   onPeripheralsListChange,
   compact = false,
   title = 'Workstation Hardware & Peripherals',
+  assets = [],
 }) {
   const isDesktopLike = ['desktop', 'desktop pc', 'all-in-one pc', 'all-in-one', 'workstation'].some((t) =>
     (deviceType || '').toLowerCase().includes(t)
@@ -137,7 +138,14 @@ export default function HardwareAllocationSelector({
     return mon?.serialNo || mon?.serialNumber || '';
   });
 
-  // Keyboard & Mouse Combo (No Serial Number needed)
+  const [monitorAssetNo, setMonitorAssetNo] = useState(() => {
+    const mon = Array.isArray(peripheralsList)
+      ? peripheralsList.find((p) => p.type === 'monitor' || (p.name || '').toLowerCase().includes('monitor'))
+      : null;
+    return mon?.assetTag || mon?.assetNo || '';
+  });
+
+  // Keyboard & Mouse Combo
   const [hasKbMouse, setHasKbMouse] = useState(() => {
     if (
       Array.isArray(peripheralsList) &&
@@ -162,37 +170,40 @@ export default function HardwareAllocationSelector({
     return 'Logitech USB Wired';
   });
 
+  const [kbMouseAssetNo, setKbMouseAssetNo] = useState(() => {
+    const km = Array.isArray(peripheralsList)
+      ? peripheralsList.find((p) => p.type === 'keyboard_mouse' || p.type === 'keyboard')
+      : null;
+    return km?.assetTag || km?.assetNo || '';
+  });
+
   // Laptop standard accessories
   const [hasBag, setHasBag] = useState(() => {
     const acc = (accessories || '').toLowerCase();
     return acc.includes('bag') || acc.includes('backpack') || !isDesktopLike;
+  });
+  const [bagAssetNo, setBagAssetNo] = useState(() => {
+    const b = Array.isArray(peripheralsList) ? peripheralsList.find((p) => p.type === 'laptop_bag') : null;
+    return b?.assetTag || b?.assetNo || '';
   });
 
   const [hasAdapter, setHasAdapter] = useState(() => {
     const acc = (accessories || '').toLowerCase();
     return acc.includes('adapter') || acc.includes('charger') || !isDesktopLike;
   });
+  const [adapterAssetNo, setAdapterAssetNo] = useState(() => {
+    const a = Array.isArray(peripheralsList) ? peripheralsList.find((p) => p.type === 'power_adapter') : null;
+    return a?.assetTag || a?.assetNo || '';
+  });
 
   const [hasLaptopMouse, setHasLaptopMouse] = useState(() => {
     const acc = (accessories || '').toLowerCase();
     return acc.includes('mouse');
   });
-
-  // Optional extra peripherals (e.g. UPS, Headset)
-  const [extraItems, setExtraItems] = useState(() => {
-    if (!Array.isArray(peripheralsList)) return [];
-    return peripheralsList.filter(
-      (p) =>
-        p.type !== 'monitor' &&
-        !['keyboard', 'mouse', 'keyboard_mouse', 'laptop_bag', 'power_adapter'].includes(p.type) &&
-        !(p.name || '').toLowerCase().includes('monitor') &&
-        !(p.name || '').toLowerCase().includes('lcd') &&
-        !(p.name || '').toLowerCase().includes('keyboard') &&
-        !(p.name || '').toLowerCase().includes('mouse')
-    );
+  const [laptopMouseAssetNo, setLaptopMouseAssetNo] = useState(() => {
+    const m = Array.isArray(peripheralsList) ? peripheralsList.find((p) => p.type === 'mouse') : null;
+    return m?.assetTag || m?.assetNo || '';
   });
-
-  const [showExtraMenu, setShowExtraMenu] = useState(false);
 
   // Sync outwards when any field changes
   const isInitialMount = useRef(true);
@@ -205,7 +216,7 @@ export default function HardwareAllocationSelector({
     const compiledList = [];
     const summaryParts = [];
 
-    // 1. LCD / Monitor (with Serial Number)
+    // 1. LCD / Monitor (with Asset Number & Serial Number)
     if (hasMonitor) {
       const monName = `${monitorMake || 'Dell'} ${monitorModel || '24" FHD'}`.trim();
       compiledList.push({
@@ -215,14 +226,14 @@ export default function HardwareAllocationSelector({
         name: 'External Monitor / LCD',
         make: monitorMake || 'Dell',
         model: monitorModel || '24" FHD',
-        serialNo: monitorSerial.trim(),
+        assetTag: (monitorAssetNo || '').trim(),
+        serialNo: (monitorSerial || '').trim(),
         condition: 'Good',
       });
-      summaryParts.push(
-        monitorSerial.trim()
-          ? `Monitor: ${monName} (S/N: ${monitorSerial.trim()})`
-          : `Monitor: ${monName}`
-      );
+
+      const tagPart = monitorAssetNo.trim() ? ` [Tag: #${monitorAssetNo.trim()}]` : '';
+      const snPart = monitorSerial.trim() ? ` (S/N: ${monitorSerial.trim()})` : '';
+      summaryParts.push(`Monitor: ${monName}${tagPart}${snPart}`);
 
       if (onMonitorDetailsChange) onMonitorDetailsChange(monName);
       if (onMonitorSerialNoChange) onMonitorSerialNoChange(monitorSerial.trim());
@@ -231,7 +242,7 @@ export default function HardwareAllocationSelector({
       if (onMonitorSerialNoChange) onMonitorSerialNoChange('');
     }
 
-    // 2. Keyboard & Mouse (No Serial Number needed)
+    // 2. Keyboard & Mouse
     if (isDesktopLike && hasKbMouse) {
       compiledList.push({
         id: 'keyboard_mouse',
@@ -240,10 +251,12 @@ export default function HardwareAllocationSelector({
         name: 'Keyboard & Mouse',
         make: kbMouseCombo.split(' ')[0] || 'Logitech',
         model: kbMouseCombo || 'Logitech USB Wired',
-        serialNo: '', // No serial number
+        assetTag: (kbMouseAssetNo || '').trim(),
+        serialNo: '',
         condition: 'Good',
       });
-      summaryParts.push(`${kbMouseCombo} Keyboard & Mouse`);
+      const tagPart = kbMouseAssetNo.trim() ? ` [Tag: #${kbMouseAssetNo.trim()}]` : '';
+      summaryParts.push(`${kbMouseCombo} Keyboard & Mouse${tagPart}`);
     }
 
     // 3. Laptop standard accessories
@@ -256,10 +269,12 @@ export default function HardwareAllocationSelector({
           name: 'Power Adapter / Charger',
           make: 'OEM',
           model: 'Standard Adapter',
+          assetTag: (adapterAssetNo || '').trim(),
           serialNo: '',
           condition: 'Good',
         });
-        summaryParts.push('Power Adapter / Charger');
+        const tagPart = adapterAssetNo.trim() ? ` [Tag: #${adapterAssetNo.trim()}]` : '';
+        summaryParts.push(`Power Adapter${tagPart}`);
       }
 
       if (hasBag) {
@@ -270,10 +285,12 @@ export default function HardwareAllocationSelector({
           name: 'Laptop Backpack / Bag',
           make: 'OEM / Targus',
           model: 'Backpack',
+          assetTag: (bagAssetNo || '').trim(),
           serialNo: '',
           condition: 'Good',
         });
-        summaryParts.push('Laptop Bag');
+        const tagPart = bagAssetNo.trim() ? ` [Tag: #${bagAssetNo.trim()}]` : '';
+        summaryParts.push(`Laptop Bag${tagPart}`);
       }
 
       if (hasLaptopMouse) {
@@ -284,18 +301,14 @@ export default function HardwareAllocationSelector({
           name: 'External USB Mouse',
           make: 'Logitech',
           model: 'Optical Mouse',
+          assetTag: (laptopMouseAssetNo || '').trim(),
           serialNo: '',
           condition: 'Good',
         });
-        summaryParts.push('External Mouse');
+        const tagPart = laptopMouseAssetNo.trim() ? ` [Tag: #${laptopMouseAssetNo.trim()}]` : '';
+        summaryParts.push(`External Mouse${tagPart}`);
       }
     }
-
-    // 4. Extra peripherals
-    extraItems.forEach((ex) => {
-      compiledList.push(ex);
-      summaryParts.push(ex.serialNo ? `${ex.name} (S/N: ${ex.serialNo})` : ex.name);
-    });
 
     if (onPeripheralsListChange) {
       onPeripheralsListChange(compiledList);
@@ -309,12 +322,16 @@ export default function HardwareAllocationSelector({
     monitorMake,
     monitorModel,
     monitorSerial,
+    monitorAssetNo,
     hasKbMouse,
     kbMouseCombo,
+    kbMouseAssetNo,
     hasBag,
+    bagAssetNo,
     hasAdapter,
+    adapterAssetNo,
     hasLaptopMouse,
-    extraItems,
+    laptopMouseAssetNo,
     isDesktopLike,
   ]);
 
@@ -335,61 +352,6 @@ export default function HardwareAllocationSelector({
     }
   };
 
-  const addExtraPeripheral = (type) => {
-    setShowExtraMenu(false);
-    if (type === 'ups') {
-      setExtraItems((prev) => [
-        ...prev,
-        {
-          id: `ups_${Date.now()}`,
-          type: 'ups',
-          itemType: 'UPS Backup',
-          name: 'UPS Backup',
-          make: 'APC',
-          model: '600VA Line-Interactive',
-          serialNo: '',
-          condition: 'Good',
-        },
-      ]);
-    } else if (type === 'headset') {
-      setExtraItems((prev) => [
-        ...prev,
-        {
-          id: `headset_${Date.now()}`,
-          type: 'headset',
-          itemType: 'Headset',
-          name: 'Headset with Mic',
-          make: 'Jabra',
-          model: 'USB Headset',
-          serialNo: '',
-          condition: 'Good',
-        },
-      ]);
-    } else if (type === 'printer') {
-      setExtraItems((prev) => [
-        ...prev,
-        {
-          id: `printer_${Date.now()}`,
-          type: 'printer',
-          itemType: 'Printer',
-          name: 'Desk Printer',
-          make: 'HP',
-          model: 'LaserJet',
-          serialNo: '',
-          condition: 'Good',
-        },
-      ]);
-    }
-  };
-
-  const removeExtraPeripheral = (id) => {
-    setExtraItems((prev) => prev.filter((it) => it.id !== id));
-  };
-
-  const updateExtraPeripheral = (id, field, value) => {
-    setExtraItems((prev) => prev.map((it) => (it.id === id ? { ...it, [field]: value } : it)));
-  };
-
   return (
     <div
       style={{
@@ -402,6 +364,17 @@ export default function HardwareAllocationSelector({
         gap: '0.85rem',
       }}
     >
+      {/* Existing Assets Datalist for autocomplete if available */}
+      {Array.isArray(assets) && assets.length > 0 && (
+        <datalist id="peripherals-asset-tags">
+          {assets.map((a) => (
+            <option key={a._id || a.assetNo || a.sr} value={a.assetNo || a.sr}>
+              {a.make} {a.model} ({a.assetNo || a.sr})
+            </option>
+          ))}
+        </datalist>
+      )}
+
       {/* 1. Header & Primary Machine Selection */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
@@ -497,12 +470,12 @@ export default function HardwareAllocationSelector({
               <span>{isDesktopLike ? 'Monitor / LCD Display (Included with Desktop)' : 'External Monitor / LCD Screen'}</span>
             </label>
             <span style={{ fontSize: '0.7rem', color: '#818cf8', fontWeight: 600 }}>
-              {hasMonitor ? '★ Has Serial Number' : 'Not Included'}
+              {hasMonitor ? '★ Assigned with Asset' : 'Not Included'}
             </span>
           </div>
 
           {hasMonitor && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.65rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.65rem', marginTop: '0.5rem' }}>
               {/* Monitor Make */}
               <div>
                 <label className="form-label" style={{ fontSize: '0.7rem', marginBottom: '0.2rem', color: 'var(--text-muted)' }}>
@@ -533,7 +506,7 @@ export default function HardwareAllocationSelector({
                 />
               </div>
 
-              {/* Monitor Serial Number (REQUIRED/CRUCIAL) */}
+              {/* Monitor Asset Number (Tag) */}
               <div>
                 <label
                   className="form-label"
@@ -547,8 +520,38 @@ export default function HardwareAllocationSelector({
                     gap: '0.25rem',
                   }}
                 >
-                  <span>Monitor Serial No (S/N)</span>
-                  <span style={{ color: '#ef4444' }}>*</span>
+                  <Tag size={11} />
+                  <span>Monitor Asset Number</span>
+                </label>
+                <input
+                  type="text"
+                  list="peripherals-asset-tags"
+                  placeholder="e.g. AST-0021"
+                  value={monitorAssetNo}
+                  onChange={(e) => setMonitorAssetNo(e.target.value)}
+                  className="input-field"
+                  style={{
+                    fontSize: '0.78rem',
+                    height: '32px',
+                    fontFamily: 'var(--font-mono, monospace)',
+                    fontWeight: 600,
+                    borderColor: monitorAssetNo ? '#0284c7' : undefined,
+                  }}
+                />
+              </div>
+
+              {/* Monitor Serial Number */}
+              <div>
+                <label
+                  className="form-label"
+                  style={{
+                    fontSize: '0.7rem',
+                    marginBottom: '0.2rem',
+                    color: 'var(--text-muted)',
+                    fontWeight: 600,
+                  }}
+                >
+                  Monitor Serial No (S/N)
                 </label>
                 <input
                   type="text"
@@ -560,8 +563,6 @@ export default function HardwareAllocationSelector({
                     fontSize: '0.78rem',
                     height: '32px',
                     fontFamily: 'var(--font-mono, monospace)',
-                    fontWeight: 600,
-                    borderColor: monitorSerial ? '#0284c7' : 'var(--border-default)',
                   }}
                 />
               </div>
@@ -569,7 +570,7 @@ export default function HardwareAllocationSelector({
           )}
         </div>
 
-        {/* ================= KEYBOARD & MOUSE SECTION (NO SERIAL NUMBER) ================= */}
+        {/* ================= KEYBOARD & MOUSE SECTION ================= */}
         {isDesktopLike && (
           <div
             style={{
@@ -603,37 +604,52 @@ export default function HardwareAllocationSelector({
                 <span>Keyboard & Mouse Set (Included)</span>
               </label>
               <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)' }}>
-                Standard accessory — no serial number needed
+                Standard workstation accessory
               </span>
             </div>
 
             {hasKbMouse && (
-              <div style={{ marginTop: '0.6rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Type / Preset:</span>
-                {[
-                  'Logitech USB Wired',
-                  'Dell USB Wired',
-                  'HP USB Wired',
-                  'Wireless Keyboard & Mouse Combo',
-                ].map((combo) => (
-                  <button
-                    key={combo}
-                    type="button"
-                    onClick={() => setKbMouseCombo(combo)}
-                    style={{
-                      padding: '0.25rem 0.55rem',
-                      fontSize: '0.72rem',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      border: kbMouseCombo === combo ? '1.5px solid #0284c7' : '1px solid var(--border-default, #cbd5e1)',
-                      backgroundColor: kbMouseCombo === combo ? 'rgba(2, 132, 199, 0.1)' : 'transparent',
-                      color: kbMouseCombo === combo ? '#0284c7' : 'var(--text-secondary)',
-                      fontWeight: kbMouseCombo === combo ? 700 : 500,
-                    }}
-                  >
-                    {combo}
-                  </button>
-                ))}
+              <div style={{ marginTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Type / Preset:</span>
+                  {[
+                    'Logitech USB Wired',
+                    'Dell USB Wired',
+                    'HP USB Wired',
+                    'Wireless Keyboard & Mouse Combo',
+                  ].map((combo) => (
+                    <button
+                      key={combo}
+                      type="button"
+                      onClick={() => setKbMouseCombo(combo)}
+                      style={{
+                        padding: '0.25rem 0.55rem',
+                        fontSize: '0.72rem',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        border: kbMouseCombo === combo ? '1.5px solid #0284c7' : '1px solid var(--border-default, #cbd5e1)',
+                        backgroundColor: kbMouseCombo === combo ? 'rgba(2, 132, 199, 0.1)' : 'transparent',
+                        color: kbMouseCombo === combo ? '#0284c7' : 'var(--text-secondary)',
+                        fontWeight: kbMouseCombo === combo ? 700 : 500,
+                      }}
+                    >
+                      {combo}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', maxWidth: '300px' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Asset Tag (Optional):</span>
+                  <input
+                    type="text"
+                    list="peripherals-asset-tags"
+                    placeholder="e.g. AST-KB-01"
+                    value={kbMouseAssetNo}
+                    onChange={(e) => setKbMouseAssetNo(e.target.value)}
+                    className="input-field"
+                    style={{ fontSize: '0.74rem', height: '28px', fontFamily: 'var(--font-mono, monospace)' }}
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -649,160 +665,90 @@ export default function HardwareAllocationSelector({
               padding: '0.75rem',
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.45rem',
+              gap: '0.65rem',
             }}
           >
-            <div style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.15rem' }}>
+            <div style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-primary)' }}>
               Standard Laptop Inclusions:
             </div>
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={hasAdapter}
-                  onChange={(e) => setHasAdapter(e.target.checked)}
-                  style={{ accentColor: '#0284c7' }}
-                />
-                <span>Power Adapter / Charger</span>
-              </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+              {/* Power Adapter */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', cursor: 'pointer', margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={hasAdapter}
+                    onChange={(e) => setHasAdapter(e.target.checked)}
+                    style={{ accentColor: '#0284c7' }}
+                  />
+                  <Zap size={13} color="#f59e0b" />
+                  <span>Power Adapter / Charger</span>
+                </label>
+                {hasAdapter && (
+                  <input
+                    type="text"
+                    list="peripherals-asset-tags"
+                    placeholder="Asset # / S/N (Optional)"
+                    value={adapterAssetNo}
+                    onChange={(e) => setAdapterAssetNo(e.target.value)}
+                    className="input-field"
+                    style={{ fontSize: '0.72rem', height: '26px', fontFamily: 'monospace' }}
+                  />
+                )}
+              </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={hasBag}
-                  onChange={(e) => setHasBag(e.target.checked)}
-                  style={{ accentColor: '#0284c7' }}
-                />
-                <span>Laptop Carrying Bag</span>
-              </label>
+              {/* Laptop Bag */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', cursor: 'pointer', margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={hasBag}
+                    onChange={(e) => setHasBag(e.target.checked)}
+                    style={{ accentColor: '#0284c7' }}
+                  />
+                  <Box size={13} color="#3b82f6" />
+                  <span>Laptop Carrying Bag</span>
+                </label>
+                {hasBag && (
+                  <input
+                    type="text"
+                    list="peripherals-asset-tags"
+                    placeholder="Bag Tag / Ref (Optional)"
+                    value={bagAssetNo}
+                    onChange={(e) => setBagAssetNo(e.target.value)}
+                    className="input-field"
+                    style={{ fontSize: '0.72rem', height: '26px', fontFamily: 'monospace' }}
+                  />
+                )}
+              </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={hasLaptopMouse}
-                  onChange={(e) => setHasLaptopMouse(e.target.checked)}
-                  style={{ accentColor: '#0284c7' }}
-                />
-                <span>External USB Mouse</span>
-              </label>
+              {/* External Mouse */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', cursor: 'pointer', margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={hasLaptopMouse}
+                    onChange={(e) => setHasLaptopMouse(e.target.checked)}
+                    style={{ accentColor: '#0284c7' }}
+                  />
+                  <Mouse size={13} color="#10b981" />
+                  <span>External USB Mouse</span>
+                </label>
+                {hasLaptopMouse && (
+                  <input
+                    type="text"
+                    list="peripherals-asset-tags"
+                    placeholder="Mouse Asset # (Optional)"
+                    value={laptopMouseAssetNo}
+                    onChange={(e) => setLaptopMouseAssetNo(e.target.value)}
+                    className="input-field"
+                    style={{ fontSize: '0.72rem', height: '26px', fontFamily: 'monospace' }}
+                  />
+                )}
+              </div>
             </div>
           </div>
         )}
-
-        {/* ================= EXTRA PERIPHERALS (OPTIONAL) ================= */}
-        {extraItems.map((item) => (
-          <div
-            key={item.id}
-            style={{
-              border: '1px solid var(--border-default, #cbd5e1)',
-              borderRadius: '6px',
-              backgroundColor: 'var(--bg-surface, #ffffff)',
-              padding: '0.65rem 0.75rem',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {item.name}
-              </span>
-              <button
-                type="button"
-                onClick={() => removeExtraPeripheral(item.id)}
-                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
-                title="Remove extra peripheral"
-              >
-                <Trash2 size={13} />
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.5rem' }}>
-              <div>
-                <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '0.15rem' }}>Make / Model</label>
-                <input
-                  type="text"
-                  placeholder="e.g. APC 600VA / Jabra"
-                  value={item.model || ''}
-                  onChange={(e) => updateExtraPeripheral(item.id, 'model', e.target.value)}
-                  className="input-field"
-                  style={{ fontSize: '0.76rem', height: '30px' }}
-                />
-              </div>
-              <div>
-                <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '0.15rem' }}>Serial Number (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="S/N if applicable"
-                  value={item.serialNo || ''}
-                  onChange={(e) => updateExtraPeripheral(item.id, 'serialNo', e.target.value)}
-                  className="input-field"
-                  style={{ fontSize: '0.76rem', height: '30px', fontFamily: 'var(--font-mono, monospace)' }}
-                />
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {/* Add Extra Button */}
-        <div style={{ position: 'relative', alignSelf: 'flex-start' }}>
-          <button
-            type="button"
-            onClick={() => setShowExtraMenu(!showExtraMenu)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              padding: '0.3rem 0.6rem',
-              borderRadius: '4px',
-              border: '1px dashed var(--border-default, #cbd5e1)',
-              background: 'none',
-              fontSize: '0.72rem',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-            }}
-          >
-            <Plus size={12} />
-            <span>+ Add Extra (UPS, Headset, Printer)</span>
-          </button>
-
-          {showExtraMenu && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                marginTop: '4px',
-                backgroundColor: 'var(--bg-surface, #ffffff)',
-                border: '1px solid var(--border-default, #cbd5e1)',
-                borderRadius: '6px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                zIndex: 20,
-                minWidth: '150px',
-                padding: '0.25rem 0',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => addExtraPeripheral('ups')}
-                style={{ width: '100%', textAlign: 'left', padding: '0.4rem 0.75rem', fontSize: '0.74rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)' }}
-              >
-                ⚡ UPS Backup
-              </button>
-              <button
-                type="button"
-                onClick={() => addExtraPeripheral('headset')}
-                style={{ width: '100%', textAlign: 'left', padding: '0.4rem 0.75rem', fontSize: '0.74rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)' }}
-              >
-                🎧 Headset with Mic
-              </button>
-              <button
-                type="button"
-                onClick={() => addExtraPeripheral('printer')}
-                style={{ width: '100%', textAlign: 'left', padding: '0.4rem 0.75rem', fontSize: '0.74rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)' }}
-              >
-                🖨️ Printer
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

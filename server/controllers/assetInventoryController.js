@@ -22,6 +22,78 @@ import { isDBConnected } from '../config/db.js';
 // ASSETINVENTORYCONTROLLER
 // ==========================================
 
+export const sanitizeAssetCategoryFields = (assetData) => {
+  const type = (assetData.deviceType || assetData.category || '').toLowerCase();
+  const isPower = type.includes('ups') || type.includes('inverter') || type.includes('power') || type.includes('battery');
+  const isNetwork = type.includes('switch') || type.includes('router') || type.includes('firewall') || type.includes('access point') || type.includes('network');
+  const isPrinter = type.includes('printer') || type.includes('scanner') || type.includes('copier') || type.includes('mfp');
+  const isDisplay = type.includes('monitor') || type.includes('display') || type.includes('screen') || type.includes('projector');
+
+  if (isPower) {
+    assetData.ramSize = '';
+    assetData.osVersion = '';
+    assetData.windowsType = '';
+    assetData.windowsKey = '';
+    assetData.officeSoftware = '';
+    assetData.officeKey = '';
+    assetData.mailSoftware = '';
+    assetData.loginUserName = '';
+    assetData.loginPassword = '';
+    assetData.antivirus = '';
+    if (assetData.accessories) {
+      assetData.accessories = assetData.accessories
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => !/laptop bag|bag|mouse|k\/b|keyboard|headphone|headset/i.test(s))
+        .join(', ');
+    }
+  } else if (isNetwork) {
+    assetData.ramSize = '';
+    assetData.windowsType = '';
+    assetData.windowsKey = '';
+    assetData.officeSoftware = '';
+    assetData.officeKey = '';
+    assetData.mailSoftware = '';
+    if (assetData.accessories) {
+      assetData.accessories = assetData.accessories
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => !/laptop bag|bag|mouse|headphone/i.test(s))
+        .join(', ');
+    }
+  } else if (isPrinter) {
+    assetData.ramSize = '';
+    assetData.osVersion = '';
+    assetData.windowsType = '';
+    assetData.windowsKey = '';
+    assetData.officeSoftware = '';
+    assetData.officeKey = '';
+    if (assetData.accessories) {
+      assetData.accessories = assetData.accessories
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => !/laptop bag|bag|mouse|headphone/i.test(s))
+        .join(', ');
+    }
+  } else if (isDisplay) {
+    assetData.ramSize = '';
+    assetData.osVersion = '';
+    assetData.windowsType = '';
+    assetData.windowsKey = '';
+    assetData.officeSoftware = '';
+    assetData.officeKey = '';
+    if (assetData.accessories) {
+      assetData.accessories = assetData.accessories
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => !/laptop bag|bag|mouse|headphone/i.test(s))
+        .join(', ');
+    }
+  }
+
+  return assetData;
+};
+
 // @desc    Get all assets (with multi-field search and filters)
 // @route   GET /api/assets
 export const getAssets = async (req, res) => {
@@ -88,7 +160,11 @@ export const getAssets = async (req, res) => {
       assetQuery = assetQuery.skip((page - 1) * limit).limit(limit);
     }
 
-    const assets = await assetQuery;
+    const rawAssets = await assetQuery;
+    const assets = rawAssets.map((doc) => {
+      const obj = doc.toObject();
+      return sanitizeAssetCategoryFields(obj);
+    });
 
     res.status(200).json({
       success: true,
@@ -122,10 +198,11 @@ export const getAssets = async (req, res) => {
 // @route   GET /api/assets/:id
 export const getAssetById = async (req, res) => {
   try {
-    const asset = await Asset.findById(req.params.id);
-    if (!asset) {
+    const rawAsset = await Asset.findById(req.params.id);
+    if (!rawAsset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
     }
+    const asset = sanitizeAssetCategoryFields(rawAsset.toObject());
     res.status(200).json({ success: true, data: asset });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -136,7 +213,7 @@ export const getAssetById = async (req, res) => {
 // @route   POST /api/assets
 export const createAsset = async (req, res) => {
   try {
-    const assetData = { ...req.body };
+    const assetData = sanitizeAssetCategoryFields({ ...req.body });
     if (!assetData.sn) {
       const highest = await Asset.findOne().sort({ sn: -1 });
       assetData.sn = (highest?.sn || 0) + 1;
@@ -181,7 +258,20 @@ export const updateAsset = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Asset not found' });
     }
 
-    const updated = await Asset.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const payload = sanitizeAssetCategoryFields({ ...req.body });
+    const updated = await Asset.findByIdAndUpdate(req.params.id, payload, { new: true, runValidators: true });
+
+    try {
+      await AuditLog.create({
+        user: req.body.actorName || 'IT Admin',
+        role: 'IT Admin',
+        action: 'Asset Updated',
+        assetTag: updated.assetNo || updated.sr,
+        details: `Updated details for ${updated.make} ${updated.model}`,
+        ipAddress: req.ip || '127.0.0.1',
+      });
+    } catch {}
+
     res.status(200).json({ success: true, data: updated, message: 'Asset updated successfully' });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -196,6 +286,18 @@ export const deleteAsset = async (req, res) => {
     if (!asset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
     }
+
+    try {
+      await AuditLog.create({
+        user: req.body?.actorName || 'IT Admin',
+        role: 'IT Admin',
+        action: 'Asset Deleted',
+        assetTag: asset.assetNo || asset.sr,
+        details: `Deleted asset record ${asset.make} ${asset.model} (S/N: ${asset.sr})`,
+        ipAddress: req.ip || '127.0.0.1',
+      });
+    } catch {}
+
     res.status(200).json({ success: true, message: 'Asset deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

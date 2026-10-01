@@ -9,6 +9,7 @@ import Dashboard from './components/dashboard/Dashboard';
 import { X } from 'lucide-react';
 import AssetTable from './components/assets/AssetTable';
 import AssetDetailsModal from './components/assets/AssetDetailsModal';
+import AssetLabelModal from './components/assets/AssetLabelModal';
 import {
   ReturnModal,
   EditAssetModal,
@@ -22,6 +23,7 @@ import MaintenanceRegister from './components/maintenance/MaintenanceRegister';
 import TransferRegister from './components/transfers/TransferRegister';
 import TransferForm from './components/transfers/TransferForm';
 import OrganizationView from './components/organization/OrganizationView';
+import EmployeeProfileModal from './components/organization/EmployeeProfileModal';
 import EmployeeSelfService from './components/employee/EmployeeSelfService';
 import SoftwareManagement from './components/software/SoftwareManagement';
 import NetworkManagement from './components/network/NetworkManagement';
@@ -101,6 +103,7 @@ function ITAMApp() {
   // Modals state
   const [selectedAssetForDetails, setSelectedAssetForDetails] = useState(null);
   const [detailsInitialTab, setDetailsInitialTab] = useState('overview');
+  const [selectedEmployeeForProfile, setSelectedEmployeeForProfile] = useState(null);
   const [selectedAssetForAssign, setSelectedAssetForAssign] = useState(null);
   const [selectedAssetForTransfer, setSelectedAssetForTransfer] = useState(null);
   const [selectedAssetForReturn, setSelectedAssetForReturn] = useState(null);
@@ -108,6 +111,7 @@ function ITAMApp() {
   const [selectedAssetForMaintenance, setSelectedAssetForMaintenance] = useState(null);
   const [selectedAssetForMaintenanceReturn, setSelectedAssetForMaintenanceReturn] = useState(null);
   const [selectedAssetForRetire, setSelectedAssetForRetire] = useState(null);
+  const [selectedAssetForLabel, setSelectedAssetForLabel] = useState(null);
   const [assetToDelete, setAssetToDelete] = useState(null);
 
   // Load all enterprise data
@@ -278,9 +282,13 @@ function ITAMApp() {
       dbConnected={dbConnected}
       onToggleMobile={() => setMobileNavOpen((prev) => !prev)}
       assets={assets}
+      employees={employees}
       onSelectAsset={(asset) => {
         setSelectedAssetForDetails(asset);
         setDetailsInitialTab('overview');
+      }}
+      onSelectEmployee={(emp) => {
+        setSelectedEmployeeForProfile(emp);
       }}
       onNavigate={(page) => setActivePage(page)}
     />
@@ -300,6 +308,7 @@ function ITAMApp() {
             setSelectedAssetForDetails(asset);
             setDetailsInitialTab(tab);
           }}
+          onViewEmployee={(emp) => setSelectedEmployeeForProfile(emp)}
           onAssign={(asset) => setSelectedAssetForAssign(asset)}
           onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
           onReturn={(asset) => setSelectedAssetForReturn(asset)}
@@ -380,6 +389,8 @@ function ITAMApp() {
               setSelectedAssetForDetails(asset);
               setDetailsInitialTab(tab);
             }}
+            onViewEmployee={(emp) => setSelectedEmployeeForProfile(emp)}
+            onPrintLabel={(asset) => setSelectedAssetForLabel(asset)}
             onAssign={(asset) => setSelectedAssetForAssign(asset)}
             onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
             onReturn={(asset) => setSelectedAssetForReturn(asset)}
@@ -430,6 +441,8 @@ function ITAMApp() {
               setSelectedAssetForDetails(asset);
               setDetailsInitialTab('assignment');
             }}
+            onViewEmployee={(emp) => setSelectedEmployeeForProfile(emp)}
+            onPrintLabel={(asset) => setSelectedAssetForLabel(asset)}
             onAssign={(asset) => setSelectedAssetForAssign(asset)}
             onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
             onReturn={(asset) => setSelectedAssetForReturn(asset)}
@@ -467,6 +480,8 @@ function ITAMApp() {
               setSelectedAssetForDetails(asset);
               setDetailsInitialTab('assignment');
             }}
+            onViewEmployee={(emp) => setSelectedEmployeeForProfile(emp)}
+            onPrintLabel={(asset) => setSelectedAssetForLabel(asset)}
             onAssign={(asset) => setSelectedAssetForAssign(asset)}
             onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
             onReturn={(asset) => setSelectedAssetForReturn(asset)}
@@ -606,6 +621,53 @@ function ITAMApp() {
       {activePage === 'settings-master' && (
         <SettingsView onRefreshMaster={loadData} />
       )}
+
+      {/* FALLBACK FOR UNKNOWN PAGE */}
+      {![
+        'dashboard',
+        'inventory-all',
+        'inward-register',
+        'procurement-all',
+        'asset-add',
+        'asset-assign',
+        'asset-transfer',
+        'asset-return',
+        'asset-maintenance',
+        'asset-warranty',
+        'org-employees',
+        'users-bulk',
+        'employee-self-service',
+        'org-departments',
+        'org-locations',
+        'org-vendors',
+        'software-inventory',
+        'software-licenses',
+        'network-devices',
+        'reports',
+        'audit-logs',
+        'settings-master',
+      ].includes(activePage) && !isAssetListingPage && (
+        <Dashboard
+          stats={stats}
+          assets={assets}
+          employees={employees}
+          globalSearch={globalSearch}
+          onNavigate={(page) => setActivePage(page)}
+          onViewDetails={(asset, tab = 'overview') => {
+            setSelectedAssetForDetails(asset);
+            setDetailsInitialTab(tab);
+          }}
+          onViewEmployee={(emp) => setSelectedEmployeeForProfile(emp)}
+          onAssign={(asset) => setSelectedAssetForAssign(asset)}
+          onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
+          onReturn={(asset) => setSelectedAssetForReturn(asset)}
+          onMaintenanceReturn={(asset) => setSelectedAssetForMaintenanceReturn(asset)}
+          onMaintenance={(asset) => setSelectedAssetForMaintenance(asset)}
+          onEdit={(asset) => setSelectedAssetForEdit(asset)}
+          onRetire={(asset) => setSelectedAssetForRetire(asset)}
+          onDelete={(asset) => handleDeleteAsset(asset)}
+        />
+      )}
     </>
   );
 
@@ -621,11 +683,28 @@ function ITAMApp() {
       </AppLayout>
 
       {/* Global Action Modals */}
+      {selectedEmployeeForProfile && (
+        <EmployeeProfileModal
+          employee={selectedEmployeeForProfile}
+          assets={assets}
+          allEmployees={employees}
+          onClose={() => setSelectedEmployeeForProfile(null)}
+          onViewAsset={(asset) => {
+            setSelectedEmployeeForProfile(null);
+            setSelectedAssetForDetails(asset);
+            setDetailsInitialTab('overview');
+          }}
+          onSuccess={loadData}
+        />
+      )}
+
       {selectedAssetForDetails && (
         <AssetDetailsModal
           asset={selectedAssetForDetails}
           initialTab={detailsInitialTab}
+          employees={employees}
           onClose={() => setSelectedAssetForDetails(null)}
+          onInspectUser={(emp) => setSelectedEmployeeForProfile(emp)}
           onAssign={(asset) => setSelectedAssetForAssign(asset)}
           onTransfer={(asset) => setSelectedAssetForTransfer(asset)}
           onReturn={(asset) => setSelectedAssetForReturn(asset)}
@@ -752,6 +831,13 @@ function ITAMApp() {
             </div>
           </div>
         </div>
+      )}
+      {selectedAssetForLabel && (
+        <AssetLabelModal
+          isOpen={!!selectedAssetForLabel}
+          asset={selectedAssetForLabel}
+          onClose={() => setSelectedAssetForLabel(null)}
+        />
       )}
     </>
   );

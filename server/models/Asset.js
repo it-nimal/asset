@@ -1,4 +1,4 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
 const assetSchema = new mongoose.Schema(
   {
@@ -43,24 +43,24 @@ const assetSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
-    processor: { type: String, default: 'Intel Core i5', trim: true },
-    ramSize: { type: String, default: '16 GB', trim: true },
-    storage: { type: String, default: '512 GB SSD', trim: true },
+    processor: { type: String, trim: true },
+    ramSize: { type: String, trim: true },
+    storage: { type: String, trim: true },
     monitorDetails: { type: String, trim: true },
     monitorSerialNo: { type: String, trim: true },
     dataBackup: { type: String, trim: true },
     accessories: { type: String, trim: true },
 
     // 4. Software & Licenses
-    osVersion: { type: String, default: 'Windows 11 Pro', trim: true },
+    osVersion: { type: String, trim: true },
     windowsType: { type: String, trim: true },
     windowsKey: { type: String, trim: true },
-    officeSoftware: { type: String, default: 'MS Office 2021', trim: true },
+    officeSoftware: { type: String, trim: true },
     officeKey: { type: String, trim: true },
     mailSoftware: { type: String, trim: true },
     loginUserName: { type: String, trim: true },
     loginPassword: { type: String, trim: true },
-    antivirus: { type: String, default: 'eScan', trim: true },
+    antivirus: { type: String, trim: true },
     otherSoftware: { type: String, trim: true },
 
     // 5. Network & System Identity

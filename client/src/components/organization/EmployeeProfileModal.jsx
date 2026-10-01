@@ -7,6 +7,7 @@ import {
   Printer,
   Scan,
   Zap,
+  Network,
   Layers,
   Plus,
   Edit3,
@@ -37,6 +38,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useToast } from '../common/Toast';
+import { hasSoftwareLicensing } from '../../constants/specifications';
 import { useAuth } from '../../context/AuthContext';
 import AssetAllocationModal from '../allocation/AssetAllocationModal';
 
@@ -158,14 +160,30 @@ export default function EmployeeProfileModal({
 
   // Helper to parse peripheral accessories badges
   const parsePeripherals = (asset) => {
+    if (!asset) return [];
     const badges = [];
-    if (asset.monitorDetails) {
+    const devCat = (asset.deviceCategory || asset.category || '').toLowerCase();
+    const devType = (asset.deviceType || '').toLowerCase();
+    const isPower = devCat === 'power' || devType.includes('ups') || devType.includes('inverter') || devType.includes('battery');
+    const isNetwork = devCat === 'network' || devType.includes('switch') || devType.includes('router') || devType.includes('firewall');
+    const isPrinter = devCat === 'printer' || devCat === 'printers' || devType.includes('printer');
+    const isMonitor = devCat === 'display' || devCat === 'displays' || devType.includes('monitor');
+
+    // Only show separate monitor badge if this is a computer and not a standalone monitor
+    if (asset.monitorDetails && !isMonitor && !isPower && !isNetwork && !isPrinter) {
       badges.push({ name: `Monitor: ${asset.monitorDetails}`, icon: Monitor, color: '#818cf8' });
     }
+
     if (asset.accessories) {
       const items = asset.accessories.split(',').map((s) => s.trim()).filter(Boolean);
       items.forEach((item) => {
         const lower = item.toLowerCase();
+        // Skip laptop-only accessories for non-computing assets
+        if ((isPower || isNetwork || isPrinter || isMonitor) && 
+            (lower.includes('bag') || lower.includes('mouse') || lower.includes('keyboard') || lower.includes('adapter') || lower.includes('k/b') || lower.includes('dock'))) {
+          return;
+        }
+
         let icon = Layers;
         let color = '#38bdf8';
         if (lower.includes('keyboard') || lower.includes('mouse') || lower.includes('k/b')) {
@@ -180,7 +198,7 @@ export default function EmployeeProfileModal({
         } else if (lower.includes('scan')) {
           icon = Scan;
           color = '#34d399';
-        } else if (lower.includes('ups') || lower.includes('inverter')) {
+        } else if (lower.includes('ups') || lower.includes('inverter') || lower.includes('power')) {
           icon = Zap;
           color = '#f87171';
         }
@@ -297,9 +315,63 @@ export default function EmployeeProfileModal({
       : 'rgba(16, 185, 129, 0.12)';
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay employee-profile-modal-overlay" onClick={onClose}>
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm 10mm 8mm 10mm;
+          }
+
+          body, html, #root {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          .app-main-layout,
+          .no-print,
+          .sidebar,
+          .app-header,
+          .toast-container,
+          .modal-header,
+          .tabs-container,
+          nav,
+          aside {
+            display: none !important;
+          }
+
+          .modal-overlay.employee-profile-modal-overlay {
+            position: static !important;
+            display: block !important;
+            background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            inset: auto !important;
+            width: 100% !important;
+            height: auto !important;
+          }
+
+          .modal-content.employee-profile-modal-content {
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            max-height: none !important;
+            overflow: visible !important;
+            background: #ffffff !important;
+          }
+
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      `}</style>
       <div
-        className="modal-content"
+        className="modal-content employee-profile-modal-content"
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: '960px',
@@ -837,11 +909,15 @@ export default function EmployeeProfileModal({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                   {currentAssets.map((asset, idx) => {
                     const peripherals = parsePeripherals(asset);
-                    const isLaptop = (asset.deviceType || '').toLowerCase().includes('laptop');
-                    const isDesktop = (asset.deviceType || '').toLowerCase().includes('desktop');
-                    const isPrinter = (asset.deviceType || '').toLowerCase().includes('printer');
-                    const isMonitor = (asset.deviceType || '').toLowerCase().includes('monitor');
-                    const Icon = isLaptop ? Laptop : isDesktop ? Monitor : isPrinter ? Printer : isMonitor ? Monitor : Layers;
+                    const devCat = (asset.deviceCategory || asset.category || '').toLowerCase();
+                    const devType = (asset.deviceType || '').toLowerCase();
+                    const isPower = devCat === 'power' || devType.includes('ups') || devType.includes('inverter') || devType.includes('power') || devType.includes('battery');
+                    const isNetwork = devCat === 'network' || devType.includes('switch') || devType.includes('router') || devType.includes('firewall') || devType.includes('access point');
+                    const isPrinter = devCat === 'printer' || devCat === 'printers' || devType.includes('printer') || devType.includes('scanner');
+                    const isMonitor = devCat === 'display' || devCat === 'displays' || devType.includes('monitor') || devType.includes('display');
+                    const isLaptop = devType.includes('laptop');
+                    const isDesktop = devType.includes('desktop');
+                    const Icon = isPower ? Zap : isNetwork ? Network : isPrinter ? Printer : isMonitor ? Monitor : isLaptop ? Laptop : isDesktop ? Monitor : Layers;
 
                     return (
                       <div
@@ -869,13 +945,13 @@ export default function EmployeeProfileModal({
                                 fontWeight: 700,
                                 padding: '0.2rem 0.6rem',
                                 borderRadius: '4px',
-                                backgroundColor: 'rgba(2, 132, 199, 0.12)',
-                                color: 'var(--color-primary, #0284c7)',
-                                border: '1px solid rgba(2, 132, 199, 0.25)',
+                                backgroundColor: isPower ? 'rgba(239, 68, 68, 0.12)' : isNetwork ? 'rgba(16, 185, 129, 0.12)' : 'rgba(2, 132, 199, 0.12)',
+                                color: isPower ? '#dc2626' : isNetwork ? '#059669' : 'var(--color-primary, #0284c7)',
+                                border: isPower ? '1px solid rgba(239, 68, 68, 0.25)' : isNetwork ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(2, 132, 199, 0.25)',
                               }}
                             >
                               <Icon size={13} />
-                              <span>{asset.deviceType || 'Hardware'}</span>
+                              <span>{asset.deviceType || (isPower ? 'UPS / Power Unit' : 'Hardware')}</span>
                             </span>
 
                             <span
@@ -935,35 +1011,131 @@ export default function EmployeeProfileModal({
                               gap: '0.75rem',
                             }}
                           >
-                            {asset.processor && (
-                              <span>
-                                <strong>CPU:</strong> {asset.processor}
-                              </span>
-                            )}
-                            {asset.ramSize && (
-                              <span>
-                                <strong>RAM:</strong> {asset.ramSize}
-                              </span>
-                            )}
-                            {asset.storage && (
-                              <span>
-                                <strong>Storage:</strong> {asset.storage}
-                              </span>
-                            )}
-                            {asset.osVersion && (
-                              <span>
-                                <strong>OS:</strong> {asset.osVersion}
-                              </span>
-                            )}
-                            {asset.hostName && (
-                              <span style={{ fontFamily: 'monospace' }}>
-                                <strong>Host:</strong> {asset.hostName}
-                              </span>
-                            )}
-                            {asset.ipAddress && (
-                              <span style={{ fontFamily: 'monospace', color: '#059669' }}>
-                                <strong>IP:</strong> {asset.ipAddress}
-                              </span>
+                            {isPower ? (
+                              <>
+                                {(asset.specifications?.upsCapacity || (asset.processor && !asset.processor.toLowerCase().includes('intel') && !asset.processor.toLowerCase().includes('amd') && !asset.processor.toLowerCase().includes('core'))) && (
+                                  <span>
+                                    <strong>Capacity:</strong> {asset.specifications?.upsCapacity || asset.processor}
+                                  </span>
+                                )}
+                                {(asset.specifications?.batteryConfig || (asset.storage && !asset.storage.toLowerCase().includes('ssd') && !asset.storage.toLowerCase().includes('hdd'))) && (
+                                  <span>
+                                    <strong>Battery Config:</strong> {asset.specifications?.batteryConfig || asset.storage}
+                                  </span>
+                                )}
+                                {asset.specifications?.backupRuntime && (
+                                  <span>
+                                    <strong>Runtime:</strong> {asset.specifications.backupRuntime}
+                                  </span>
+                                )}
+                                {asset.specifications?.pduOutlets && (
+                                  <span>
+                                    <strong>Outlets:</strong> {asset.specifications.pduOutlets}
+                                  </span>
+                                )}
+                              </>
+                            ) : isNetwork ? (
+                              <>
+                                {(asset.specifications?.portCount || asset.portCount) && (
+                                  <span>
+                                    <strong>Ports:</strong> {asset.specifications?.portCount || asset.portCount}
+                                  </span>
+                                )}
+                                {asset.specifications?.networkRole && (
+                                  <span>
+                                    <strong>Role:</strong> {asset.specifications.networkRole}
+                                  </span>
+                                )}
+                                {asset.specifications?.poeSupport && (
+                                  <span>
+                                    <strong>PoE:</strong> {asset.specifications.poeSupport}
+                                  </span>
+                                )}
+                                {asset.hostName && (
+                                  <span style={{ fontFamily: 'monospace' }}>
+                                    <strong>Host:</strong> {asset.hostName}
+                                  </span>
+                                )}
+                                {asset.ipAddress && (
+                                  <span style={{ fontFamily: 'monospace', color: '#059669' }}>
+                                    <strong>IP:</strong> {asset.ipAddress}
+                                  </span>
+                                )}
+                              </>
+                            ) : isPrinter ? (
+                              <>
+                                {(asset.specifications?.printTechnology || (asset.processor && !asset.processor.toLowerCase().includes('intel') && !asset.processor.toLowerCase().includes('amd'))) && (
+                                  <span>
+                                    <strong>Technology:</strong> {asset.specifications?.printTechnology || asset.processor}
+                                  </span>
+                                )}
+                                {asset.specifications?.tonerCartridgeModel && (
+                                  <span>
+                                    <strong>Toner/Cartridge:</strong> {asset.specifications.tonerCartridgeModel}
+                                  </span>
+                                )}
+                                {asset.hostName && (
+                                  <span style={{ fontFamily: 'monospace' }}>
+                                    <strong>Host:</strong> {asset.hostName}
+                                  </span>
+                                )}
+                                {asset.ipAddress && (
+                                  <span style={{ fontFamily: 'monospace', color: '#059669' }}>
+                                    <strong>IP:</strong> {asset.ipAddress}
+                                  </span>
+                                )}
+                              </>
+                            ) : isMonitor ? (
+                              <>
+                                {(asset.specifications?.screenSize || asset.monitorDetails) && (
+                                  <span>
+                                    <strong>Screen Size:</strong> {asset.specifications?.screenSize || asset.monitorDetails}
+                                  </span>
+                                )}
+                                {asset.specifications?.resolution && (
+                                  <span>
+                                    <strong>Resolution:</strong> {asset.specifications.resolution}
+                                  </span>
+                                )}
+                                {asset.specifications?.panelType && (
+                                  <span>
+                                    <strong>Panel:</strong> {asset.specifications.panelType}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                {asset.processor && (
+                                  <span>
+                                    <strong>CPU:</strong> {asset.processor}
+                                  </span>
+                                )}
+                                {asset.ramSize && (
+                                  <span>
+                                    <strong>RAM:</strong> {asset.ramSize}
+                                  </span>
+                                )}
+                                {asset.storage && (
+                                  <span>
+                                    <strong>Storage:</strong> {asset.storage}
+                                  </span>
+                                )}
+                                {asset.osVersion && (
+                                  <span>
+                                    <strong>OS:</strong> {asset.osVersion}
+                                  </span>
+                                )}
+                                {asset.hostName && (
+                                  <span style={{ fontFamily: 'monospace' }}>
+                                    <strong>Host:</strong> {asset.hostName}
+                                  </span>
+                                )}
+                                {asset.ipAddress && (
+                                  <span style={{ fontFamily: 'monospace', color: '#059669' }}>
+                                    <strong>IP:</strong> {asset.ipAddress}
+                                  </span>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -1248,7 +1420,7 @@ export default function EmployeeProfileModal({
                 </div>
               </div>
 
-              {currentAssets.filter((a) => a.osVersion || a.officeSoftware || a.sapId || a.mailSoftware).length === 0 ? (
+              {currentAssets.filter((a) => hasSoftwareLicensing(a.deviceType, a)).length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-faint)' }}>
                   No software license keys registered on the assigned machines.
                 </div>
@@ -1267,25 +1439,27 @@ export default function EmployeeProfileModal({
                       </tr>
                     </thead>
                     <tbody>
-                      {currentAssets.map((a, idx) => (
-                        <tr key={idx}>
-                          <td style={{ fontWeight: 700, fontFamily: 'monospace', color: '#0284c7' }}>
-                            #{a.assetNo || 'AST'}
-                          </td>
-                          <td style={{ fontSize: '0.8rem', fontWeight: 600 }}>{a.osVersion || '—'}</td>
-                          <td style={{ fontFamily: 'monospace', fontSize: '0.74rem' }}>
-                            {a.windowsKey ? '••••-••••-••••' : (a.windowsType || 'OEM')}
-                          </td>
-                          <td style={{ fontSize: '0.8rem' }}>{a.officeSoftware || '—'}</td>
-                          <td style={{ fontFamily: 'monospace', fontSize: '0.74rem' }}>
-                            {a.officeKey ? '••••-••••-••••' : '—'}
-                          </td>
-                          <td style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: '#8b5cf6' }}>
-                            {a.sapId || '—'}
-                          </td>
-                          <td style={{ fontSize: '0.78rem' }}>{a.mailSoftware || '—'}</td>
-                        </tr>
-                      ))}
+                      {currentAssets
+                        .filter((a) => hasSoftwareLicensing(a.deviceType, a))
+                        .map((a, idx) => (
+                          <tr key={idx}>
+                            <td style={{ fontWeight: 700, fontFamily: 'monospace', color: '#0284c7' }}>
+                              #{a.assetNo || 'AST'}
+                            </td>
+                            <td style={{ fontSize: '0.8rem', fontWeight: 600 }}>{a.osVersion || '—'}</td>
+                            <td style={{ fontFamily: 'monospace', fontSize: '0.74rem' }}>
+                              {a.windowsKey ? '••••-••••-••••' : (a.windowsType || '—')}
+                            </td>
+                            <td style={{ fontSize: '0.8rem' }}>{a.officeSoftware || '—'}</td>
+                            <td style={{ fontFamily: 'monospace', fontSize: '0.74rem' }}>
+                              {a.officeKey ? '••••-••••-••••' : '—'}
+                            </td>
+                            <td style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: '#8b5cf6' }}>
+                              {a.sapId || '—'}
+                            </td>
+                            <td style={{ fontSize: '0.78rem' }}>{a.mailSoftware || '—'}</td>
+                          </tr>
+                        ))}
                     </tbody>
                   </table>
                 </div>

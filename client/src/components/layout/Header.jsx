@@ -7,14 +7,19 @@ import {
   Menu,
   X,
   User,
+  Users,
+  IdCard,
   Laptop,
   ArrowRight,
   Palette,
   Check,
   LogOut,
+  ShieldAlert,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../common/Toast';
+import { countExpiringWarranties } from '../../utils/warrantyUtils';
 
 export default function Header({
   activePage = 'dashboard',
@@ -26,7 +31,9 @@ export default function Header({
   dbConnected = false,
   onToggleMobile,
   assets = [],
+  employees = [],
   onSelectAsset,
+  onSelectEmployee,
   onNavigate,
 }) {
   const { user, logout } = useAuth();
@@ -34,6 +41,7 @@ export default function Header({
   const [notifMenuOpen, setNotifMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [searchCategory, setSearchCategory] = useState('all'); // 'all' | 'users' | 'assets'
 
   // Theme Management (Defaults to White Enterprise Slate & Blue Theme)
   const [theme, setTheme] = useState(() => {
@@ -76,13 +84,37 @@ export default function Header({
   ];
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const warrantyAlerts = useMemo(() => countExpiringWarranties(assets), [assets]);
+  const totalAlerts = unreadCount + warrantyAlerts.criticalTotal;
 
-  // Search results computed for global quick dropdown
-  const searchResults = useMemo(() => {
+  // Search results computed for global quick dropdown: Users & Assets
+  const matchedEmployees = useMemo(() => {
     const q = (globalSearch || '').trim().toLowerCase();
     if (!q) return [];
     const terms = q.split(/\s+/).filter(Boolean);
-    return assets.filter((item) => {
+    return (employees || []).filter((emp) => {
+      const text = [
+        emp.name,
+        emp.employeeId,
+        emp.department,
+        emp.designation,
+        emp.email,
+        emp.phone,
+        emp.location,
+        emp.status,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return terms.every((t) => text.includes(t));
+    });
+  }, [employees, globalSearch]);
+
+  const matchedAssets = useMemo(() => {
+    const q = (globalSearch || '').trim().toLowerCase();
+    if (!q) return [];
+    const terms = q.split(/\s+/).filter(Boolean);
+    return (assets || []).filter((item) => {
       const text = [
         item.assetNo,
         item.sr,
@@ -112,18 +144,20 @@ export default function Header({
     });
   }, [assets, globalSearch]);
 
-  // Keyboard shortcut for search (/)
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === '/' && document.activeElement !== searchInputRef.current) {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        setSearchFocused(true);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  const getEmpAssetCount = (emp) => {
+    if (!emp || !assets) return 0;
+    const empName = (emp.name || '').trim().toLowerCase();
+    const empId = (emp.employeeId || '').trim().toLowerCase();
+    return assets.filter((a) => {
+      const aUser = (a.userName || '').trim().toLowerCase();
+      const aCode = (a.empCode || '').trim().toLowerCase();
+      if (!aUser || aUser === 'unassigned') return false;
+      if (empId && aCode && empId === aCode) return true;
+      if (empName && aUser.includes(empName)) return true;
+      return false;
+    }).length;
+  };
+
 
   // Close menus on outside click
   useEffect(() => {
@@ -227,7 +261,7 @@ export default function Header({
       </div>
 
       {/* Global Search Bar with Live Quick-Search Results */}
-      <div ref={searchContainerRef} className="header-search-container" style={{ position: 'relative', width: '340px', maxWidth: '40vw' }}>
+      <div ref={searchContainerRef} className="header-search-container" style={{ position: 'relative', width: '380px', maxWidth: '42vw' }}>
         <Search
           size={14}
           style={{
@@ -242,7 +276,7 @@ export default function Header({
         <input
           ref={searchInputRef}
           type="text"
-          placeholder="Search tag, serial, user... (Press /)"
+          placeholder="Search staff, users, tags, serial, specs..."
           value={globalSearch}
           onFocus={() => setSearchFocused(true)}
           onChange={(e) => {
@@ -252,7 +286,11 @@ export default function Header({
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              if (onNavigate) onNavigate('assets-all');
+              if (searchCategory === 'users' || (matchedEmployees.length > 0 && matchedAssets.length === 0)) {
+                if (onNavigate) onNavigate('org-employees');
+              } else {
+                if (onNavigate) onNavigate('assets-all');
+              }
               setSearchFocused(false);
             } else if (e.key === 'Escape') {
               setSearchFocused(false);
@@ -262,12 +300,12 @@ export default function Header({
           className="form-control"
           style={{
             paddingLeft: '2rem',
-            paddingRight: globalSearch ? '2.4rem' : '1.8rem',
+            paddingRight: globalSearch ? '2.4rem' : '0.75rem',
             height: '34px',
             fontSize: '0.8rem',
           }}
         />
-        {globalSearch ? (
+        {globalSearch && (
           <button
             type="button"
             onClick={() => {
@@ -289,27 +327,9 @@ export default function Header({
           >
             <X size={13} />
           </button>
-        ) : (
-          <span
-            style={{
-              position: 'absolute',
-              right: '8px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              fontSize: '0.62rem',
-              color: 'var(--text-faint)',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              padding: '0.1rem 0.35rem',
-              borderRadius: 'var(--radius-xs)',
-              pointerEvents: 'none',
-              border: '1px solid var(--border-subtle)',
-            }}
-          >
-            /
-          </span>
         )}
 
-        {/* Live Instant Search Dropdown */}
+        {/* Live Instant Search Dropdown: Users & Assets */}
         {searchFocused && Boolean((globalSearch || '').trim()) && (
           <div
             style={{
@@ -323,128 +343,372 @@ export default function Header({
               borderRadius: 'var(--radius-md)',
               boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
               zIndex: 100,
-              maxHeight: '380px',
+              maxHeight: '440px',
               overflowY: 'auto',
               display: 'flex',
               flexDirection: 'column',
             }}
           >
+            {/* Category Filter Tabs Header */}
             <div
               style={{
-                padding: '0.55rem 0.85rem',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                color: 'var(--text-muted)',
+                padding: '0.45rem 0.65rem',
                 borderBottom: '1px solid var(--border-subtle)',
                 display: 'flex',
-                justifyContent: 'space-between',
                 alignItems: 'center',
+                justifyContent: 'space-between',
                 backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                gap: '0.4rem',
               }}
             >
-              <span>{searchResults.length} systems found</span>
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)' }}>Press Enter to view all</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setSearchCategory('all')}
+                  style={{
+                    padding: '0.2rem 0.55rem',
+                    borderRadius: 'var(--radius-xs)',
+                    fontSize: '0.72rem',
+                    fontWeight: searchCategory === 'all' ? 700 : 500,
+                    border: 'none',
+                    backgroundColor: searchCategory === 'all' ? 'var(--primary-light)' : 'transparent',
+                    color: searchCategory === 'all' ? 'var(--primary)' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  All ({matchedEmployees.length + matchedAssets.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSearchCategory('users')}
+                  style={{
+                    padding: '0.2rem 0.55rem',
+                    borderRadius: 'var(--radius-xs)',
+                    fontSize: '0.72rem',
+                    fontWeight: searchCategory === 'users' ? 700 : 500,
+                    border: 'none',
+                    backgroundColor: searchCategory === 'users' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                    color: searchCategory === 'users' ? '#38bdf8' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                  }}
+                >
+                  <Users size={12} />
+                  <span>Users ({matchedEmployees.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSearchCategory('assets')}
+                  style={{
+                    padding: '0.2rem 0.55rem',
+                    borderRadius: 'var(--radius-xs)',
+                    fontSize: '0.72rem',
+                    fontWeight: searchCategory === 'assets' ? 700 : 500,
+                    border: 'none',
+                    backgroundColor: searchCategory === 'assets' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                    color: searchCategory === 'assets' ? '#818cf8' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                  }}
+                >
+                  <Laptop size={12} />
+                  <span>Hardware ({matchedAssets.length})</span>
+                </button>
+              </div>
+
+              <span style={{ fontSize: '0.66rem', color: 'var(--text-faint)' }}>Press ↵ Enter</span>
             </div>
 
-            {searchResults.length === 0 ? (
-              <div style={{ padding: '1.25rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                No assets matching "<strong>{globalSearch}</strong>"
+            {matchedEmployees.length === 0 && matchedAssets.length === 0 ? (
+              <div style={{ padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                No users or assets matching "<strong>{globalSearch}</strong>"
               </div>
             ) : (
               <div>
-                {searchResults.slice(0, 6).map((item) => (
-                  <div
-                    key={item._id}
-                    onClick={() => {
-                      if (onSelectAsset) onSelectAsset(item);
-                      setSearchFocused(false);
-                    }}
-                    style={{
-                      padding: '0.6rem 0.85rem',
-                      borderBottom: '1px solid var(--border-subtle)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '0.75rem',
-                      transition: 'background 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.1)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0 }}>
-                      <div
-                        style={{
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: 'var(--radius-sm)',
-                          backgroundColor: 'rgba(56, 189, 248, 0.12)',
-                          color: '#38bdf8',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <Laptop size={14} />
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <span style={{ fontFamily: 'monospace', color: '#38bdf8' }}>{item.assetNo || item.sr}</span>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {item.make} {item.model}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: '0.45rem' }}>
-                          <span>{item.userName || 'Unassigned'}</span>
-                          <span>•</span>
-                          <span>{item.department || 'General'}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <span
+                {/* 1. USERS / EMPLOYEES SECTION */}
+                {(searchCategory === 'all' || searchCategory === 'users') && matchedEmployees.length > 0 && (
+                  <div>
+                    <div
                       style={{
+                        padding: '0.4rem 0.85rem',
                         fontSize: '0.68rem',
-                        fontWeight: 700,
-                        padding: '0.15rem 0.45rem',
-                        borderRadius: 'var(--radius-xs)',
-                        backgroundColor: item.status === 'Assigned' ? 'rgba(56, 189, 248, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                        color: item.status === 'Assigned' ? '#38bdf8' : '#34d399',
-                        flexShrink: 0,
+                        fontWeight: 800,
+                        color: '#38bdf8',
+                        backgroundColor: 'rgba(56, 189, 248, 0.06)',
+                        borderBottom: '1px solid var(--border-subtle)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                       }}
                     >
-                      {item.status || 'Available'}
-                    </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <Users size={12} />
+                        <span>Workforce Employees ({matchedEmployees.length})</span>
+                      </div>
+                      <span style={{ fontSize: '0.64rem', color: 'var(--text-faint)' }}>Click to inspect user</span>
+                    </div>
+
+                    {(searchCategory === 'users' ? matchedEmployees.slice(0, 8) : matchedEmployees.slice(0, 4)).map((emp) => {
+                      const empAssetCount = getEmpAssetCount(emp);
+                      return (
+                        <div
+                          key={emp._id || emp.employeeId || emp.name}
+                          onClick={() => {
+                            if (onSelectEmployee) onSelectEmployee(emp);
+                            setSearchFocused(false);
+                          }}
+                          style={{
+                            padding: '0.6rem 0.85rem',
+                            borderBottom: '1px solid var(--border-subtle)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.75rem',
+                            transition: 'background 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(56, 189, 248, 0.1)')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0 }}>
+                            <div
+                              style={{
+                                width: '30px',
+                                height: '30px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
+                                color: '#ffffff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 800,
+                                fontSize: '0.78rem',
+                                flexShrink: 0,
+                              }}
+                            >
+                              {(emp.name || 'U').charAt(0).toUpperCase()}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {emp.name}
+                                </span>
+                                {emp.employeeId && (
+                                  <span
+                                    style={{
+                                      fontFamily: 'monospace',
+                                      fontSize: '0.7rem',
+                                      color: '#38bdf8',
+                                      backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                                      padding: '0.05rem 0.35rem',
+                                      borderRadius: '3px',
+                                    }}
+                                  >
+                                    {emp.employeeId}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: '0.45rem', marginTop: '1px' }}>
+                                <span>{emp.designation || 'Staff'}</span>
+                                <span>•</span>
+                                <span>{emp.department || 'General'}</span>
+                                {emp.location && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{emp.location}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
+                            <span
+                              style={{
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                padding: '0.15rem 0.45rem',
+                                borderRadius: 'var(--radius-xs)',
+                                backgroundColor: empAssetCount > 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                                color: empAssetCount > 0 ? '#34d399' : '#fbbf24',
+                              }}
+                            >
+                              {empAssetCount > 0 ? `${empAssetCount} Assets` : 'No Assets'}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '0.7rem',
+                                color: '#38bdf8',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '2px',
+                              }}
+                            >
+                              Inspect →
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
+                )}
+
+                {/* 2. HARDWARE ASSETS SECTION */}
+                {(searchCategory === 'all' || searchCategory === 'assets') && matchedAssets.length > 0 && (
+                  <div>
+                    <div
+                      style={{
+                        padding: '0.4rem 0.85rem',
+                        fontSize: '0.68rem',
+                        fontWeight: 800,
+                        color: '#818cf8',
+                        backgroundColor: 'rgba(99, 102, 241, 0.06)',
+                        borderBottom: '1px solid var(--border-subtle)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <Laptop size={12} />
+                        <span>Hardware Assets & Machines ({matchedAssets.length})</span>
+                      </div>
+                      <span style={{ fontSize: '0.64rem', color: 'var(--text-faint)' }}>Click to inspect asset</span>
+                    </div>
+
+                    {(searchCategory === 'assets' ? matchedAssets.slice(0, 8) : matchedAssets.slice(0, 4)).map((item) => (
+                      <div
+                        key={item._id}
+                        onClick={() => {
+                          if (onSelectAsset) onSelectAsset(item);
+                          setSearchFocused(false);
+                        }}
+                        style={{
+                          padding: '0.6rem 0.85rem',
+                          borderBottom: '1px solid var(--border-subtle)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '0.75rem',
+                          transition: 'background 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.1)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0 }}>
+                          <div
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: 'var(--radius-sm)',
+                              backgroundColor: 'rgba(99, 102, 241, 0.12)',
+                              color: '#818cf8',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Laptop size={14} />
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              <span style={{ fontFamily: 'monospace', color: '#38bdf8' }}>{item.assetNo || item.sr}</span>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {item.make} {item.model}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: '0.45rem' }}>
+                              <span>{item.userName || 'Unassigned'}</span>
+                              <span>•</span>
+                              <span>{item.department || 'General'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <span
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: 'var(--radius-xs)',
+                            backgroundColor: item.status === 'Assigned' ? 'rgba(56, 189, 248, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                            color: item.status === 'Assigned' ? '#38bdf8' : '#34d399',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {item.status || 'Available'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={() => {
-                if (onNavigate) onNavigate('assets-all');
-                setSearchFocused(false);
-              }}
-              style={{
-                padding: '0.6rem 0.85rem',
-                border: 'none',
-                background: 'rgba(99, 102, 241, 0.08)',
-                color: '#818cf8',
-                fontSize: '0.76rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.4rem',
-                cursor: 'pointer',
-                borderTop: '1px solid var(--border-subtle)',
-              }}
-            >
-              <span>View all matching results in Hardware Inventory</span>
-              <ArrowRight size={13} />
-            </button>
+            {/* Quick Navigation Footer Actions */}
+            <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--border-subtle)' }}>
+              {matchedEmployees.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onNavigate) onNavigate('org-employees');
+                    setSearchFocused(false);
+                  }}
+                  style={{
+                    padding: '0.5rem 0.85rem',
+                    border: 'none',
+                    background: 'rgba(56, 189, 248, 0.06)',
+                    color: '#38bdf8',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    borderBottom: matchedAssets.length > 0 ? '1px solid var(--border-subtle)' : 'none',
+                  }}
+                >
+                  <span>View all {matchedEmployees.length} matching staff in Employees Directory</span>
+                  <ArrowRight size={13} />
+                </button>
+              )}
+
+              {matchedAssets.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onNavigate) onNavigate('assets-all');
+                    setSearchFocused(false);
+                  }}
+                  style={{
+                    padding: '0.5rem 0.85rem',
+                    border: 'none',
+                    background: 'rgba(99, 102, 241, 0.06)',
+                    color: '#818cf8',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span>View all {matchedAssets.length} matching items in Hardware Inventory</span>
+                  <ArrowRight size={13} />
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -650,21 +914,30 @@ export default function Header({
             onClick={() => setNotifMenuOpen(!notifMenuOpen)}
             className="btn btn-outline btn-icon"
             style={{ height: '32px', width: '32px', padding: 0, position: 'relative' }}
-            title="Notifications"
+            title="Notifications & Alerts"
           >
             <Bell size={14} />
-            {unreadCount > 0 && (
+            {totalAlerts > 0 && (
               <span
                 style={{
                   position: 'absolute',
-                  top: '4px',
-                  right: '4px',
-                  width: '6px',
-                  height: '6px',
-                  backgroundColor: '#38bdf8',
-                  borderRadius: '50%',
+                  top: '2px',
+                  right: '2px',
+                  minWidth: '14px',
+                  height: '14px',
+                  backgroundColor: warrantyAlerts.criticalTotal > 0 ? '#ef4444' : '#38bdf8',
+                  borderRadius: '9999px',
+                  color: '#ffffff',
+                  fontSize: '0.6rem',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 2px',
                 }}
-              />
+              >
+                {totalAlerts > 9 ? '9+' : totalAlerts}
+              </span>
             )}
           </button>
 
@@ -674,7 +947,7 @@ export default function Header({
                 position: 'absolute',
                 right: 0,
                 top: '38px',
-                width: '320px',
+                width: '330px',
                 backgroundColor: 'var(--bg-surface-raised)',
                 border: '1px solid var(--border-default)',
                 borderRadius: 'var(--radius-lg)',
@@ -693,13 +966,54 @@ export default function Header({
                   alignItems: 'center',
                 }}
               >
-                <span style={{ fontWeight: 700, fontSize: '0.82rem' }}>Notifications</span>
-                <span className="badge badge-assigned">{unreadCount} New</span>
+                <span style={{ fontWeight: 700, fontSize: '0.82rem' }}>Notifications & Alerts</span>
+                <span className="badge badge-assigned">{totalAlerts} New</span>
               </div>
-              <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
-                {notifications.length === 0 ? (
+
+              {/* Warranty & AMC Expiry Quick Alerts */}
+              {warrantyAlerts.criticalTotal > 0 && (
+                <div
+                  style={{
+                    padding: '0.75rem 1rem',
+                    backgroundColor: 'rgba(239, 68, 68, 0.06)',
+                    borderBottom: '1px solid rgba(239, 68, 68, 0.15)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#ef4444', fontWeight: 700, fontSize: '0.76rem' }}>
+                    <ShieldAlert size={14} />
+                    <span>Warranty & AMC Expiration Alert</span>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.25rem', lineHeight: 1.4 }}>
+                    {warrantyAlerts.expired > 0 && <div>• <strong>{warrantyAlerts.expired}</strong> asset(s) with expired warranty/AMC</div>}
+                    {warrantyAlerts.urgent > 0 && <div>• <strong>{warrantyAlerts.urgent}</strong> asset(s) expiring within 30 days</div>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNotifMenuOpen(false);
+                      if (onNavigate) onNavigate('asset-warranty');
+                    }}
+                    style={{
+                      marginTop: '0.4rem',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--primary)',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: 0,
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Open Warranty Register →
+                  </button>
+                </div>
+              )}
+
+              <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                {notifications.length === 0 && warrantyAlerts.criticalTotal === 0 ? (
                   <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    No unread notifications
+                    No unread notifications or alerts
                   </div>
                 ) : (
                   notifications.map((n, i) => (

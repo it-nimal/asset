@@ -23,9 +23,12 @@ import {
   X,
   Archive,
   FileSpreadsheet,
+  QrCode,
+  ShieldAlert,
 } from 'lucide-react';
 import { COMPANY_DEPARTMENTS, COMPANY_PLANTS } from '../../constants/organization';
 import { STATUS_COLORS, getStatusStyle } from '../../constants/statusConstants';
+import { getWarrantyStatus } from '../../utils/warrantyUtils';
 import BulkImportExportModal from './BulkImportExportModal';
 
 export { STATUS_COLORS, getStatusStyle };
@@ -35,6 +38,8 @@ export default function AssetTable({
   categoryFilter = 'All',
   globalSearch = '',
   onViewDetails,
+  onViewEmployee,
+  onPrintLabel,
   onAssign,
   onTransfer,
   onReturn,
@@ -587,6 +592,7 @@ export default function AssetTable({
                 paginatedAssets.map((asset) => {
                   const isSelected = selectedIds.includes(asset._id);
                   const st = STATUS_COLORS[asset.status] || STATUS_COLORS.Available;
+                  const warrantyInfo = getWarrantyStatus(asset.warrantyEndDate);
 
                   return (
                     <tr
@@ -629,9 +635,31 @@ export default function AssetTable({
                       {/* Make & Specs */}
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {asset.make} {asset.model}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                              {asset.make} {asset.model}
+                            </span>
+                            {warrantyInfo.isCritical && (
+                              <span
+                                style={{
+                                  fontSize: '0.62rem',
+                                  padding: '0.08rem 0.35rem',
+                                  borderRadius: '9999px',
+                                  fontWeight: 700,
+                                  backgroundColor: warrantyInfo.bg,
+                                  color: warrantyInfo.color,
+                                  border: `1px solid ${warrantyInfo.border}`,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '2px',
+                                }}
+                                title={`Warranty: ${warrantyInfo.label}`}
+                              >
+                                <ShieldAlert size={10} />
+                                {warrantyInfo.status === 'expired' ? 'Exp' : `${warrantyInfo.daysLeft}d`}
+                              </span>
+                            )}
+                          </div>
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                             {asset.deviceType || 'Hardware'} • {asset.processor || asset.ramSize || 'Standard'}
                           </span>
@@ -640,14 +668,44 @@ export default function AssetTable({
 
                       {/* Custodian User */}
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.45rem',
+                            cursor: asset.userName && asset.userName !== 'Unassigned' && onViewEmployee ? 'pointer' : 'default',
+                            padding: '0.15rem 0.35rem',
+                            borderRadius: 'var(--radius-sm)',
+                            transition: 'background 0.15s ease',
+                          }}
+                          onClick={() => {
+                            if (asset.userName && asset.userName !== 'Unassigned' && onViewEmployee) {
+                              onViewEmployee({
+                                name: asset.userName,
+                                employeeId: asset.empCode || '',
+                                email: asset.mailId || '',
+                                department: asset.department || '',
+                                location: asset.plant || '',
+                              });
+                            }
+                          }}
+                          title={asset.userName && asset.userName !== 'Unassigned' && onViewEmployee ? 'Click to inspect employee profile' : undefined}
+                          onMouseEnter={(e) => {
+                            if (asset.userName && asset.userName !== 'Unassigned' && onViewEmployee) {
+                              e.currentTarget.style.backgroundColor = 'rgba(56, 189, 248, 0.1)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
                           <div
                             style={{
                               width: '24px',
                               height: '24px',
                               borderRadius: 'var(--radius-full)',
                               backgroundColor: asset.userName && asset.userName !== 'Unassigned' ? 'var(--primary-light)' : 'rgba(255,255,255,0.05)',
-                              color: asset.userName && asset.userName !== 'Unassigned' ? '#a5b4fc' : 'var(--text-faint)',
+                              color: asset.userName && asset.userName !== 'Unassigned' ? '#38bdf8' : 'var(--text-faint)',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -659,11 +717,11 @@ export default function AssetTable({
                             {(asset.userName || 'U').charAt(0).toUpperCase()}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontWeight: 500, color: asset.userName !== 'Unassigned' ? 'var(--text-primary)' : 'var(--text-faint)' }}>
+                            <span style={{ fontWeight: 600, color: asset.userName !== 'Unassigned' ? (onViewEmployee ? '#38bdf8' : 'var(--text-primary)') : 'var(--text-faint)' }}>
                               {asset.userName || 'Unassigned'}
                             </span>
                             {asset.empCode && (
-                              <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)' }}>
+                              <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
                                 {asset.empCode}
                               </span>
                             )}
@@ -710,6 +768,19 @@ export default function AssetTable({
                             title="View Asset Details"
                           >
                             <Eye size={14} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onPrintLabel) onPrintLabel(asset);
+                              else if (onViewDetails) onViewDetails(asset, 'label');
+                            }}
+                            className="btn btn-ghost btn-icon btn-xs"
+                            title="Print QR Asset Tag Sticker"
+                            style={{ color: '#0284c7' }}
+                          >
+                            <QrCode size={14} />
                           </button>
 
                           {asset.status === 'Available' && onAssign && (

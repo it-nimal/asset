@@ -515,7 +515,7 @@ export default function Dashboard({
                       </span>
                     </div>
 
-                    {/* Assigned Assets summary */}
+                    {/* Assigned Assets summary */}f
                     {hasAssets ? (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                         {empAssets.slice(0, 2).map((a, aIdx) => (

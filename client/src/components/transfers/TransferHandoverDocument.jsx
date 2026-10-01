@@ -16,7 +16,57 @@ export default function TransferHandoverDocument({
     : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 110 }}>
+    <div className="modal-overlay handover-modal-overlay" onClick={onClose} style={{ zIndex: 110 }}>
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm 10mm 8mm 10mm;
+          }
+
+          body, html, #root {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          .app-main-layout,
+          .no-print,
+          .sidebar,
+          .app-header,
+          .toast-container {
+            display: none !important;
+          }
+
+          .modal-overlay.handover-modal-overlay {
+            position: static !important;
+            display: block !important;
+            background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            inset: auto !important;
+            width: 100% !important;
+            height: auto !important;
+          }
+
+          .modal-content.handover-printable-card {
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            max-height: none !important;
+            overflow: visible !important;
+            background: #ffffff !important;
+          }
+
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      `}</style>
       <div
         className="modal-content handover-printable-card"
         onClick={(e) => e.stopPropagation()}
