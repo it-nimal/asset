@@ -17,6 +17,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Trust loopback proxies for accurate client IP detection without blind header spoofing
+app.set('trust proxy', 'loopback');
+
 // Middleware (Support large invoice photos and PDF uploads)
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));

@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 
 const AuthContext = createContext(null);
 
 export const DEFAULT_ADMIN = {
   name: 'IT Administrator',
+  username: 'admin',
   email: 'admin@vitromed.com',
   role: 'Super Admin',
   department: 'IT Infrastructure',
@@ -25,6 +26,34 @@ export function AuthProvider({ children }) {
 
   const [token, setToken] = useState(() => localStorage.getItem('itam_token') || null);
   const [loading, setLoading] = useState(false);
+
+  // Sync / refresh current authenticated user permissions and profile from server
+  const refreshProfile = useCallback(async () => {
+    const currentToken = localStorage.getItem('itam_token');
+    if (!currentToken) return null;
+
+    try {
+      const res = await api.getMe();
+      if (res && res.success && res.user) {
+        const updatedUser = res.user;
+        setUser(updatedUser);
+        localStorage.setItem('itam_user', JSON.stringify(updatedUser));
+        return updatedUser;
+      }
+    } catch (err) {
+      // If token expired or deactivated, logout
+      if (err.status === 401 || err.status === 403) {
+        logout();
+      }
+    }
+    return null;
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      refreshProfile();
+    }
+  }, [token, refreshProfile]);
 
   const login = async (email, password) => {
     setLoading(true);
@@ -62,18 +91,73 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.logout();
+    } catch {}
     setUser(null);
     setToken(null);
     localStorage.removeItem('itam_user');
     localStorage.removeItem('itam_token');
+    localStorage.removeItem('itam_active_page');
   };
 
   const isAuthenticated = Boolean(user && token);
-  const isSuperAdmin = user?.role === 'Super Admin' || user?.role === 'IT Admin';
-  const isITAdmin = Boolean(user);
-  const isTechnician = true;
-  const isManager = true;
+  const normalizedRole = user?.role === 'Super Admin'
+    ? 'Super Admin'
+    : user?.role === 'Admin' || user?.role === 'IT Admin'
+    ? 'Admin'
+    : 'User';
+
+  const isSuperAdmin = normalizedRole === 'Super Admin';
+  const isAdmin = normalizedRole === 'Super Admin' || normalizedRole === 'Admin';
+  const isUserOnly = normalizedRole === 'User';
+
+  /**
+   * Reusable Granular Permission Checking Engine
+   * @param {string} moduleName - e.g. "Employees", "Asset Master", "Inventory", "Audit Trail", etc.
+   * @param {string} action - "VIEW" | "CREATE" | "UPDATE" | "DELETE" | "EXPORT" | "IMPORT" | "APPROVE" | "MANAGE"
+   */
+  const hasPermission = useCallback(
+    (moduleName, action = 'VIEW') => {
+      if (!isAuthenticated) return false;
+      if (isSuperAdmin) return true;
+
+      const userPerms = user?.permissions;
+      if (!userPerms) {
+        // Fallback role heuristics
+        if (isAdmin) {
+          if (moduleName === 'System Settings') return action === 'VIEW';
+          if (moduleName === 'User Management') return ['VIEW', 'CREATE', 'UPDATE'].includes(action);
+          return true;
+        }
+        if (isUserOnly) {
+          if (['Dashboard', 'Asset Master', 'Inventory'].includes(moduleName) && action === 'VIEW') return true;
+          if (['Asset Allocation', 'Asset Transfer'].includes(moduleName) && ['VIEW', 'APPROVE'].includes(action)) return true;
+          if (moduleName === 'Employee Profile' && ['VIEW', 'UPDATE'].includes(action)) return true;
+          if (moduleName === 'Maintenance' && ['VIEW', 'CREATE'].includes(action)) return true;
+          if (moduleName === 'Audit Trail' && action === 'VIEW') return true;
+          return false;
+        }
+        return false;
+      }
+
+      const modActions = userPerms[moduleName] || [];
+      return modActions.includes(action) || modActions.includes('MANAGE');
+    },
+    [isAuthenticated, isSuperAdmin, isAdmin, isUserOnly, user?.permissions]
+  );
+
+  // High-level capability convenience flags
+  const canManageUsers = isSuperAdmin || (isAdmin && hasPermission('User Management', 'VIEW'));
+  const canManageMasterSettings = isSuperAdmin || hasPermission('System Settings', 'UPDATE');
+  const canViewAuditLogs = isSuperAdmin || isAdmin || hasPermission('Audit Trail', 'VIEW');
+  const canExportAuditLogs = isSuperAdmin || hasPermission('Audit Trail', 'EXPORT');
+  const canManageAssets = isSuperAdmin || hasPermission('Asset Master', 'CREATE') || hasPermission('Asset Master', 'UPDATE');
+  const canManageEmployees = isSuperAdmin || hasPermission('Employees', 'CREATE') || hasPermission('Employees', 'UPDATE');
+  const canManageInward = isSuperAdmin || hasPermission('Inward Register', 'CREATE') || hasPermission('Inward Register', 'UPDATE');
+  const canManageTransfers = isSuperAdmin || hasPermission('Asset Transfer', 'CREATE') || hasPermission('Asset Transfer', 'APPROVE');
+  const canManageMaintenance = isSuperAdmin || hasPermission('Maintenance', 'UPDATE') || hasPermission('Maintenance', 'MANAGE');
 
   return (
     <AuthContext.Provider
@@ -82,12 +166,23 @@ export function AuthProvider({ children }) {
         token,
         loading,
         isAuthenticated,
+        role: normalizedRole,
         login,
         logout,
+        refreshProfile,
+        hasPermission,
         isSuperAdmin,
-        isITAdmin,
-        isTechnician,
-        isManager,
+        isAdmin,
+        isUserOnly,
+        canManageUsers,
+        canManageMasterSettings,
+        canViewAuditLogs,
+        canExportAuditLogs,
+        canManageAssets,
+        canManageEmployees,
+        canManageInward,
+        canManageTransfers,
+        canManageMaintenance,
       }}
     >
       {children}
@@ -95,4 +190,5 @@ export function AuthProvider({ children }) {
   );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext);
+export default AuthContext;

@@ -1,4 +1,4 @@
-﻿export { Asset } from './Asset.js';
+export { Asset } from './Asset.js';
 export { User } from './User.js';
 export { Department } from './Department.js';
 export { Location } from './Location.js';
@@ -13,3 +13,4 @@ export { PurchaseOrder, Invoice } from './Procurement.js';
 export { MasterSetting } from './MasterSetting.js';
 export { Inward } from './Inward.js';
 export { Transfer } from './Transfer.js';
+export { RolePermission, DEFAULT_ROLE_PERMISSIONS, SYSTEM_MODULES, PERMISSION_ACTIONS } from './RolePermission.js';

@@ -17,6 +17,7 @@ import {
   Transfer,
 } from '../models/Asset.js';
 import { isDBConnected } from '../config/db.js';
+import { recordAuditLog, calculateDiff, sanitizeData } from '../utils/auditService.js';
 
 // ==========================================
 // MAINTENANCECONTROLLER
@@ -198,13 +199,19 @@ export const createMaintenance = async (req, res) => {
     });
     await asset.save();
 
-    await AuditLog.create({
-      user: actorName || 'IT Admin',
-      role: 'IT Admin',
-      action: 'Maintenance Created',
-      assetTag: asset.sr || asset.assetNo,
+    await recordAuditLog({
+      req,
+      action: 'MAINTENANCE_CREATED',
+      module: 'Maintenance',
+      recordId: newTicket._id,
+      recordIdentifier: maintenanceId,
+      newValues: {
+        maintenanceId,
+        assetTag: asset.sr || asset.assetNo,
+        issueDescription: desc,
+        priority,
+      },
       details: `Created maintenance ${maintenanceId} for ${asset.assetNo || asset.sr}: ${desc}`,
-      ipAddress: req.ip || '127.0.0.1',
     });
 
     res.status(201).json({
@@ -449,13 +456,14 @@ export const completeMaintenance = async (req, res) => {
     });
     await ticket.save();
 
-    await AuditLog.create({
-      user: operator,
-      role: 'IT Admin',
-      action: 'Maintenance Completed',
-      assetTag: asset.sr || asset.assetNo,
+    await recordAuditLog({
+      req,
+      action: 'MAINTENANCE_COMPLETED',
+      module: 'Maintenance',
+      recordId: ticket._id,
+      recordIdentifier: ticket.maintenanceId,
+      newValues: { status: ticket.status, disposition, completedDate: ticket.completedDate },
       details: `Maintenance ${ticket.maintenanceId} completed. Disposition: ${disposition}`,
-      ipAddress: req.ip || '127.0.0.1',
     });
 
     res.status(200).json({

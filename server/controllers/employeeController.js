@@ -17,6 +17,8 @@ import {
   Transfer,
 } from '../models/Asset.js';
 import { isDBConnected } from '../config/db.js';
+import { recordAuditLog, calculateDiff, sanitizeData } from '../utils/auditService.js';
+import { normalizeRole } from '../middleware/auth.js';
 
 // ==========================================
 // EMPLOYEECONTROLLER
@@ -24,7 +26,15 @@ import { isDBConnected } from '../config/db.js';
 
 export const getEmployees = async (req, res) => {
   try {
-    let employees = await Employee.find().sort({ name: 1 });
+    let query = {};
+    if (req.user && normalizeRole(req.user.role) === 'User') {
+      const userConditions = [];
+      if (req.user.email) userConditions.push({ email: req.user.email.toLowerCase() });
+      if (req.user.name) userConditions.push({ name: req.user.name });
+      if (req.user.employeeId) userConditions.push({ employeeId: req.user.employeeId });
+      query = userConditions.length > 0 ? { $or: userConditions } : { name: req.user.name };
+    }
+    let employees = await Employee.find(query).sort({ name: 1 });
     if (!employees || employees.length === 0) {
       const assetsWithUsers = await Asset.find({ userName: { $nin: ['Unassigned', '', null] } });
       const seen = new Set();
@@ -111,12 +121,14 @@ export const createEmployee = async (req, res) => {
       status: status || 'Active',
     });
 
-    await AuditLog.create({
-      user: actorName || 'IT Admin',
-      role: 'IT Admin',
-      action: 'Employee Created',
+    await recordAuditLog({
+      req,
+      action: 'CREATE',
+      module: 'Employees',
+      recordId: employee._id,
+      recordIdentifier: employee.employeeId,
+      newValues: sanitizeData(employee),
       details: `Registered new employee "${employee.name}" with ID "${employee.employeeId}"`,
-      ipAddress: req.ip || '127.0.0.1',
     });
 
     res.status(201).json({ success: true, data: employee, message: `Employee "${employee.name}" created with ID ${employee.employeeId}` });
@@ -226,12 +238,11 @@ export const bulkImportEmployees = async (req, res) => {
       results.created = inserted;
     }
 
-    await AuditLog.create({
-      user: actorName || 'IT Admin',
-      role: 'IT Admin',
-      action: 'Bulk Employee Import',
+    await recordAuditLog({
+      req,
+      action: 'BULK_IMPORT',
+      module: 'Employees',
       details: `Bulk imported ${results.created.length} employees (${results.updated.length} updated, ${results.skipped.length} skipped, ${results.errors.length} errors)`,
-      ipAddress: req.ip || '127.0.0.1',
     });
 
     res.status(201).json({
@@ -307,12 +318,17 @@ export const updateEmployee = async (req, res) => {
       );
     }
 
-    await AuditLog.create({
-      user: actorName || 'IT Admin',
-      role: 'IT Admin',
-      action: 'Employee Updated',
-      details: `Updated Employee "${updated.name}" (Assigned ID: "${updated.employeeId}", Dept: "${updated.department}")`,
-      ipAddress: req.ip || '127.0.0.1',
+    const diff = calculateDiff(oldEmp.toObject(), updated.toObject());
+
+    await recordAuditLog({
+      req,
+      action: 'UPDATE',
+      module: 'Employees',
+      recordId: updated._id,
+      recordIdentifier: updated.employeeId,
+      oldValues: diff.oldValues,
+      newValues: diff.newValues,
+      details: `Updated Employee "${updated.name}" (ID: "${updated.employeeId}", Dept: "${updated.department}")`,
     });
 
     res.status(200).json({ success: true, data: updated, message: `Employee ID & profile for ${updated.name} updated successfully` });
@@ -342,12 +358,14 @@ export const deleteEmployee = async (req, res) => {
 
     await Employee.findByIdAndDelete(id);
 
-    await AuditLog.create({
-      user: req.body?.actorName || 'IT Admin',
-      role: 'IT Admin',
-      action: 'Employee Deleted',
+    await recordAuditLog({
+      req,
+      action: 'DELETE',
+      module: 'Employees',
+      recordId: emp._id,
+      recordIdentifier: emp.employeeId,
+      oldValues: sanitizeData(emp),
       details: `Deleted employee record "${emp.name}" (ID: ${emp.employeeId})`,
-      ipAddress: req.ip || '127.0.0.1',
     });
 
     res.status(200).json({ success: true, message: `Employee "${emp.name}" deleted successfully` });
@@ -369,6 +387,20 @@ export const getEmployeeAssets = async (req, res) => {
 
     if (!emp) {
       return res.status(404).json({ success: false, message: 'Employee not found' });
+    }
+
+    // RBAC: If caller is regular 'User', verify they are accessing their own employee profile
+    if (req.user && normalizeRole(req.user.role) === 'User') {
+      const isOwner =
+        (emp.email && emp.email.toLowerCase() === req.user.email?.toLowerCase()) ||
+        (emp.name && emp.name.toLowerCase() === req.user.name?.toLowerCase()) ||
+        (req.user.employeeId && emp.employeeId === req.user.employeeId);
+      if (!isOwner) {
+        return res.status(403).json({
+          success: false,
+          message: 'Forbidden: You only have permission to view your own assigned employee assets.',
+        });
+      }
     }
 
     const escapedName = emp.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -536,12 +568,15 @@ export const employeeExit = async (req, res) => {
       await asset.save();
     }
 
-    await AuditLog.create({
-      user: actorName || 'IT Admin',
-      role: 'IT Admin',
-      action: 'Employee Offboarded',
+    await recordAuditLog({
+      req,
+      action: 'OFFBOARD',
+      module: 'Employees',
+      recordId: emp._id,
+      recordIdentifier: emp.employeeId,
+      oldValues: { status: 'Active' },
+      newValues: { status: 'Exited' },
       details: `Offboarded ${emp.name} (${emp.employeeId}). Recovered ${assignedAssets.length} hardware asset(s) to stock.`,
-      ipAddress: req.ip || '127.0.0.1',
     });
 
     res.status(200).json({

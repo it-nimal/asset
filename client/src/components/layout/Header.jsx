@@ -16,6 +16,7 @@ import {
   LogOut,
   ShieldAlert,
   ExternalLink,
+  Activity,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../common/Toast';
@@ -1079,6 +1080,19 @@ export default function Header({
             {user?.role || 'IT Admin'}
           </span>
         </div>
+
+        {/* Activity & Audit Trail Quick Shortcut */}
+        <button
+          type="button"
+          onClick={() => {
+            if (onNavigate) onNavigate('audit-logs');
+          }}
+          className="btn btn-outline btn-icon"
+          title="View Activity & Audit Trail"
+          style={{ height: '32px', width: '32px', padding: 0 }}
+        >
+          <Activity size={14} style={{ color: '#38bdf8' }} />
+        </button>
 
         {/* Sign Out Action Button */}
         <button

@@ -7,3 +7,4 @@ export * from './maintenanceController.js';
 export * from './inwardController.js';
 export * from './transferController.js';
 export * from './systemController.js';
+export * from './permissionController.js';

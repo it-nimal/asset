@@ -17,6 +17,8 @@ import {
   Transfer,
 } from '../models/Asset.js';
 import { isDBConnected } from '../config/db.js';
+import { recordAuditLog, calculateDiff, sanitizeData } from '../utils/auditService.js';
+import { normalizeRole } from '../middleware/auth.js';
 
 // ==========================================
 // ASSETINVENTORYCONTROLLER
@@ -108,6 +110,25 @@ export const getAssets = async (req, res) => {
 
     const { search, status, plant, category, deviceType, department, vendor } = req.query;
     let query = {};
+
+    // RBAC: If caller is regular 'User', restrict data view to their own assigned assets
+    if (req.user && normalizeRole(req.user.role) === 'User') {
+      const userConditions = [];
+      if (req.user.email) {
+        userConditions.push({ mailId: { $regex: new RegExp(`^${req.user.email}$`, 'i') } });
+      }
+      if (req.user.name) {
+        userConditions.push({ userName: { $regex: new RegExp(`^${req.user.name}$`, 'i') } });
+      }
+      if (req.user.employeeId) {
+        userConditions.push({ empCode: req.user.employeeId });
+      }
+      if (userConditions.length > 0) {
+        query.$and = [{ $or: userConditions }];
+      } else {
+        query.userName = req.user.name || 'Unassigned';
+      }
+    }
 
     if (search) {
       query.$or = [
@@ -203,6 +224,21 @@ export const getAssetById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Asset not found' });
     }
     const asset = sanitizeAssetCategoryFields(rawAsset.toObject());
+
+    // RBAC: If caller is regular 'User', verify ownership
+    if (req.user && normalizeRole(req.user.role) === 'User') {
+      const isOwner =
+        (asset.mailId && asset.mailId.toLowerCase() === req.user.email?.toLowerCase()) ||
+        (asset.userName && asset.userName.toLowerCase() === req.user.name?.toLowerCase()) ||
+        (req.user.employeeId && asset.empCode === req.user.employeeId);
+      if (!isOwner) {
+        return res.status(403).json({
+          success: false,
+          message: 'Forbidden: You only have permission to view your own assigned assets.',
+        });
+      }
+    }
+
     res.status(200).json({ success: true, data: asset });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -219,12 +255,14 @@ export const createAsset = async (req, res) => {
       assetData.sn = (highest?.sn || 0) + 1;
     }
 
+    const actor = req.user?.name || req.body.actorName || 'IT Admin';
+
     if (!assetData.history || assetData.history.length === 0) {
       assetData.history = [
         {
           action: 'Created',
           date: new Date(),
-          user: req.body.actorName || 'System Admin',
+          user: actor,
           details: `Initial asset inward created in ${assetData.plant || 'Vitromed'}`,
         },
       ];
@@ -233,13 +271,14 @@ export const createAsset = async (req, res) => {
     const asset = await Asset.create(assetData);
 
     try {
-      await AuditLog.create({
-        user: req.body.actorName || 'IT Admin',
-        role: 'IT Admin',
-        action: 'Asset Created',
-        assetTag: asset.assetNo || asset.sr,
+      await recordAuditLog({
+        req,
+        action: 'CREATE',
+        module: 'Assets',
+        recordId: asset._id,
+        recordIdentifier: asset.assetNo || asset.sr,
+        newValues: sanitizeData(asset),
         details: `Created ${asset.make} ${asset.model} (S/N: ${asset.sr})`,
-        ipAddress: req.ip || '127.0.0.1',
       });
     } catch {}
 
@@ -258,17 +297,21 @@ export const updateAsset = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Asset not found' });
     }
 
+    const oldState = asset.toObject();
     const payload = sanitizeAssetCategoryFields({ ...req.body });
     const updated = await Asset.findByIdAndUpdate(req.params.id, payload, { new: true, runValidators: true });
+    const diff = calculateDiff(oldState, updated.toObject());
 
     try {
-      await AuditLog.create({
-        user: req.body.actorName || 'IT Admin',
-        role: 'IT Admin',
-        action: 'Asset Updated',
-        assetTag: updated.assetNo || updated.sr,
-        details: `Updated details for ${updated.make} ${updated.model}`,
-        ipAddress: req.ip || '127.0.0.1',
+      await recordAuditLog({
+        req,
+        action: 'UPDATE',
+        module: 'Assets',
+        recordId: updated._id,
+        recordIdentifier: updated.assetNo || updated.sr,
+        oldValues: diff.oldValues,
+        newValues: diff.newValues,
+        details: `Updated details for ${updated.make} ${updated.model} (${updated.assetNo || updated.sr})`,
       });
     } catch {}
 
@@ -288,13 +331,14 @@ export const deleteAsset = async (req, res) => {
     }
 
     try {
-      await AuditLog.create({
-        user: req.body?.actorName || 'IT Admin',
-        role: 'IT Admin',
-        action: 'Asset Deleted',
-        assetTag: asset.assetNo || asset.sr,
+      await recordAuditLog({
+        req,
+        action: 'DELETE',
+        module: 'Assets',
+        recordId: asset._id,
+        recordIdentifier: asset.assetNo || asset.sr,
+        oldValues: sanitizeData(asset),
         details: `Deleted asset record ${asset.make} ${asset.model} (S/N: ${asset.sr})`,
-        ipAddress: req.ip || '127.0.0.1',
       });
     } catch {}
 
@@ -312,6 +356,16 @@ export const assignAsset = async (req, res) => {
     const asset = await Asset.findById(req.params.id);
     if (!asset) return res.status(404).json({ success: false, message: 'Asset not found' });
 
+    const oldState = {
+      status: asset.status,
+      userName: asset.userName,
+      empCode: asset.empCode,
+      mailId: asset.mailId,
+      department: asset.department,
+    };
+
+    const actor = req.user?.name || actorName || 'IT Admin';
+
     asset.status = 'Assigned';
     asset.userName = userName || asset.userName;
     asset.empCode = empCode || asset.empCode;
@@ -325,19 +379,27 @@ export const assignAsset = async (req, res) => {
     asset.history.unshift({
       action: 'Assigned',
       date: new Date(),
-      user: actorName || 'IT Admin',
+      user: actor,
       details: `Assigned to ${asset.userName} (${asset.empCode || 'N/A'}) in ${asset.department}`,
     });
 
     await asset.save();
 
-    await AuditLog.create({
-      user: actorName || 'IT Admin',
-      role: 'IT Admin',
-      action: 'Asset Assigned',
-      assetTag: asset.assetNo || asset.sr,
-      details: `Issued to ${asset.userName} (${asset.department})`,
-      ipAddress: req.ip || '127.0.0.1',
+    await recordAuditLog({
+      req,
+      action: 'ALLOCATE',
+      module: 'Assets',
+      recordId: asset._id,
+      recordIdentifier: asset.assetNo || asset.sr,
+      oldValues: oldState,
+      newValues: {
+        status: asset.status,
+        userName: asset.userName,
+        empCode: asset.empCode,
+        mailId: asset.mailId,
+        department: asset.department,
+      },
+      details: `Issued ${asset.assetNo || asset.sr} to ${asset.userName} (${asset.department})`,
     });
 
     res.status(200).json({ success: true, data: asset, message: `Asset assigned to ${asset.userName}` });
@@ -355,6 +417,8 @@ export const returnAsset = async (req, res) => {
     if (!asset) return res.status(404).json({ success: false, message: 'Asset not found' });
 
     const prevUser = asset.userName;
+    const actor = req.user?.name || actorName || 'IT Admin';
+
     asset.status = 'Available';
     asset.userName = 'Unassigned';
     asset.empCode = '';
@@ -367,19 +431,21 @@ export const returnAsset = async (req, res) => {
     asset.history.unshift({
       action: 'Returned',
       date: returnDate ? new Date(returnDate) : new Date(),
-      user: actorName || 'IT Admin',
+      user: actor,
       details: `Returned from ${prevUser} to Available inventory stock. Condition: ${asset.workingCondition}`,
     });
 
     await asset.save();
 
-    await AuditLog.create({
-      user: actorName || 'IT Admin',
-      role: 'IT Admin',
-      action: 'Asset Returned',
-      assetTag: asset.assetNo || asset.sr,
-      details: `Returned by ${prevUser} to central stock`,
-      ipAddress: req.ip || '127.0.0.1',
+    await recordAuditLog({
+      req,
+      action: 'RETURN',
+      module: 'Assets',
+      recordId: asset._id,
+      recordIdentifier: asset.assetNo || asset.sr,
+      oldValues: { status: 'Assigned', userName: prevUser },
+      newValues: { status: 'Available', userName: 'Unassigned', workingCondition: asset.workingCondition },
+      details: `Returned by ${prevUser} to central stock. Condition: ${asset.workingCondition}`,
     });
 
     res.status(200).json({ success: true, data: asset, message: 'Asset returned to available inventory' });
@@ -398,6 +464,7 @@ export const transferAsset = async (req, res) => {
 
     const oldUser = asset.userName;
     const oldDept = asset.department;
+    const actor = req.user?.name || actorName || 'IT Admin';
 
     asset.userName = newUserName;
     asset.empCode = newEmpCode || '';
@@ -411,19 +478,21 @@ export const transferAsset = async (req, res) => {
     asset.history.unshift({
       action: 'Transferred',
       date: new Date(),
-      user: actorName || 'IT Admin',
+      user: actor,
       details: `Transferred from ${oldUser} (${oldDept}) to ${newUserName} (${asset.department})`,
     });
 
     await asset.save();
 
-    await AuditLog.create({
-      user: actorName || 'IT Admin',
-      role: 'IT Admin',
-      action: 'Asset Transferred',
-      assetTag: asset.assetNo || asset.sr,
+    await recordAuditLog({
+      req,
+      action: 'TRANSFER',
+      module: 'Assets',
+      recordId: asset._id,
+      recordIdentifier: asset.assetNo || asset.sr,
+      oldValues: { userName: oldUser, department: oldDept },
+      newValues: { userName: newUserName, department: asset.department },
       details: `Transferred from ${oldUser} to ${newUserName}`,
-      ipAddress: req.ip || '127.0.0.1',
     });
 
     res.status(200).json({ success: true, data: asset, message: `Asset transferred to ${newUserName}` });
@@ -440,6 +509,8 @@ export const returnFromMaintenance = async (req, res) => {
     const asset = await Asset.findById(req.params.id);
     if (!asset) return res.status(404).json({ success: false, message: 'Asset not found' });
 
+    const actor = req.user?.name || actorName || 'IT Admin';
+    const oldStatus = asset.status;
     asset.status = asset.userName && asset.userName !== 'Unassigned' ? 'Assigned' : 'Available';
     asset.maintenanceEndDate = maintenanceEndDate ? new Date(maintenanceEndDate) : new Date();
     if (lastMaintenanceCost !== undefined) asset.lastMaintenanceCost = Number(lastMaintenanceCost) || 0;
@@ -449,11 +520,22 @@ export const returnFromMaintenance = async (req, res) => {
     asset.history.unshift({
       action: 'Maintenance Returned',
       date: new Date(),
-      user: actorName || 'IT Admin',
+      user: actor,
       details: `Returned from service partner ${serviceVendor || 'OEM'}. Resolution: ${lastMaintenanceResolution || 'Repairs completed'}`,
     });
 
     await asset.save();
+
+    await recordAuditLog({
+      req,
+      action: 'MAINTENANCE_RETURN',
+      module: 'Assets',
+      recordId: asset._id,
+      recordIdentifier: asset.assetNo || asset.sr,
+      oldValues: { status: oldStatus },
+      newValues: { status: asset.status, lastMaintenanceCost: asset.lastMaintenanceCost, serviceVendor: asset.serviceVendor },
+      details: `Returned from maintenance (${serviceVendor || 'OEM'}). Resolution: ${lastMaintenanceResolution || 'Repairs completed'}`,
+    });
 
     res.status(200).json({ success: true, data: asset, message: 'Asset returned from maintenance successfully' });
   } catch (error) {
@@ -469,6 +551,8 @@ export const retireAsset = async (req, res) => {
     const asset = await Asset.findById(req.params.id);
     if (!asset) return res.status(404).json({ success: false, message: 'Asset not found' });
 
+    const actor = req.user?.name || actorName || 'IT Admin';
+    const oldStatus = asset.status;
     asset.status = 'Retired';
     asset.userName = 'Unassigned';
     asset.empCode = '';
@@ -478,11 +562,22 @@ export const retireAsset = async (req, res) => {
     asset.history.unshift({
       action: 'Retired',
       date: new Date(),
-      user: actorName || 'IT Admin',
+      user: actor,
       details: `Asset decommissioned/retired: ${retireReason || 'End of useful life'}`,
     });
 
     await asset.save();
+
+    await recordAuditLog({
+      req,
+      action: 'RETIRE',
+      module: 'Assets',
+      recordId: asset._id,
+      recordIdentifier: asset.assetNo || asset.sr,
+      oldValues: { status: oldStatus },
+      newValues: { status: 'Retired', remarks: asset.remarks },
+      details: `Asset decommissioned/retired: ${retireReason || 'End of useful life'}`,
+    });
 
     res.status(200).json({ success: true, data: asset, message: 'Asset retired successfully' });
   } catch (error) {
@@ -548,6 +643,13 @@ export const bulkImportAssets = async (req, res) => {
         errors.push(`Row ${i + 1}: ${rowErr.message}`);
       }
     }
+
+    await recordAuditLog({
+      req,
+      action: 'BULK_IMPORT',
+      module: 'Assets',
+      details: `Bulk imported ${insertedCount} new assets and updated ${updatedCount} existing assets (${errorCount} errors)`,
+    });
 
     res.status(200).json({
       success: true,
@@ -818,13 +920,21 @@ export const allocateAssets = async (req, res) => {
       await asset.save();
       updatedAssets.push(asset);
 
-      await AuditLog.create({
-        user: actorName || 'IT Admin',
-        role: 'IT Admin',
-        action: 'Asset Allocated',
-        assetTag: asset.sr || asset.assetNo,
-        details: `Allocated to ${finalName} (${finalDept}) - Purpose: ${allocationPurpose} [Ref: ${allocationRef}]`,
-        ipAddress: req.ip || '127.0.0.1',
+      await recordAuditLog({
+        req,
+        action: 'ALLOCATE',
+        module: 'Allocation',
+        recordId: asset._id,
+        recordIdentifier: asset.assetNo || asset.sr,
+        newValues: {
+          status: asset.status,
+          userName: finalName,
+          empCode: finalCode,
+          department: finalDept,
+          plant: finalLocation,
+          purpose: allocationPurpose,
+        },
+        details: `Allocated to ${finalName} (${finalDept}) - Ref: ${allocationRef}`,
       });
     }
 
@@ -880,12 +990,17 @@ export const acknowledgeAsset = async (req, res) => {
 
     await asset.save();
 
-    await AuditLog.create({
-      user: actorName || asset.userName || 'Employee',
-      action: 'Receipt Acknowledged',
-      assetTag: asset.sr || asset.assetNo,
+    await recordAuditLog({
+      req,
+      action: 'ACKNOWLEDGE',
+      module: 'Assets',
+      recordId: asset._id,
+      recordIdentifier: asset.assetNo || asset.sr,
+      newValues: {
+        receiptAcknowledged: true,
+        acknowledgementNotes: asset.acknowledgementNotes,
+      },
       details: `Custodian ${asset.userName} acknowledged receipt for ${asset.assetNo || asset.sr}`,
-      ipAddress: req.ip || '127.0.0.1',
     });
 
     res.status(200).json({

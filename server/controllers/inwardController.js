@@ -17,6 +17,7 @@ import {
   Transfer,
 } from '../models/Asset.js';
 import { isDBConnected } from '../config/db.js';
+import { recordAuditLog, calculateDiff, sanitizeData } from '../utils/auditService.js';
 
 // ==========================================
 // INWARDCONTROLLER
@@ -70,6 +71,17 @@ export const createInward = async (req, res) => {
       inwardNumber = `INW-VIT-${year}-${String(count + 1).padStart(4, '0')}`;
     }
     const inward = await Inward.create({ ...req.body, inwardNumber });
+
+    await recordAuditLog({
+      req,
+      action: 'CREATE',
+      module: 'Inward',
+      recordId: inward._id,
+      recordIdentifier: inward.inwardNumber,
+      newValues: sanitizeData(inward),
+      details: `Created Inward procurement record ${inward.inwardNumber} (Vendor: ${inward.vendor})`,
+    });
+
     res.status(201).json({ success: true, data: inward, message: 'Inward procurement entry logged successfully' });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -78,8 +90,23 @@ export const createInward = async (req, res) => {
 
 export const updateInward = async (req, res) => {
   try {
+    const oldInward = await Inward.findById(req.params.id);
+    if (!oldInward) return res.status(404).json({ success: false, message: 'Inward entry not found' });
+
     const inward = await Inward.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!inward) return res.status(404).json({ success: false, message: 'Inward entry not found' });
+    const diff = calculateDiff(oldInward.toObject(), inward.toObject());
+
+    await recordAuditLog({
+      req,
+      action: 'UPDATE',
+      module: 'Inward',
+      recordId: inward._id,
+      recordIdentifier: inward.inwardNumber,
+      oldValues: diff.oldValues,
+      newValues: diff.newValues,
+      details: `Updated Inward entry ${inward.inwardNumber}`,
+    });
+
     res.status(200).json({ success: true, data: inward, message: 'Inward entry updated successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -112,6 +139,16 @@ export const verifyInward = async (req, res) => {
       inward.items = items;
     }
     await inward.save();
+
+    await recordAuditLog({
+      req,
+      action: 'VERIFY',
+      module: 'Inward',
+      recordId: inward._id,
+      recordIdentifier: inward.inwardNumber,
+      newValues: { status: inward.status, verificationDetails: inward.verificationDetails },
+      details: `Inward ${inward.inwardNumber} verified as ${inward.status}`,
+    });
 
     res.status(200).json({
       success: true,
@@ -180,12 +217,13 @@ export const createAssetsFromInward = async (req, res) => {
     inward.status = 'Asset Created';
     await inward.save();
 
-    await AuditLog.create({
-      user: actorName,
-      role: 'IT Admin',
-      action: 'Assets Generated from Inward',
+    await recordAuditLog({
+      req,
+      action: 'INWARD_ASSET_CREATION',
+      module: 'Inward',
+      recordId: inward._id,
+      recordIdentifier: inward.inwardNumber,
       details: `Generated ${createdAssets.length} asset records from inward ${inward.inwardNumber}`,
-      ipAddress: req.ip || '127.0.0.1',
     });
 
     res.status(201).json({
@@ -204,6 +242,17 @@ export const deleteInward = async (req, res) => {
   try {
     const inward = await Inward.findByIdAndDelete(req.params.id);
     if (!inward) return res.status(404).json({ success: false, message: 'Inward entry not found' });
+
+    await recordAuditLog({
+      req,
+      action: 'DELETE',
+      module: 'Inward',
+      recordId: inward._id,
+      recordIdentifier: inward.inwardNumber,
+      oldValues: sanitizeData(inward),
+      details: `Deleted inward procurement entry ${inward.inwardNumber}`,
+    });
+
     res.status(200).json({ success: true, message: `Inward entry ${inward.inwardNumber} deleted` });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

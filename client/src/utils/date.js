@@ -25,20 +25,48 @@ export const formatDate = (dateVal, options = {}) => {
   }
 };
 
-export const formatDateTime = (dateVal) => {
+export const formatDateTimeIST = (dateVal, includeSeconds = true) => {
   if (!dateVal) return '-';
   try {
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return String(dateVal);
-    const dateStr = formatDate(d);
-    let hours = d.getHours();
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12 || 12;
-    return `${dateStr} ${hours}:${minutes} ${ampm}`;
+
+    // Format in Asia/Kolkata timezone
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: includeSeconds ? '2-digit' : undefined,
+      hour12: true,
+    });
+
+    const parts = formatter.formatToParts(d);
+    let day = '', month = '', year = '', hour = '', minute = '', second = '', dayPeriod = '';
+    for (const part of parts) {
+      if (part.type === 'day') day = part.value;
+      if (part.type === 'month') month = part.value;
+      if (part.type === 'year') year = part.value;
+      if (part.type === 'hour') hour = part.value;
+      if (part.type === 'minute') minute = part.value;
+      if (part.type === 'second') second = part.value;
+      if (part.type === 'dayPeriod') dayPeriod = part.value.toUpperCase();
+    }
+
+    const timeStr = includeSeconds
+      ? `${hour}:${minute}:${second} ${dayPeriod}`
+      : `${hour}:${minute} ${dayPeriod}`;
+
+    return `${day}-${month}-${year} ${timeStr} IST`;
   } catch {
     return String(dateVal);
   }
+};
+
+export const formatDateTime = (dateVal) => {
+  return formatDateTimeIST(dateVal, false);
 };
 
 export const formatDateInput = (dateVal) => {

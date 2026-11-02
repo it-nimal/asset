@@ -40,67 +40,85 @@ export default function Sidebar({
   employeesCount,
   onCloseMobile,
 }) {
-  const { user } = useAuth();
+  const { user, isSuperAdmin, isAdmin, isUserOnly, canManageUsers, canViewAuditLogs } = useAuth();
 
   const handleSelect = (id) => {
     setActivePage(id);
     if (onCloseMobile) onCloseMobile();
   };
 
-  const navSections = [
-    {
-      title: 'User & Employee Workspaces',
-      items: [
-        { id: 'dashboard', label: 'User Operations Dashboard', icon: LayoutDashboard },
-        { id: 'org-employees', label: 'All Users & Workstations', icon: Users, count: employeesCount || stats?.totalEmployees },
-        { id: 'employee-self-service', label: 'My Assigned Assets (Staff)', icon: Laptop },
-        { id: 'users-bulk', label: 'Bulk Import Users', icon: Upload },
-        { id: 'asset-assign', label: 'Allocate Workstation Bundle', icon: UserCheck, isAction: true },
-        { id: 'asset-transfer', label: 'User-to-User Transfer', icon: ArrowRightLeft },
-        { id: 'asset-return', label: 'Offboarding & Return', icon: Undo2 },
-        { id: 'org-departments', label: 'Department User Rosters', icon: Building2 },
-        { id: 'org-locations', label: 'Plant & Site Workspaces', icon: MapPin },
-      ],
-    },
-    {
-      title: 'Hardware Depot & Stock',
-      items: [
-        { id: 'inventory-all', label: 'Central Inventory Depot', icon: Boxes, count: stats?.total },
-        { id: 'assets-all', label: 'Hardware Master Fleet', icon: FolderTree, count: stats?.total },
-        { id: 'assets-laptops', label: 'Laptops', icon: Laptop, count: countsByCategory?.Laptop },
-        { id: 'assets-desktops', label: 'Desktops', icon: Monitor, count: (countsByCategory?.Desktop || 0) + (countsByCategory?.['All in One Desktop'] || 0) },
-        { id: 'assets-servers', label: 'Servers', icon: Server, count: countsByCategory?.Server },
-        { id: 'assets-monitors', label: 'Monitors', icon: Monitor, count: countsByCategory?.Monitor },
-        { id: 'assets-network', label: 'Network', icon: Radio, count: countsByCategory?.['Network Switch'] },
-        { id: 'assets-printers', label: 'Printers', icon: Printer, count: countsByCategory?.Printer },
-        { id: 'assets-tablets', label: 'Mobiles / Tablets', icon: Tablet, count: countsByCategory?.Tablet },
-        { id: 'asset-maintenance', label: 'Repairs & Maintenance', icon: Wrench, count: stats?.maintenance, badgeColor: '#fbbf24' },
-        { id: 'asset-warranty', label: 'OEM Warranty Monitor', icon: ShieldCheck, count: stats?.warrantyExpiringSoon, badgeColor: '#f87171' },
-      ],
-    },
-    {
-      title: 'Procurement & Vendors',
-      items: [
-        { id: 'inward-register', label: 'Inward / Receiving Register', icon: Receipt },
-        { id: 'org-vendors', label: 'Vendors & OEM Suppliers', icon: Truck },
-      ],
-    },
-    {
-      title: 'Software & Digital Licenses',
-      items: [
-        { id: 'software-inventory', label: 'Software Portfolio', icon: Layers },
-        { id: 'software-licenses', label: 'SAM License Keys', icon: KeyRound },
-      ],
-    },
-    {
-      title: 'Compliance & Audit',
-      items: [
-        { id: 'reports', label: 'User Allocation Reports', icon: FileText },
-        { id: 'audit-logs', label: 'Audit Trail & Custody Log', icon: Activity },
-        { id: 'settings-master', label: 'System Master Settings', icon: Settings },
-      ],
-    },
-  ];
+  const navSections = isUserOnly
+    ? [
+        {
+          title: 'My Workspace',
+          items: [
+            { id: 'dashboard', label: 'My Workspace Dashboard', icon: LayoutDashboard },
+            { id: 'employee-self-service', label: 'My Assigned Assets', icon: Laptop },
+            { id: 'audit-logs', label: 'My Activity History', icon: Activity },
+          ],
+        },
+      ]
+    : [
+        {
+          title: 'User & Employee Workspaces',
+          items: [
+            { id: 'dashboard', label: 'User Operations Dashboard', icon: LayoutDashboard },
+            { id: 'org-employees', label: 'All Users & Workstations', icon: Users, count: employeesCount || stats?.totalEmployees },
+            { id: 'employee-self-service', label: 'My Assigned Assets (Staff)', icon: Laptop },
+            { id: 'users-bulk', label: 'Bulk Import Users', icon: Upload },
+            { id: 'asset-assign', label: 'Allocate Workstation Bundle', icon: UserCheck, isAction: true },
+            { id: 'asset-transfer', label: 'User-to-User Transfer', icon: ArrowRightLeft },
+            { id: 'asset-return', label: 'Offboarding & Return', icon: Undo2 },
+            { id: 'org-departments', label: 'Department User Rosters', icon: Building2 },
+            { id: 'org-locations', label: 'Plant & Site Workspaces', icon: MapPin },
+          ],
+        },
+        {
+          title: 'Hardware Depot & Stock',
+          items: [
+            { id: 'inventory-all', label: 'Central Inventory Depot', icon: Boxes, count: stats?.total },
+            { id: 'assets-all', label: 'Hardware Master Fleet', icon: FolderTree, count: stats?.total },
+            { id: 'assets-laptops', label: 'Laptops', icon: Laptop, count: countsByCategory?.Laptop },
+            { id: 'assets-desktops', label: 'Desktops', icon: Monitor, count: (countsByCategory?.Desktop || 0) + (countsByCategory?.['All in One Desktop'] || 0) },
+            { id: 'assets-servers', label: 'Servers', icon: Server, count: countsByCategory?.Server },
+            { id: 'assets-monitors', label: 'Monitors', icon: Monitor, count: countsByCategory?.Monitor },
+            { id: 'assets-network', label: 'Network', icon: Radio, count: countsByCategory?.['Network Switch'] },
+            { id: 'assets-printers', label: 'Printers', icon: Printer, count: countsByCategory?.Printer },
+            { id: 'assets-tablets', label: 'Mobiles / Tablets', icon: Tablet, count: countsByCategory?.Tablet },
+            { id: 'asset-maintenance', label: 'Repairs & Maintenance', icon: Wrench, count: stats?.maintenance, badgeColor: '#fbbf24' },
+            { id: 'asset-warranty', label: 'OEM Warranty Monitor', icon: ShieldCheck, count: stats?.warrantyExpiringSoon, badgeColor: '#f87171' },
+          ],
+        },
+        {
+          title: 'Procurement & Vendors',
+          items: [
+            { id: 'inward-register', label: 'Inward / Receiving Register', icon: Receipt },
+            { id: 'org-vendors', label: 'Vendors & OEM Suppliers', icon: Truck },
+          ],
+        },
+        {
+          title: 'Software & Digital Licenses',
+          items: [
+            { id: 'software-inventory', label: 'Software Portfolio', icon: Layers },
+            { id: 'software-licenses', label: 'SAM License Keys', icon: KeyRound },
+          ],
+        },
+        {
+          title: 'Compliance & Administration',
+          items: [
+            { id: 'reports', label: 'User Allocation Reports', icon: FileText },
+            ...(canViewAuditLogs
+              ? [{ id: 'audit-logs', label: 'Audit Trail & Custody Log', icon: Activity }]
+              : []),
+            ...(canManageUsers
+              ? [{ id: 'user-management', label: 'User & Role Access', icon: ShieldCheck }]
+              : []),
+            ...(isSuperAdmin
+              ? [{ id: 'settings-master', label: 'System Master Settings', icon: Settings }]
+              : []),
+          ],
+        },
+      ];
 
   return (
     <aside
@@ -310,8 +328,8 @@ export default function Sidebar({
             >
               {user?.name || 'Administrator'}
             </div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-faint)' }}>
-              {user?.role || 'IT Admin'}
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-faint)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              {user?.email || 'user@vitromed.com'}
             </div>
           </div>
         </div>
@@ -319,14 +337,32 @@ export default function Sidebar({
         <span
           style={{
             fontSize: '0.65rem',
-            padding: '0.15rem 0.4rem',
+            padding: '0.18rem 0.45rem',
             borderRadius: 'var(--radius-sm)',
-            backgroundColor: 'var(--primary-light)',
-            color: 'var(--primary)',
+            backgroundColor:
+              user?.role === 'Super Admin'
+                ? 'rgba(168, 85, 247, 0.15)'
+                : user?.role === 'Admin' || user?.role === 'IT Admin'
+                ? 'var(--primary-light)'
+                : 'rgba(100, 116, 139, 0.15)',
+            color:
+              user?.role === 'Super Admin'
+                ? '#c084fc'
+                : user?.role === 'Admin' || user?.role === 'IT Admin'
+                ? 'var(--primary)'
+                : '#94a3b8',
             fontWeight: 700,
+            whiteSpace: 'nowrap',
+            border: `1px solid ${
+              user?.role === 'Super Admin'
+                ? 'rgba(168, 85, 247, 0.3)'
+                : user?.role === 'Admin' || user?.role === 'IT Admin'
+                ? 'rgba(56, 189, 248, 0.3)'
+                : 'rgba(100, 116, 139, 0.3)'
+            }`,
           }}
         >
-          Active
+          {user?.role || 'User'}
         </span>
       </div>
     </aside>

@@ -17,6 +17,7 @@ import {
   Transfer,
 } from '../models/Asset.js';
 import { isDBConnected } from '../config/db.js';
+import { recordAuditLog, calculateDiff, sanitizeData } from '../utils/auditService.js';
 
 // ==========================================
 // TRANSFERCONTROLLER
@@ -277,12 +278,19 @@ export const createTransfer = async (req, res) => {
       updatedBy: actorName || 'IT Admin',
     });
 
-    await AuditLog.create({
-      user: actorName || 'IT Admin',
-      action: 'Transfer Created',
-      assetTag: asset.assetNo || asset.sr,
+    await recordAuditLog({
+      req,
+      action: 'TRANSFER_REQUEST',
+      module: 'Transfers',
+      recordId: newTransfer._id,
+      recordIdentifier: transferId,
+      newValues: {
+        transferId,
+        fromEmployee: asset.userName,
+        toEmployee: targetEmpName,
+        status: newTransfer.status,
+      },
       details: `Created transfer ${transferId} for ${asset.make} ${asset.model} from ${asset.userName} to ${targetEmpName}`,
-      ipAddress: req.ip || '127.0.0.1',
     });
 
     await Notification.create({
@@ -341,12 +349,14 @@ export const approveTransfer = async (req, res) => {
 
     await transfer.save();
 
-    await AuditLog.create({
-      user: actorName || 'IT Admin',
-      action: 'Transfer Approved',
-      assetTag: transfer.assetTag || transfer.assetSerial,
+    await recordAuditLog({
+      req,
+      action: 'TRANSFER_APPROVED',
+      module: 'Transfers',
+      recordId: transfer._id,
+      recordIdentifier: transfer.transferId,
+      newValues: { status: 'Approved', approvedBy: transfer.approvedBy },
       details: `Approved transfer ${transfer.transferId} to ${transfer.toEmployeeName}`,
-      ipAddress: req.ip || '127.0.0.1',
     });
 
     res.status(200).json({
@@ -397,12 +407,14 @@ export const handoverTransfer = async (req, res) => {
 
     await transfer.save();
 
-    await AuditLog.create({
-      user: actorName || 'IT Admin',
-      action: 'Handover Confirmed',
-      assetTag: transfer.assetTag || transfer.assetSerial,
+    await recordAuditLog({
+      req,
+      action: 'TRANSFER_HANDOVER',
+      module: 'Transfers',
+      recordId: transfer._id,
+      recordIdentifier: transfer.transferId,
+      newValues: { status: 'Acknowledgement Pending', handedOverBy: transfer.handedOverBy },
       details: `Handover confirmed for transfer ${transfer.transferId}. Dispatched to ${transfer.toEmployeeName}`,
-      ipAddress: req.ip || '127.0.0.1',
     });
 
     res.status(200).json({
@@ -503,12 +515,14 @@ export const acknowledgeTransfer = async (req, res) => {
 
     await transfer.save();
 
-    await AuditLog.create({
-      user: actorName || transfer.toEmployeeName,
-      action: 'Transfer Completed',
-      assetTag: asset.assetNo || asset.sr,
+    await recordAuditLog({
+      req,
+      action: 'TRANSFER_COMPLETED',
+      module: 'Transfers',
+      recordId: transfer._id,
+      recordIdentifier: transfer.transferId,
+      newValues: { status: 'Completed', toEmployee: transfer.toEmployeeName },
       details: `Transfer ${transfer.transferId} finalized: ${oldUserName} -> ${transfer.toEmployeeName}`,
-      ipAddress: req.ip || '127.0.0.1',
     });
 
     await Notification.create({
@@ -580,12 +594,14 @@ export const cancelTransfer = async (req, res) => {
       await asset.save();
     }
 
-    await AuditLog.create({
-      user: actorName || 'IT Admin',
-      action: 'Transfer Cancelled',
-      assetTag: transfer.assetTag || transfer.assetSerial,
+    await recordAuditLog({
+      req,
+      action: 'TRANSFER_CANCELLED',
+      module: 'Transfers',
+      recordId: transfer._id,
+      recordIdentifier: transfer.transferId,
+      newValues: { status: 'Cancelled', reason: transfer.cancellationReason },
       details: `Cancelled transfer ${transfer.transferId}: ${transfer.cancellationReason}`,
-      ipAddress: req.ip || '127.0.0.1',
     });
 
     res.status(200).json({

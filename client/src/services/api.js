@@ -22,12 +22,16 @@ async function request(endpoint, options = {}) {
     }
   }
 
+  const token = typeof window !== 'undefined' ? localStorage.getItem('itam_token') : null;
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+
   const config = {
     method: options.method || 'GET',
     headers: {
       ...(body && typeof body === 'object' && !(body instanceof FormData)
         ? { 'Content-Type': 'application/json' }
         : {}),
+      ...authHeaders,
       ...headers,
     },
     ...customConfig,
@@ -254,8 +258,44 @@ export const api = {
 
   // 14. Authentication & User Management
   login: (email, password) => http.post('/auth/login', { email, password }),
+  logout: () => http.post('/auth/logout').catch(() => ({})),
+  getMe: () => http.get('/auth/me'),
+  changePassword: (currentPassword, newPassword) => http.put('/auth/change-password', { currentPassword, newPassword }),
+  resetPassword: (id, newPassword) => http.put(`/auth/reset-password/${id}`, { newPassword }),
+  getUserActivity: (id) => http.get(`/auth/users/${id}/activity`),
   getUsers: () => http.get('/auth/users'),
+  getUserById: (id) => http.get(`/auth/users/${id}`),
   createUser: (data) => http.post('/auth/users', data),
+  updateUser: (id, data) => http.put(`/auth/users/${id}`, data),
+  deleteUser: (id) => http.delete(`/auth/users/${id}`),
+
+  // Permissions Matrix & Overrides
+  getPermissionMatrix: () => http.get('/permissions/matrix'),
+  updatePermissionMatrix: (role, permissions) => http.put('/permissions/matrix', { role, permissions }),
+  getUserPermissions: (id) => http.get(`/auth/users/${id}/permissions`),
+  updateUserPermissions: (id, permissions) => http.put(`/auth/users/${id}/permissions`, { permissions }),
+
+  // 15. Audit Logs
+  getAuditLogs: (params) => http.get('/audit-logs', params),
+  async exportAuditLogsCsv(params = {}) {
+    const query = new URLSearchParams({ ...params, export: 'csv' }).toString();
+    const token = typeof window !== 'undefined' ? localStorage.getItem('itam_token') : null;
+    const res = await fetch(`/api/audit-logs?${query}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      throw new Error(`Export failed: HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `ITAM_Audit_Trail_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+  },
 
   // Aliases for seamless legacy usage
   acknowledgeAsset(id, data) { return this.acknowledgeAssetReceipt(id, data); },

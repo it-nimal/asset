@@ -39,6 +39,9 @@ import AssetTable from '../assets/AssetTable';
 import { getEmployeeAssets } from '../organization/OrganizationView';
 import EmployeeProfileModal from '../organization/EmployeeProfileModal';
 import BulkAddEmployeesModal from '../organization/BulkAddEmployeesModal';
+import { useAuth } from '../../context/AuthContext';
+import UserDashboard from './UserDashboard';
+import SuperAdminDashboard from './SuperAdminDashboard';
 
 export default function Dashboard({
   stats,
@@ -56,6 +59,43 @@ export default function Dashboard({
   onRetire,
   onDelete,
 }) {
+  const { user, isSuperAdmin, isUserOnly } = useAuth();
+  const [adminViewMode, setAdminViewMode] = useState('governance');
+
+  // Role 1: USER Profile & Dashboard experience
+  if (isUserOnly) {
+    return <UserDashboard onNavigate={onNavigate} onRefresh={onViewDetails} />;
+  }
+
+  // Role 3: SUPER ADMIN Profile & Dashboard experience
+  if (isSuperAdmin && adminViewMode === 'governance') {
+    return (
+      <div>
+        <div style={{ padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'flex-end', backgroundColor: 'var(--bg-surface-raised)', borderBottom: '1px solid var(--border-default)', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'inline-flex', padding: '3px', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', gap: '4px' }}>
+            <button
+              type="button"
+              className={`btn btn-xs ${adminViewMode === 'governance' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setAdminViewMode('governance')}
+              style={{ fontSize: '0.75rem' }}
+            >
+              🛡️ System Control & Audit
+            </button>
+            <button
+              type="button"
+              className={`btn btn-xs ${adminViewMode === 'operations' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setAdminViewMode('operations')}
+              style={{ fontSize: '0.75rem' }}
+            >
+              💻 Hardware Fleet Operations
+            </button>
+          </div>
+        </div>
+        <SuperAdminDashboard stats={stats} onNavigate={onNavigate} />
+      </div>
+    );
+  }
+
   const [empSearchQuery, setEmpSearchQuery] = useState('');
   const [ledgerMode, setLedgerMode] = useState('users'); // 'users' or 'assets'
   const [deptFilter, setDeptFilter] = useState('All');
@@ -193,6 +233,29 @@ export default function Dashboard({
 
   return (
     <div className="page-container">
+      {isSuperAdmin && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'inline-flex', padding: '3px', backgroundColor: 'var(--bg-surface-raised)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', gap: '4px' }}>
+            <button
+              type="button"
+              className={`btn btn-xs ${adminViewMode === 'governance' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setAdminViewMode('governance')}
+              style={{ fontSize: '0.75rem' }}
+            >
+              🛡️ System Control & Audit
+            </button>
+            <button
+              type="button"
+              className={`btn btn-xs ${adminViewMode === 'operations' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setAdminViewMode('operations')}
+              style={{ fontSize: '0.75rem' }}
+            >
+              💻 Hardware Fleet Operations
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Page Header */}
       <div
         style={{

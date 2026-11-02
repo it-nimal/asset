@@ -6,7 +6,7 @@ import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import AppLayout from './components/layout/AppLayout';
 import Dashboard from './components/dashboard/Dashboard';
-import { X } from 'lucide-react';
+import { X, ShieldAlert } from 'lucide-react';
 import AssetTable from './components/assets/AssetTable';
 import AssetDetailsModal from './components/assets/AssetDetailsModal';
 import AssetLabelModal from './components/assets/AssetLabelModal';
@@ -29,6 +29,7 @@ import SoftwareManagement from './components/software/SoftwareManagement';
 import NetworkManagement from './components/network/NetworkManagement';
 import ReportsView from './components/reports/ReportsView';
 import AuditLogView from './components/audit/AuditLogView';
+import UserManagement from './components/users/UserManagement';
 import InventoryView from './components/inventory/InventoryView';
 import InwardRegister from './components/inward/InwardRegister';
 import WarrantyView from './components/warranty/WarrantyView';
@@ -48,7 +49,7 @@ const getInitialActivePage = () => {
 };
 
 function ITAMApp() {
-  const { user } = useAuth();
+  const { user, isSuperAdmin, isAdmin, isUserOnly, canManageUsers, canViewAuditLogs } = useAuth();
   const toast = useToast();
   const [activePage, setActivePageState] = useState(getInitialActivePage);
   const [globalSearch, setGlobalSearch] = useState('');
@@ -86,6 +87,21 @@ function ITAMApp() {
       localStorage.setItem('itam_active_page', activePage);
     }
   }, [activePage]);
+
+  // RBAC page navigation guard
+  useEffect(() => {
+    if (isUserOnly) {
+      const allowedForUser = ['dashboard', 'employee-self-service', 'audit-logs'];
+      if (!allowedForUser.includes(activePage)) {
+        setActivePage('dashboard');
+      }
+    } else if (!isSuperAdmin) {
+      // Admin can access operations and user-management (for regular users), but cannot access settings-master
+      if (activePage === 'settings-master') {
+        setActivePage('dashboard');
+      }
+    }
+  }, [isUserOnly, isSuperAdmin, activePage, setActivePage]);
 
   // Primary datasets
   const [assets, setAssets] = useState([]);
@@ -617,9 +633,104 @@ function ITAMApp() {
         <AuditLogView />
       )}
 
+      {/* USER & ROLE MANAGEMENT */}
+      {activePage === 'user-management' && (
+        canManageUsers ? (
+          <UserManagement />
+        ) : (
+          <div className="page-container" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+            <div
+              style={{
+                maxWidth: '420px',
+                margin: '0 auto',
+                backgroundColor: 'var(--bg-surface)',
+                padding: '2.5rem 2rem',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--border-default)',
+                boxShadow: 'var(--shadow-md)',
+              }}
+            >
+              <div
+                style={{
+                  width: '54px',
+                  height: '54px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  color: '#ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 1.25rem',
+                }}
+              >
+                <ShieldAlert size={30} />
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                Access Denied
+              </h2>
+              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1.5rem' }}>
+                User and Role Management requires Super Admin privileges. Please contact your system administrator.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => setActivePage(isUserOnly ? 'employee-self-service' : 'dashboard')}
+              >
+                Return to {isUserOnly ? 'My Assets' : 'Dashboard'}
+              </button>
+            </div>
+          </div>
+        )
+      )}
+
       {/* MASTER SETTINGS */}
       {activePage === 'settings-master' && (
-        <SettingsView onRefreshMaster={loadData} />
+        isSuperAdmin ? (
+          <SettingsView onRefreshMaster={loadData} />
+        ) : (
+          <div className="page-container" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+            <div
+              style={{
+                maxWidth: '420px',
+                margin: '0 auto',
+                backgroundColor: 'var(--bg-surface)',
+                padding: '2.5rem 2rem',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--border-default)',
+                boxShadow: 'var(--shadow-md)',
+              }}
+            >
+              <div
+                style={{
+                  width: '54px',
+                  height: '54px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  color: '#ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 1.25rem',
+                }}
+              >
+                <ShieldAlert size={30} />
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                Super Admin Restricted
+              </h2>
+              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1.5rem' }}>
+                System Master Settings can only be configured by Super Administrators.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => setActivePage(isUserOnly ? 'employee-self-service' : 'dashboard')}
+              >
+                Return to {isUserOnly ? 'My Assets' : 'Dashboard'}
+              </button>
+            </div>
+          </div>
+        )
       )}
 
       {/* FALLBACK FOR UNKNOWN PAGE */}
@@ -646,6 +757,7 @@ function ITAMApp() {
         'reports',
         'audit-logs',
         'settings-master',
+        'user-management',
       ].includes(activePage) && !isAssetListingPage && (
         <Dashboard
           stats={stats}
